@@ -47,6 +47,9 @@ export function makeInitialState(profile = {}) {
       { id: 'origem-dual', title: 'Códice Dual D7', text: 'Uma criação simbólica do jogo: hebraico como trilha de letras, números e códigos; sânscrito como trilha de sons, mantras e estados.', date: 'Registro inicial' },
     ],
     sessions: [],
+    ritualMinutesTotal: 0,
+    ritualMilestonesUnlocked: [],
+    lastPracticeDurationMinutes: null,
     circles: [
       { id: 'aurora', name: 'Círculo Aurora', members: 7, pulse: 'Aberto', focus: 'Semana A', seal: '△' },
       { id: 'nucleo', name: 'Núcleo Brasa', members: 4, pulse: 'Privado', focus: 'Prática diária', seal: '◈' },
@@ -96,6 +99,9 @@ export function normalizeState(raw) {
 
   const sealProgress = raw.sealProgress && typeof raw.sealProgress === 'object' ? raw.sealProgress : {}
   const symbolicMapProgress = raw.symbolicMapProgress && typeof raw.symbolicMapProgress === 'object' ? raw.symbolicMapProgress : {}
+  const sessionsTotal = arrayOr(raw.sessions, base.sessions).reduce((sum, session) => sum + Number(session?.minutes ?? session?.durationMinutes ?? 0), 0)
+  const rawRitualMinutesTotal = Number(raw.ritualMinutesTotal)
+  const ritualMinutesTotal = Number.isFinite(rawRitualMinutesTotal) && rawRitualMinutesTotal > 0 ? rawRitualMinutesTotal : sessionsTotal
 
   return {
     ...base,
@@ -114,6 +120,13 @@ export function normalizeState(raw) {
     wordLog: arrayOr(raw.wordLog, base.wordLog).slice(0, 12),
     codex: arrayOr(raw.codex).length ? raw.codex : base.codex,
     sessions: arrayOr(raw.sessions, base.sessions),
+    ritualMinutesTotal,
+    ritualMilestonesUnlocked: unique([
+      ...arrayOr(raw.ritualMilestonesUnlocked, base.ritualMilestonesUnlocked),
+      ...(ritualMinutesTotal >= 21 ? [21] : []),
+      ...(ritualMinutesTotal >= 108 ? [108] : []),
+    ]),
+    lastPracticeDurationMinutes: Number.isFinite(Number(raw.lastPracticeDurationMinutes)) ? Math.max(numberOr(raw.lastPracticeDurationMinutes, 0), 0) : base.lastPracticeDurationMinutes,
     lastUnlocks: unique(arrayOr(raw.lastUnlocks, base.lastUnlocks)).slice(0, 5),
     tokenBalance: Math.max(numberOr(raw.tokenBalance, base.tokenBalance), 0),
     totalTokenEarned: Math.max(numberOr(raw.totalTokenEarned, base.totalTokenEarned), 0),
@@ -208,6 +221,65 @@ function nextCardsForSession(totalSessions, completedDays) {
   return ids
 }
 
+function sumPracticeMinutes(sessions = []) {
+  return sessions.reduce((sum, session) => sum + Math.max(0, Number(session?.minutes ?? session?.durationMinutes ?? 0) || 0), 0)
+}
+
+export function clampPracticeMinutes(minutes) {
+  const value = Math.floor(Number(minutes) || 0)
+  return Math.min(108, Math.max(1, value))
+}
+
+export function calculatePracticeReward(durationMinutes, progress, today = todayKey()) {
+  const currentMinutes = Math.max(0, Number(durationMinutes) || 0)
+  const validMinutes = clampPracticeMinutes(currentMinutes || 1)
+  const ritualMinutesTotal = Math.max(0, Number(progress.ritualMinutesTotal ?? sumPracticeMinutes(progress.sessions ?? [])) || 0)
+  const nextRitualMinutesTotal = ritualMinutesTotal + validMinutes
+  const primaryRewardAvailable = !progress.daily?.practice
+  const primaryReward = primaryRewardAvailable ? {
+    xp: 50 + Math.floor(validMinutes * 2),
+    sparks: 3 + Math.floor(validMinutes / 7),
+    d7t: validMinutes >= 21 ? 3 : 1,
+    rewarded: true,
+  } : {
+    xp: 0,
+    sparks: 0,
+    d7t: 0,
+    rewarded: false,
+  }
+  const alreadyUnlocked = unique(progress.ritualMilestonesUnlocked ?? [])
+  const newlyUnlocked = [
+    ...(nextRitualMinutesTotal >= 21 && !alreadyUnlocked.includes(21) ? [21] : []),
+    ...(nextRitualMinutesTotal >= 108 && !alreadyUnlocked.includes(108) ? [108] : []),
+  ]
+  const milestonesUnlocked = unique([...alreadyUnlocked, ...newlyUnlocked])
+  const milestoneRewards = {
+    xp: 0,
+    sparks: 0,
+    d7t: 0,
+    unlocked: [],
+  }
+  if (newlyUnlocked.includes(21)) {
+    milestoneRewards.xp += 21
+    milestoneRewards.d7t += 2
+    milestoneRewards.unlocked.push(21)
+  }
+  if (newlyUnlocked.includes(108)) {
+    milestoneRewards.xp += 108
+    milestoneRewards.d7t += 7
+    milestoneRewards.unlocked.push(108)
+  }
+  return {
+    validMinutes,
+    nextRitualMinutesTotal,
+    primaryReward,
+    milestoneRewards,
+    milestonesUnlocked,
+    completedAt: new Date().toISOString(),
+    today,
+  }
+}
+
 export function recordPresenceTick(state, amount = 1, at = new Date().toISOString()) {
   const current = ensureToday(state)
   const increment = Math.max(0, Number(amount) || 0)
@@ -222,29 +294,65 @@ export function recordPresenceTick(state, amount = 1, at = new Date().toISOStrin
   }
 }
 
-export function completePractice(state) {
+export function completePractice(state, options = {}) {
   const current = ensureToday(state)
-  if (current.daily.practice) return unlockDerived(current, ['Prática de hoje já registrada'])
-  const stage = getStage(current.progress)
+  const durationMinutes = clampPracticeMinutes(options.durationMinutes ?? getStage(current.progress).minutes)
+  const rewardMode = options.rewardMode === 'free' ? 'free' : 'primary'
   const code = getJourneyCode(current.progress)
   const totalSessions = current.sessions.length + 1
-  const completedDays = unique([...current.progress.completedDays, code])
-  const newStreak = current.progress.lastPracticeDate === todayKey() ? current.progress.streak : current.progress.streak + 1
-  const xp = 45 + stage.minutes * 20
-  const sparks = 4 + stage.minutes
+  const completedDays = rewardMode === 'primary' && !current.daily.practice ? unique([...current.progress.completedDays, code]) : current.progress.completedDays
+  const newStreak = rewardMode === 'primary' && !current.daily.practice && current.progress.lastPracticeDate !== todayKey() ? current.progress.streak + 1 : current.progress.streak
+  const reward = calculatePracticeReward(durationMinutes, current)
+  const practiceXp = rewardMode === 'primary' ? reward.primaryReward.xp : 0
+  const practiceSparks = rewardMode === 'primary' ? reward.primaryReward.sparks : 0
+  const practiceTokens = rewardMode === 'primary' ? reward.primaryReward.d7t : 0
+  const unlockedMilestones = reward.milestoneRewards.unlocked
+  const milestoneXp = reward.milestoneRewards.xp
+  const milestoneTokens = reward.milestoneRewards.d7t
+  const ritualMinutesTotal = reward.nextRitualMinutesTotal
+  const sessions = [{
+    id: `sessao-${Date.now()}`,
+    mode: 'Ritual',
+    code,
+    minutes: durationMinutes,
+    xp: practiceXp + milestoneXp,
+    sparks: practiceSparks,
+    d7t: practiceTokens + milestoneTokens,
+    rewarded: rewardMode === 'primary' || unlockedMilestones.length > 0,
+    rewardMode,
+    date: todayKey(),
+    completedAt: reward.completedAt,
+  }, ...current.sessions]
   const unlockedCards = unique([...current.unlockedCards, ...nextCardsForSession(totalSessions, completedDays)])
-  const completedAt = new Date().toISOString()
   const next = recordPresenceTick({
     ...current,
-    xp: current.xp + xp,
-    sparks: current.sparks + sparks,
+    xp: current.xp + practiceXp + milestoneXp,
+    sparks: current.sparks + practiceSparks,
+    tokenBalance: Math.max(0, (current.tokenBalance ?? 0) + practiceTokens + milestoneTokens),
+    totalTokenEarned: (current.totalTokenEarned ?? 0) + practiceTokens + milestoneTokens,
     unlockedCards,
-    daily: { ...current.daily, practice: true },
-    progress: advanceProgress({ ...current.progress, streak: newStreak, lastPracticeDate: todayKey(), completedDays }),
-    sessions: [{ id: `sessao-${Date.now()}`, mode: 'Nada', code, minutes: stage.minutes, xp, sparks, date: todayKey() }, ...current.sessions],
-    codex: [{ id: `codice-${Date.now()}`, title: `${code}: Nada concluído`, text: `Prática de ${stage.minutes} minuto(s), +${xp} XP e +${sparks} Centelhas.`, date: new Date().toLocaleDateString('pt-BR') }, ...current.codex],
-  }, 1, completedAt)
-  return unlockDerived(next, ['Prática registrada', `+${xp} XP`, `+${sparks} Centelhas`])
+    daily: { ...current.daily, practice: current.daily.practice || rewardMode === 'primary' },
+    progress: rewardMode === 'primary' && !current.daily.practice ? advanceProgress({ ...current.progress, streak: newStreak, lastPracticeDate: todayKey(), completedDays }) : current.progress,
+    sessions,
+    ritualMinutesTotal,
+    ritualMilestonesUnlocked: reward.milestonesUnlocked,
+    lastPracticeDurationMinutes: durationMinutes,
+    codex: [{ id: `codice-${Date.now()}`, title: `${code}: Prática ritual concluída`, text: `Prática de ${durationMinutes} minuto(s), ${rewardMode === 'primary' ? `+${practiceXp} XP e +${practiceSparks} Centelhas.` : 'sem recompensa principal adicional.'}`, date: new Date().toLocaleDateString('pt-BR') }, ...current.codex],
+  }, durationMinutes, reward.completedAt)
+
+  const lastUnlocks = []
+  if (rewardMode === 'primary') {
+    lastUnlocks.push('Prática registrada', `+${practiceXp} XP`, `+${practiceSparks} Centelhas`, `+${practiceTokens} D7T`)
+  } else {
+    lastUnlocks.push('Prática livre registrada')
+  }
+  if (unlockedMilestones.includes(21)) lastUnlocks.unshift('Marco 21 desbloqueado', '+21 XP', '+2 D7T')
+  if (unlockedMilestones.includes(108)) lastUnlocks.unshift('Marco 108 desbloqueado', '+108 XP', '+7 D7T')
+  return unlockDerived({
+    ...next,
+    ritualMilestonesUnlocked: reward.milestonesUnlocked,
+    lastUnlocks: unique([...lastUnlocks, ...(next.lastUnlocks ?? [])]).slice(0, 5),
+  }, lastUnlocks)
 }
 
 export function recordVisit(state, view) {

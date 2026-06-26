@@ -87,6 +87,8 @@ export function getSealGateScore(progress) {
 
 export function getRankingScore(progress) {
   const sealProgress = progress.sealProgress ?? {}
+  const ritualMinutesTotal = Math.max(0, Number(progress.ritualMinutesTotal ?? 0) || 0)
+  const ritualMilestonesUnlocked = Array.isArray(progress.ritualMilestonesUnlocked) ? progress.ritualMilestonesUnlocked : []
   return Math.max(0,
     (progress.xp ?? 0) +
     (progress.sparks ?? 0) * 7 +
@@ -96,6 +98,9 @@ export function getRankingScore(progress) {
     (progress.tokenBalance ?? 0) * 5 +
     (progress.progress?.streak ?? 0) * 13 +
     Math.floor((sealProgress.totalFocusSeconds ?? 0) / 60) * 3 +
+    Math.floor(ritualMinutesTotal * 2) +
+    (ritualMilestonesUnlocked.includes(21) ? 21 : 0) +
+    (ritualMilestonesUnlocked.includes(108) ? 108 : 0) +
     (progress.presenceBonusTotal ?? 0) -
     (progress.integrityWarnings ?? 0) * 50,
   )

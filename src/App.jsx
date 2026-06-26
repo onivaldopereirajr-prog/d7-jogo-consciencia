@@ -21,6 +21,7 @@ import { cancelSealAttempt, completeSealChallenge, getRankingScore, getRequiredG
 import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgressIfSafe, resetUserProgress, saveUserProgress } from './services/localProgress.js'
 import D7SymbolicMap from './components/D7SymbolicMap.jsx'
 import D7PulseTimer from './components/D7PulseTimer.jsx'
+import D7DurationSelector from './components/D7DurationSelector.jsx'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import './App.css'
 
@@ -113,7 +114,27 @@ function formatTime(seconds) {
   return `${minutes}:${rest}`
 }
 
+function normalizePracticeMinutes(value) {
+  const number = Math.floor(Number(value) || 0)
+  if (!Number.isFinite(number) || number <= 0) return 7
+  return Math.min(108, Math.max(1, number))
+}
 
+function practiceRewardPreview(minutes, hasPrimaryReward) {
+  const safeMinutes = normalizePracticeMinutes(minutes)
+  const xp = 50 + Math.floor(safeMinutes * 2)
+  const sparks = 3 + Math.floor(safeMinutes / 7)
+  const d7t = safeMinutes >= 21 ? 3 : 1
+  if (!hasPrimaryReward) {
+    return { xp: 0, sparks: 0, d7t: 0, text: 'Prática livre: registra presença e histórico sem recompensa principal.' }
+  }
+  return {
+    xp,
+    sparks,
+    d7t,
+    text: safeMinutes >= 108 ? 'Prática longa com marcos simbólicos potenciais.' : safeMinutes >= 21 ? 'Portal 21 pode se abrir com presença acumulada.' : 'Prática principal do dia.',
+  }
+}
 
 function cardUnlockHint(card) {
   const hints = {
@@ -448,14 +469,15 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
               <span>{summary.sparks} Centelhas</span>
               <span>{summary.streak} dias</span>
               <span>{summary.completedPractices} práticas</span>
+              <span>{summary.ritualMinutesTotal ?? 0} min rituais</span>
               <span>{summary.unlockedSeals.length} selos</span>
               <span>{summary.tokenBalance} D7T</span>
               <span>{summary.score} score</span>
               <span>{summary.symbolicMapsCount ?? 0} mapas</span>
               <span>{summary.presenceCounter108 ?? 0}/108</span>
             </div>
-            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Último selo: {summary.lastSealId ?? 'pendente'} · Último mapa: {summary.lastMapArchetype ?? 'pendente'}</p>
-            <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Timers: {summary.totalTimersCompleted ?? 0} · Avisos: {summary.integrityWarnings}</small>
+            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Duração: {summary.lastPracticeDurationMinutes ?? '—'} min · Último selo: {summary.lastSealId ?? 'pendente'} · Último mapa: {summary.lastMapArchetype ?? 'pendente'}</p>
+            <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Marcos: {summary.ritualMilestonesUnlocked?.length ? summary.ritualMilestonesUnlocked.join(' · ') : 'nenhum'} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Timers: {summary.totalTimersCompleted ?? 0} · Avisos: {summary.integrityWarnings}</small>
           </article>
         ))}
         {summaries.length === 0 && <p className="empty-state">Nenhum usuário local cadastrado neste navegador.</p>}
@@ -477,28 +499,25 @@ function ClosingMantra() {
 }
 
 function App() {
-  const [currentUser, setCurrentUser] = useState(() => getCurrentUser())
+  const initialUser = getCurrentUser()
+  const initialState = initialUser ? getUserState(initialUser) : ensureToday(getUserState(null))
+  const initialPracticeMinutes = normalizePracticeMinutes(initialState.lastPracticeDurationMinutes ?? 7)
+  const [currentUser, setCurrentUser] = useState(() => initialUser)
   const [authMode, setAuthMode] = useState('login')
   const [authMessage, setAuthMessage] = useState(null)
   const [panelMessage, setPanelMessage] = useState(null)
   const [activeView, setActiveView] = useState('home')
-  const [state, setState] = useState(() => {
-    const user = getCurrentUser()
-    return user ? getUserState(user) : ensureToday(getUserState(null))
-  })
-  const [timer, setTimer] = useState(() => {
-    const user = getCurrentUser()
-    const loaded = user ? getUserState(user) : ensureToday(getUserState(null))
-    const loadedStage = getStage(loaded.progress)
-    const remainingSeconds = loadedStage.minutes * 60
-    return {
-      journeyCode: getJourneyCode(loaded.progress),
-      startedAt: null,
-      expectedEndAt: null,
-      remaining: remainingSeconds,
-      status: 'idle',
-    }
-  })
+  const [state, setState] = useState(() => initialState)
+  const [practiceDurationMinutes, setPracticeDurationMinutes] = useState(() => initialPracticeMinutes)
+  const [practiceDurationInput, setPracticeDurationInput] = useState(() => String(initialPracticeMinutes))
+  const [practiceDurationError, setPracticeDurationError] = useState('')
+  const [timer, setTimer] = useState(() => ({
+    journeyCode: getJourneyCode(initialState.progress),
+    startedAt: null,
+    expectedEndAt: null,
+    remaining: initialPracticeMinutes * 60,
+    status: 'idle',
+  }))
   const [word, setWord] = useState('')
   const [activeSealId, setActiveSealId] = useState(sealDefinitions[0].id)
   const [challengeValue, setChallengeValue] = useState('')
@@ -508,16 +527,18 @@ function App() {
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
-  const totalSeconds = stage.minutes * 60
+  const practiceTotalSeconds = practiceDurationMinutes * 60
   const timerSynced = timer.journeyCode === journeyCode
-  const remaining = timerSynced ? Math.min(timer.remaining, totalSeconds) : totalSeconds
   const timerStatus = timerSynced ? timer.status : 'idle'
-  const timerProgress = Math.round(((totalSeconds - remaining) / totalSeconds) * 100)
+  const remaining = timerStatus === 'running' ? Math.min(timer.remaining, practiceTotalSeconds) : timerStatus === 'complete' ? 0 : practiceTotalSeconds
+  const timerProgress = practiceTotalSeconds ? Math.round(((practiceTotalSeconds - remaining) / practiceTotalSeconds) * 100) : 0
   const hebrewUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'hebraica').length
   const sanskritUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
   const currentScore = getRankingScore(state)
   const phrase = dayPhrases[(state.progress.day - 1) % dayPhrases.length]
   const rank = localRanking(currentUser?.id)
+  const practiceHasPrimaryReward = !state.daily.practice
+  const practicePreview = practiceRewardPreview(practiceDurationMinutes, practiceHasPrimaryReward)
 
   useEffect(() => {
     if (currentUser) saveUserProgress(currentUser.id, state)
@@ -598,9 +619,13 @@ function App() {
   function enterUser(user, successMessage) {
     const migration = migrateLegacyProgressIfSafe(user)
     const loaded = getUserState(user)
+    const loadedPracticeMinutes = normalizePracticeMinutes(loaded.lastPracticeDurationMinutes ?? initialPracticeMinutes)
     setCurrentUser(user)
     setState(loaded)
-    setTimer({ journeyCode: getJourneyCode(loaded.progress), startedAt: null, expectedEndAt: null, remaining: getStage(loaded.progress).minutes * 60, status: 'idle' })
+    setPracticeDurationMinutes(loadedPracticeMinutes)
+    setPracticeDurationInput(String(loadedPracticeMinutes))
+    setPracticeDurationError('')
+    setTimer({ journeyCode: getJourneyCode(loaded.progress), startedAt: null, expectedEndAt: null, remaining: loadedPracticeMinutes * 60, status: 'idle' })
     setActiveView('home')
     setAuthMessage({ type: 'success', text: migration.migrated ? `${successMessage} Progresso anônimo antigo migrado com segurança.` : successMessage })
   }
@@ -654,6 +679,75 @@ function App() {
     setPanelMessage({ type: result.ok ? 'success' : 'error', text: result.message })
   }
 
+  function syncPracticeTimer(minutes = practiceDurationMinutes) {
+    const normalizedMinutes = normalizePracticeMinutes(minutes)
+    const remainingSeconds = normalizedMinutes * 60
+    setTimer((current) => ({
+      ...current,
+      journeyCode,
+      remaining: remainingSeconds,
+      status: 'idle',
+      startedAt: null,
+      expectedEndAt: null,
+    }))
+    return normalizedMinutes
+  }
+
+  function handlePracticeDurationChange(minutes) {
+    const normalizedMinutes = normalizePracticeMinutes(minutes)
+    setPracticeDurationMinutes(normalizedMinutes)
+    setPracticeDurationInput(String(normalizedMinutes))
+    setPracticeDurationError('')
+    if (timerStatus !== 'running' && timerStatus !== 'complete') {
+      syncPracticeTimer(normalizedMinutes)
+    }
+  }
+
+  function handlePracticeCustomInput(value) {
+    const raw = String(value)
+    setPracticeDurationInput(raw)
+    if (!raw.trim()) {
+      setPracticeDurationError('')
+      return
+    }
+    const parsed = Number(raw)
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 108) {
+      setPracticeDurationError('Escolha um número inteiro entre 1 e 108 minutos.')
+      return
+    }
+    handlePracticeDurationChange(parsed)
+  }
+
+  function handleStartPractice() {
+    const normalizedMinutes = normalizePracticeMinutes(practiceDurationMinutes)
+    const total = normalizedMinutes * 60
+    const startedAt = Date.now()
+    setPracticeDurationError('')
+    setTimer({
+      journeyCode,
+      startedAt,
+      expectedEndAt: startedAt + total * 1000,
+      remaining: total,
+      status: 'running',
+    })
+  }
+
+  function handleCancelPractice() {
+    setTimer((current) => ({
+      ...current,
+      journeyCode,
+      remaining: practiceDurationMinutes * 60,
+      status: 'idle',
+      startedAt: null,
+      expectedEndAt: null,
+    }))
+  }
+
+  function handleResetPractice() {
+    setPracticeDurationError('')
+    syncPracticeTimer(practiceDurationMinutes)
+  }
+
   function handleSelectSeal(sealId) {
     setActiveSealId(sealId)
     setChallengeValue('')
@@ -695,9 +789,10 @@ function App() {
   }
 
   function finishPractice() {
-    if (remaining > 0 || state.daily.practice) return
-    setState((current) => recordVisit(completePractice(current), 'jornada'))
-    setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: totalSeconds, status: 'idle' })
+    if (timerStatus !== 'complete') return
+    const rewardMode = state.daily.practice ? 'free' : 'primary'
+    setState((current) => recordVisit(completePractice(current, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada'))
+    setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
     setActiveView('jornada')
   }
 
@@ -712,9 +807,13 @@ function App() {
     const confirmed = window.confirm('Resetar apenas o progresso deste usuário local? A conta e outros usuários não serão apagados.')
     if (!confirmed) return
     const fresh = ensureToday(resetUserProgress(currentUser))
+    const freshPracticeMinutes = normalizePracticeMinutes(fresh.lastPracticeDurationMinutes ?? practiceDurationMinutes)
     setState(fresh)
+    setPracticeDurationMinutes(freshPracticeMinutes)
+    setPracticeDurationInput(String(freshPracticeMinutes))
+    setPracticeDurationError('')
     setActiveView('home')
-    setTimer({ journeyCode: getJourneyCode(fresh.progress), startedAt: null, expectedEndAt: null, remaining: getStage(fresh.progress).minutes * 60, status: 'idle' })
+    setTimer({ journeyCode: getJourneyCode(fresh.progress), startedAt: null, expectedEndAt: null, remaining: freshPracticeMinutes * 60, status: 'idle' })
   }
 
   function study(cardId) {
@@ -843,35 +942,45 @@ function App() {
             <div className="timer-panel">
               <img className="practice-bg-art" src={visualAssets.practice} alt="" />
               <SectionTitle eyebrow={`${journeyCode} · modo Nada`} title="Fechar os olhos. Permanecer. Concluir.">{phrase}</SectionTitle>
+              <div className={`practice-banner ${state.daily.practice ? 'complete' : 'idle'}`} role="status">
+                <strong>{state.daily.practice ? 'Prática de hoje concluída' : 'Escolha um tempo ritual'}</strong>
+                <span>{state.daily.practice ? 'Você pode repetir em modo livre sem recompensa principal.' : 'Selecione uma duração antes de iniciar.'}</span>
+              </div>
+              <D7DurationSelector
+                value={practiceDurationMinutes}
+                onChange={handlePracticeDurationChange}
+                customValue={practiceDurationInput}
+                onCustomChange={handlePracticeCustomInput}
+                error={practiceDurationError}
+                disabled={timerStatus === 'running' || timerStatus === 'complete'}
+              />
               <D7PulseTimer
                 label="Timer Ritual D7"
                 subtitle="Prática de presença"
-                hint="Permaneça. O código desperta no silêncio."
-                totalSeconds={totalSeconds}
-                remainingSeconds={timerStatus === 'running' ? remaining : timerStatus === 'complete' || state.daily.practice ? 0 : totalSeconds}
+                hint={timerStatus === 'running' ? 'Presença ativa' : timerStatus === 'paused' ? 'Prática pausada. Reinicie para seguir.' : state.daily.practice ? 'Prática livre disponível. Escolha outro tempo para continuar.' : 'Permaneça. O código desperta no silêncio.'}
+                totalSeconds={practiceTotalSeconds}
+                remainingSeconds={remaining}
                 isRunning={timerStatus === 'running'}
-                isCompleted={state.daily.practice}
+                isCompleted={timerStatus === 'complete'}
                 isFailed={false}
-                isChallengePending={timerStatus === 'complete' && !state.daily.practice}
+                isChallengePending={false}
                 mode="practice"
-                progressPercent={state.daily.practice ? 100 : timerStatus === 'running' ? timerProgress : 0}
+                progressPercent={timerStatus === 'running' ? timerProgress : timerStatus === 'complete' ? 100 : 0}
                 currentCount={state.presenceCounter108 ?? 0}
                 countTarget={108}
-                onStart={() => {
-                  const startedAt = Date.now()
-                  const remainingSeconds = Math.max(0, Math.floor(remaining || totalSeconds))
-                  setTimer({ journeyCode, startedAt, expectedEndAt: startedAt + remainingSeconds * 1000, remaining: remainingSeconds, status: 'running' })
-                }}
+                onStart={handleStartPractice}
                 onPause={timerStatus === 'running' ? () => setTimer((current) => ({ ...current, status: 'paused', expectedEndAt: null })) : null}
-                onReset={state.daily.practice ? null : () => setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: totalSeconds, status: 'idle' })}
-                onComplete={remaining > 0 || state.daily.practice ? null : finishPractice}
-                completeDisabled={remaining > 0 || state.daily.practice}
-                startLabel="Iniciar"
+                onCancel={timerStatus === 'running' || timerStatus === 'paused' ? handleCancelPractice : null}
+                onReset={timerStatus === 'idle' ? handleResetPractice : null}
+                onComplete={timerStatus === 'complete' ? finishPractice : null}
+                completeDisabled={timerStatus !== 'complete'}
+                startLabel={state.daily.practice ? 'Iniciar prática livre' : 'Iniciar prática'}
                 pauseLabel="Pausar"
-                resetLabel="Reiniciar"
-                completeLabel={state.daily.practice ? 'Prática registrada' : 'Concluir prática'}
-                statusText={state.daily.practice ? 'prática de hoje concluída' : timerStatus === 'running' ? 'em prática' : timerStatus === 'complete' ? 'timer concluído' : 'aguardando entrada'}
-                ariaLabel={`Tempo restante ${formatTime(timerStatus === 'running' ? remaining : timerStatus === 'complete' || state.daily.practice ? 0 : totalSeconds)}`}
+                cancelLabel="Cancelar prática"
+                resetLabel="Reiniciar seleção"
+                completeLabel={state.daily.practice ? 'Registrar prática livre' : 'Concluir prática'}
+                statusText={timerStatus === 'running' ? 'Presença ativa' : timerStatus === 'paused' ? 'Prática pausada' : timerStatus === 'complete' ? 'Prática concluída' : state.daily.practice ? 'Prática de hoje concluída. A próxima será livre.' : 'aguardando entrada'}
+                ariaLabel={`Tempo restante ${formatTime(remaining)}`}
               />
               {state.lastUnlocks.length > 0 && <div className="unlock-feed" aria-live="polite">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
             </div>
@@ -880,8 +989,11 @@ function App() {
               <p>{stage.intent}</p>
               <div className="reward-preview">
                 <span>Recompensa prevista</span>
-                <strong>+{45 + stage.minutes * 20} XP</strong>
-                <strong>+{4 + stage.minutes} Centelhas</strong>
+                <strong>+{practicePreview.xp} XP</strong>
+                <strong>+{practicePreview.sparks} Centelhas</strong>
+                <strong>+{practicePreview.d7t} D7T</strong>
+                <small>{practicePreview.text}</small>
+                <small>Portal 21/108: {state.ritualMinutesTotal ?? 0}/108 min · Marcos: {state.ritualMilestonesUnlocked?.length ? state.ritualMilestonesUnlocked.join(' · ') : 'nenhum'}</small>
               </div>
               <form className="word-form" onSubmit={submitWord}>
                 <label htmlFor="word">Registrar palavra</label>
@@ -928,7 +1040,7 @@ function App() {
 
         {activeView === 'ranking' && (
           <section className="content-section">
-            <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência * 50 + cartas * 25 + portais * 200 + códigos * 150.</SectionTitle>
+            <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência + cartas + portais + códigos + D7T + minutos rituais + marcos 21/108.</SectionTitle>
             <img className="ranking-seal-art" src={visualAssets.ranking} alt="Selo visual do ranking D7" />
             <div className="ranking-list">
               {rank.map((player, index) => (
@@ -936,7 +1048,7 @@ function App() {
                   <strong>#{index + 1}</strong>
                   <div><span>{player.name}</span><small>{player.title}</small></div>
                   <p>{player.score} score</p>
-                  <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T</small>
+                  <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T · {player.ritualMinutesTotal ?? 0} min · {Array.isArray(player.ritualMilestonesUnlocked) && player.ritualMilestonesUnlocked.length ? player.ritualMilestonesUnlocked.join(' / ') : '21/108 pendente'}</small>
                 </article>
               ))}
             </div>
@@ -965,6 +1077,7 @@ function App() {
                 <StatCard label="Missões" value={state.completedMissions.length} detail="ativas concluídas" />
                 <StatCard label="Portais" value={state.openedPortals.length} detail="4 possíveis" />
                 <StatCard label="Códigos" value={state.unlockedCodes.length} detail="8 possíveis" />
+                <StatCard label="Minutos rituais" value={state.ritualMinutesTotal ?? 0} detail="21/108 simbólico" />
                 <StatCard label="D7 Tokens" value={state.tokenBalance ?? 0} detail="simbólicos MVP" />
                 <StatCard label="Selos" value={state.sealProgress.unlockedSeals.length} detail="8 possíveis" />
                 <StatCard label="Ranking" value={currentScore} detail="score local" />
@@ -976,6 +1089,7 @@ function App() {
               <div className="track-progress">
                 <p>Hebraico <strong>{hebrewUnlocked}</strong></p><ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Progresso da trilha hebraica" />
                 <p>Sânscrito <strong>{sanskritUnlocked}</strong></p><ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Progresso da trilha sânscrita" />
+                <p>Portal 21/108 <strong>{state.ritualMinutesTotal ?? 0}</strong></p><ProgressLine value={Math.min(108, state.ritualMinutesTotal ?? 0)} max={108} label="Progresso ritual 21/108" />
               </div>
             </div>
           </section>

@@ -234,40 +234,56 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
 
   return (
     <main className="auth-shell">
-      <section className="auth-panel" aria-labelledby="auth-title">
-        <div className="auth-brand">
-          <Sigil label="D7" />
-          <div>
-            <span className="overline">Acesso local MVP</span>
-            <h1 id="auth-title">D7: O Jogo da Consciência</h1>
-          </div>
-        </div>
-        <p className="auth-warning">Login local apenas para demonstração neste navegador. Não use senhas pessoais reais; para vários dispositivos será necessário backend futuro.</p>
-        {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
+      <section className="auth-layout" aria-label="Acesso local do D7">
+        <figure className="auth-visual">
+          <img
+            src="/images/d7/login/login-hexagrama-d7.png"
+            alt="D7: Jornada gamer de foco, presença e símbolos vivos"
+          />
+          <figcaption>
+            <span className="overline">Portal visual do D7</span>
+            <h2>Uma jornada gamer de foco, presença e símbolos vivos.</h2>
+            <p>Desperte o código interior. Atravesse portais, conquiste presença e transforme consciência em poder.</p>
+          </figcaption>
+        </figure>
 
-        {!isRegister ? (
-          <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onLogin(loginData) }}>
-            <label htmlFor="login-id">Apelido ou e-mail local</label>
-            <input id="login-id" value={loginData.login} onChange={(event) => updateLogin('login', event.target.value)} autoComplete="username" />
-            <label htmlFor="login-password">Senha</label>
-            <input id="login-password" type="password" value={loginData.password} onChange={(event) => updateLogin('password', event.target.value)} autoComplete="current-password" />
-            <button type="submit" className="primary-action">Entrar</button>
-            <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
-          </form>
-        ) : (
-          <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onRegister(registerData) }}>
-            <label htmlFor="register-name">Nome do usuário</label>
-            <input id="register-name" value={registerData.name} onChange={(event) => updateRegister('name', event.target.value)} autoComplete="name" />
-            <label htmlFor="register-login">Apelido ou e-mail local</label>
-            <input id="register-login" value={registerData.login} onChange={(event) => updateRegister('login', event.target.value)} autoComplete="username" />
-            <label htmlFor="register-password">Senha</label>
-            <input id="register-password" type="password" value={registerData.password} onChange={(event) => updateRegister('password', event.target.value)} autoComplete="new-password" />
-            <label htmlFor="register-confirm">Confirmar senha</label>
-            <input id="register-confirm" type="password" value={registerData.confirmPassword} onChange={(event) => updateRegister('confirmPassword', event.target.value)} autoComplete="new-password" />
-            <button type="submit" className="primary-action">Criar conta</button>
-            <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
-          </form>
-        )}
+        <section className="auth-panel" aria-labelledby="auth-title">
+          <div className="auth-brand">
+            <Sigil label="D7" />
+            <div>
+              <span className="overline">Acesso local MVP</span>
+              <h1 id="auth-title">D7: O Jogo da Consciência</h1>
+            </div>
+          </div>
+          <p className="auth-lead">Uma jornada gamer de foco, presença e símbolos vivos.</p>
+          <p className="auth-sublead">Desperte o código interior. Atravesse portais, conquiste presença e transforme consciência em poder.</p>
+          <p className="auth-warning">Login local apenas para demonstração neste navegador. Não use senhas pessoais reais; para vários dispositivos será necessário backend futuro.</p>
+          {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
+
+          {!isRegister ? (
+            <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onLogin(loginData) }}>
+              <label htmlFor="login-id">Apelido ou e-mail local</label>
+              <input id="login-id" value={loginData.login} onChange={(event) => updateLogin('login', event.target.value)} autoComplete="username" />
+              <label htmlFor="login-password">Senha</label>
+              <input id="login-password" type="password" value={loginData.password} onChange={(event) => updateLogin('password', event.target.value)} autoComplete="current-password" />
+              <button type="submit" className="primary-action">Entrar</button>
+              <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
+            </form>
+          ) : (
+            <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onRegister(registerData) }}>
+              <label htmlFor="register-name">Nome do usuário</label>
+              <input id="register-name" value={registerData.name} onChange={(event) => updateRegister('name', event.target.value)} autoComplete="name" />
+              <label htmlFor="register-login">Apelido ou e-mail local</label>
+              <input id="register-login" value={registerData.login} onChange={(event) => updateRegister('login', event.target.value)} autoComplete="username" />
+              <label htmlFor="register-password">Senha</label>
+              <input id="register-password" type="password" value={registerData.password} onChange={(event) => updateRegister('password', event.target.value)} autoComplete="new-password" />
+              <label htmlFor="register-confirm">Confirmar senha</label>
+              <input id="register-confirm" type="password" value={registerData.confirmPassword} onChange={(event) => updateRegister('confirmPassword', event.target.value)} autoComplete="new-password" />
+              <button type="submit" className="primary-action">Criar conta</button>
+              <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+            </form>
+          )}
+        </section>
       </section>
       <ClosingMantra />
     </main>

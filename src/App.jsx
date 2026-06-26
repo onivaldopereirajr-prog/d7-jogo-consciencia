@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { codexCards, dualBridges, hebrewLetters, hebrewWords, sanskritItems } from './data/codex.js'
 import { dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
 import {
@@ -396,13 +396,21 @@ function App() {
     const user = getCurrentUser()
     const loaded = user ? getUserState(user) : ensureToday(getUserState(null))
     const loadedStage = getStage(loaded.progress)
-    return { journeyCode: getJourneyCode(loaded.progress), remaining: loadedStage.minutes * 60, status: 'idle' }
+    const remainingSeconds = loadedStage.minutes * 60
+    return {
+      journeyCode: getJourneyCode(loaded.progress),
+      startedAt: null,
+      expectedEndAt: null,
+      remaining: remainingSeconds,
+      status: 'idle',
+    }
   })
   const [word, setWord] = useState('')
   const [activeSealId, setActiveSealId] = useState(sealDefinitions[0].id)
   const [challengeValue, setChallengeValue] = useState('')
   const [sealMessage, setSealMessage] = useState(null)
   const [tick, setTick] = useState(() => Date.now())
+  const practiceTimerIntervalRef = useRef(null)
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
@@ -422,16 +430,38 @@ function App() {
   }, [currentUser, state])
 
   useEffect(() => {
-    if (timerStatus !== 'running') return undefined
-    const interval = setInterval(() => {
+    if (practiceTimerIntervalRef.current) {
+      clearInterval(practiceTimerIntervalRef.current)
+      practiceTimerIntervalRef.current = null
+    }
+    if (timerStatus !== 'running' || !timer.expectedEndAt) return undefined
+
+    const syncTimer = () => {
       setTimer((current) => {
-        const activeTimer = current.journeyCode === journeyCode ? current : { journeyCode, remaining: totalSeconds, status: 'running' }
-        if (activeTimer.remaining <= 1) return { ...activeTimer, remaining: 0, status: 'complete' }
-        return { ...activeTimer, remaining: activeTimer.remaining - 1 }
+        if (current.journeyCode !== journeyCode || current.status !== 'running' || !current.expectedEndAt) return current
+        const remainingSeconds = Math.max(0, Math.ceil((new Date(current.expectedEndAt).getTime() - Date.now()) / 1000))
+        if (remainingSeconds <= 0) {
+          return {
+            ...current,
+            remaining: 0,
+            status: 'complete',
+            completedAt: new Date().toISOString(),
+          }
+        }
+        if (remainingSeconds === current.remaining) return current
+        return { ...current, remaining: remainingSeconds }
       })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [journeyCode, timerStatus, totalSeconds])
+    }
+
+    syncTimer()
+    practiceTimerIntervalRef.current = setInterval(syncTimer, 1000)
+    return () => {
+      if (practiceTimerIntervalRef.current) {
+        clearInterval(practiceTimerIntervalRef.current)
+        practiceTimerIntervalRef.current = null
+      }
+    }
+  }, [journeyCode, timer.expectedEndAt, timerStatus])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -476,7 +506,7 @@ function App() {
     const loaded = getUserState(user)
     setCurrentUser(user)
     setState(loaded)
-    setTimer({ journeyCode: getJourneyCode(loaded.progress), remaining: getStage(loaded.progress).minutes * 60, status: 'idle' })
+    setTimer({ journeyCode: getJourneyCode(loaded.progress), startedAt: null, expectedEndAt: null, remaining: getStage(loaded.progress).minutes * 60, status: 'idle' })
     setActiveView('home')
     setAuthMessage({ type: 'success', text: migration.migrated ? `${successMessage} Progresso anônimo antigo migrado com segurança.` : successMessage })
   }
@@ -559,7 +589,7 @@ function App() {
   function finishPractice() {
     if (remaining > 0 || state.daily.practice) return
     setState((current) => recordVisit(completePractice(current), 'jornada'))
-    setTimer({ journeyCode, remaining: totalSeconds, status: 'idle' })
+    setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: totalSeconds, status: 'idle' })
     setActiveView('jornada')
   }
 
@@ -576,7 +606,7 @@ function App() {
     const fresh = ensureToday(resetUserProgress(currentUser))
     setState(fresh)
     setActiveView('home')
-    setTimer({ journeyCode: getJourneyCode(fresh.progress), remaining: getStage(fresh.progress).minutes * 60, status: 'idle' })
+    setTimer({ journeyCode: getJourneyCode(fresh.progress), startedAt: null, expectedEndAt: null, remaining: getStage(fresh.progress).minutes * 60, status: 'idle' })
   }
 
   function study(cardId) {
@@ -719,9 +749,13 @@ function App() {
                 progressPercent={state.daily.practice ? 100 : timerStatus === 'running' ? timerProgress : 0}
                 currentCount={state.presenceCounter108 ?? 0}
                 countTarget={108}
-                onStart={() => setTimer({ journeyCode, remaining, status: 'running' })}
-                onPause={timerStatus === 'running' ? () => setTimer((current) => ({ ...current, status: 'paused' })) : null}
-                onReset={state.daily.practice ? null : () => setTimer({ journeyCode, remaining: totalSeconds, status: 'idle' })}
+                onStart={() => {
+                  const startedAt = Date.now()
+                  const remainingSeconds = Math.max(0, Math.floor(remaining || totalSeconds))
+                  setTimer({ journeyCode, startedAt, expectedEndAt: startedAt + remainingSeconds * 1000, remaining: remainingSeconds, status: 'running' })
+                }}
+                onPause={timerStatus === 'running' ? () => setTimer((current) => ({ ...current, status: 'paused', expectedEndAt: null })) : null}
+                onReset={state.daily.practice ? null : () => setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: totalSeconds, status: 'idle' })}
                 onComplete={remaining > 0 || state.daily.practice ? null : finishPractice}
                 completeDisabled={remaining > 0 || state.daily.practice}
                 startLabel="Iniciar"

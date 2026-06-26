@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-labelledby="title-portal-a-chamado desc-portal-a-chamado">
+  <title id="title-portal-a-chamado">Portal A</title>
+  <desc id="desc-portal-a-chamado">Selo de abertura com Alef e Om.</desc>
+
+  <defs>
+    <radialGradient id="core-portal-a-chamado" cx="50%" cy="50%" r="55%">
+      <stop offset="0" stop-color="#20d3ee" stop-opacity="0.7"/>
+      <stop offset="0.45" stop-color="#a78bfa" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#07090f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold-portal-a-chamado" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#20d3ee"/>
+      <stop offset="0.52" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="glow-portal-a-chamado" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="800" fill="#07090f"/>
+  <rect x="12" y="12" width="776" height="776" rx="22" fill="none" stroke="#d5e2ff" stroke-opacity="0.12"/>
+
+  <rect width="800" height="800" fill="url(#core-portal-a-chamado)" opacity="0.45"/>
+  <g transform="translate(400 400)" filter="url(#glow-portal-a-chamado)">
+    <circle r="292" fill="none" stroke="#20d3ee" stroke-opacity="0.42" stroke-width="5"/>
+    <circle r="214" fill="none" stroke="#d4af37" stroke-opacity="0.45" stroke-width="3" stroke-dasharray="16 18"/>
+    <path d="M0-300 260-150 260 150 0 300-260 150-260-150Z" fill="none" stroke="#d5e2ff" stroke-opacity="0.18" stroke-width="3"/>
+    <path d="M-160 120 0-170 160 120Z" fill="none" stroke="#20d3ee" stroke-opacity="0.55" stroke-width="4"/>
+    <text x="0" y="42" text-anchor="middle" font-family="Inter, Segoe UI, sans-serif" font-size="132" font-weight="900" fill="#f5f7fb">A</text>
+    <text x="0" y="162" text-anchor="middle" font-family="Inter, Segoe UI, sans-serif" font-size="38" font-weight="800" fill="#20d3ee">Portal A</text>
+    <text x="0" y="-140" text-anchor="middle" font-size="76" fill="#d4af37">א ॐ</text>
+  </g>
+</svg>

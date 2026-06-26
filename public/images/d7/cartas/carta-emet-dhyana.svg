@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-labelledby="title-carta-emet-dhyana desc-carta-emet-dhyana">
+  <title id="title-carta-emet-dhyana">Carta Emet Dhyana</title>
+  <desc id="desc-carta-emet-dhyana">Carta com Emet e Dhyana em geometria contemplativa.</desc>
+
+  <defs>
+    <radialGradient id="core-carta-emet-dhyana" cx="50%" cy="50%" r="55%">
+      <stop offset="0" stop-color="#20d3ee" stop-opacity="0.7"/>
+      <stop offset="0.45" stop-color="#a78bfa" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#07090f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold-carta-emet-dhyana" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#20d3ee"/>
+      <stop offset="0.52" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="glow-carta-emet-dhyana" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="800" fill="#07090f"/>
+  <rect x="12" y="12" width="776" height="776" rx="22" fill="none" stroke="#d5e2ff" stroke-opacity="0.12"/>
+
+  <rect x="120" y="70" width="560" height="660" rx="28" fill="#10131d" stroke="#d4af37" stroke-opacity="0.55" stroke-width="4"/>
+  <rect x="152" y="102" width="496" height="596" rx="20" fill="none" stroke="#d5e2ff" stroke-opacity="0.1"/>
+  <rect width="800" height="800" fill="url(#core-carta-emet-dhyana)" opacity="0.32"/>
+  <g transform="translate(400 400)" filter="url(#glow-carta-emet-dhyana)">
+    <circle r="190" fill="none" stroke="#20d3ee" stroke-opacity="0.32" stroke-width="3"/>
+    <path d="M0-190 165-95 165 95 0 190-165 95-165-95Z" fill="none" stroke="#d4af37" stroke-width="4" stroke-opacity="0.5"/><circle r="82" fill="none" stroke="#a78bfa" stroke-width="3"/>
+    <text x="0" y="22" text-anchor="middle" font-size="118" font-weight="900" fill="#f5f7fb">אמת</text>
+    <text x="0" y="128" text-anchor="middle" font-family="Inter, Segoe UI, sans-serif" font-size="34" font-weight="800" fill="#d4af37">ध्यान</text>
+    <text x="0" y="-236" text-anchor="middle" font-family="Inter, Segoe UI, sans-serif" font-size="42" font-weight="900" fill="#20d3ee">VERDADE</text>
+  </g>
+</svg>

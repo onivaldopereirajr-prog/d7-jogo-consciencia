@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-labelledby="title-selo-ciclo-completo desc-selo-ciclo-completo">
+  <title id="title-selo-ciclo-completo">Selo Ciclo Completo</title>
+  <desc id="desc-selo-ciclo-completo">Círculo fechado com marcas A, B, C e D.</desc>
+
+  <defs>
+    <radialGradient id="core-selo-ciclo-completo" cx="50%" cy="50%" r="55%">
+      <stop offset="0" stop-color="#20d3ee" stop-opacity="0.7"/>
+      <stop offset="0.45" stop-color="#a78bfa" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#07090f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold-selo-ciclo-completo" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#20d3ee"/>
+      <stop offset="0.52" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="glow-selo-ciclo-completo" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="800" fill="#07090f"/>
+  <rect x="12" y="12" width="776" height="776" rx="22" fill="none" stroke="#d5e2ff" stroke-opacity="0.12"/>
+
+  <rect width="800" height="800" fill="url(#core-selo-ciclo-completo)" opacity="0.36"/>
+  <g transform="translate(400 400)" filter="url(#glow-selo-ciclo-completo)">
+    <circle r="270" fill="none" stroke="#48d388" stroke-opacity="0.48" stroke-width="5"/>
+    <g font-family="Inter, Segoe UI, sans-serif" font-size="44" font-weight="900" fill="#d4af37"><text x="-15" y="-230">A</text><text x="220" y="15">B</text><text x="-13" y="258">C</text><text x="-250" y="15">D</text></g><circle r="210" fill="none" stroke="#48d388" stroke-dasharray="28 16" stroke-width="5"/>
+    <text x="0" y="42" text-anchor="middle" font-family="Inter, Segoe UI, sans-serif" font-size="118" font-weight="900" fill="#f5f7fb">◎</text>
+  </g>
+</svg>

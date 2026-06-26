@@ -20,6 +20,29 @@ import {
 } from './utils/gameState.js'
 import './App.css'
 
+const visualAssets = {
+  hero: '/images/d7/heroes/hero-codice-dual.svg',
+  practice: '/images/d7/fundos/fundo-pratica-nada.svg',
+  codex: '/images/d7/codice/codice-dual-d7.svg',
+  sealD7: '/images/d7/simbolos/selo-d7.svg',
+  ranking: '/images/d7/simbolos/selo-ranking.svg',
+  cycle: '/images/d7/simbolos/selo-ciclo-completo.svg',
+}
+
+const portalArtById = {
+  'portal-a': '/images/d7/portais/portal-a-chamado.svg',
+  'portal-b': '/images/d7/portais/portal-b-permanencia.svg',
+  'portal-c': '/images/d7/portais/portal-c-observacao.svg',
+  'portal-d': '/images/d7/portais/portal-d-ciclo-completo.svg',
+}
+
+const codexFeaturedCards = [
+  { id: 'card-alef', title: 'Alef', image: '/images/d7/cartas/carta-alef.svg' },
+  { id: 'card-om', title: 'Om', image: '/images/d7/cartas/carta-om.svg' },
+  { id: 'card-ruach-prana', title: 'Ruach Prana', image: '/images/d7/cartas/carta-ruach-prana.svg' },
+  { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
+]
+
 function Sigil({ label = 'D7', tone = 'cyan' }) {
   return (
     <div className={`sigil-mark ${tone}`} aria-hidden="true">
@@ -212,6 +235,7 @@ function App() {
         {activeView === 'home' && (
           <section className="home-layout">
             <div className="hero-panel">
+              <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Códice Dual D7" />
               <div className="hero-sigils">
                 <Sigil label="א" tone="gold" />
                 <Sigil label="ॐ" tone="violet" />
@@ -228,7 +252,11 @@ function App() {
               <StatCard label="Meta atual" value={`${stage.minutes} min`} detail={`${journeyCode} · ${phrase}`} />
               <StatCard label="Trilha Hebraica" value={`${hebrewUnlocked}/${hebrewLetters.length + hebrewWords.length}`} detail="letras e palavras" />
               <StatCard label="Trilha Sânscrita" value={`${sanskritUnlocked}/${sanskritItems.length}`} detail="sons, mantras e estados" />
-              <div className="mission-panel compact-panel">
+              <div className="mission-panel compact-panel home-seal-panel">
+                <div className="seal-pair" aria-hidden="true">
+                  <img src={visualAssets.sealD7} alt="" />
+                  <img src={visualAssets.cycle} alt="" />
+                </div>
                 <h3>Missões diárias</h3>
                 {missions.daily.map((mission) => <MissionRow key={mission.id} mission={mission} done={missionStatus(state, mission)} />)}
               </div>
@@ -247,6 +275,7 @@ function App() {
                   <article key={week.id} className="week-card" style={{ '--week': week.color }}>
                     <div className="week-head"><span>Semana {week.id}</span><strong>{week.minutes} min</strong></div>
                     <div className="portal-seal">{portal.seal}</div>
+                    <img className="week-portal-art" src={portalArtById[portal.id]} alt="" />
                     <h3>{week.name}</h3>
                     <p>{week.intent}</p>
                     <div className="day-grid">
@@ -270,6 +299,7 @@ function App() {
               {portals.map((portal) => (
                 <article key={portal.id} className={`portal-card ${state.openedPortals.includes(portal.id) ? 'open' : ''}`}>
                   <div className="portal-icon">{portal.seal}</div>
+                  <img className="portal-card-art" src={portalArtById[portal.id]} alt="" />
                   <h3>{portal.name}</h3>
                   <p>{portal.phrase}</p>
                   <small>{portal.reward}</small>
@@ -282,6 +312,7 @@ function App() {
         {activeView === 'pratica' && (
           <section className="practice-layout">
             <div className="timer-panel">
+              <img className="practice-bg-art" src={visualAssets.practice} alt="" />
               <SectionTitle eyebrow={`${journeyCode} · modo Nada`} title="Fechar os olhos. Permanecer. Concluir.">{phrase}</SectionTitle>
               <div className="timer-orb" style={{ '--progress': `${timerProgress}%`, '--stage': stage.color }}>
                 <span>{formatTime(remaining)}</span>
@@ -317,6 +348,17 @@ function App() {
         {activeView === 'codice' && (
           <section className="content-section">
             <SectionTitle eyebrow="Biblioteca simbólica" title="Códice Dual D7">Hebraico e sânscrito aparecem como trilhas simbólicas distintas dentro do jogo, unidas por pontes lúdicas de presença.</SectionTitle>
+            <div className="codex-visual-band">
+              <img src={visualAssets.codex} alt="Símbolo central do Códice Dual D7" />
+              <div className="featured-card-grid">
+                {codexFeaturedCards.map((card) => (
+                  <article key={card.id} className="featured-card-art">
+                    <img src={card.image} alt={`Carta simbólica ${card.title}`} />
+                    <span>{card.title}</span>
+                  </article>
+                ))}
+              </div>
+            </div>
             <div className="bridge-grid">
               {dualBridges.map((bridge) => <article key={bridge.id} className="bridge-card"><strong>{bridge.formula}</strong><h3>{bridge.title}</h3><p>{bridge.meaning}. {bridge.explanation}</p></article>)}
             </div>
@@ -340,6 +382,7 @@ function App() {
         {activeView === 'ranking' && (
           <section className="content-section">
             <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência * 50 + cartas * 25 + portais * 200 + códigos * 150.</SectionTitle>
+            <img className="ranking-seal-art" src={visualAssets.ranking} alt="Selo visual do ranking D7" />
             <div className="ranking-list">
               {rank.map((player, index) => (
                 <article key={player.name} className={player.current ? 'rank-row current-player' : 'rank-row'}>
@@ -357,6 +400,10 @@ function App() {
           <section className="profile-grid">
             <div className="profile-card">
               <Sigil label={state.profile.avatar} tone="gold" />
+              <div className="profile-seals" aria-hidden="true">
+                <img src={visualAssets.sealD7} alt="" />
+                <img src={visualAssets.cycle} alt="" />
+              </div>
               <h2>{state.profile.name}</h2>
               <p>{state.profile.title}</p>
               <div className="profile-level">Nível {playerLevel(state.xp)}</div>

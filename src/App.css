@@ -228,6 +228,18 @@
   z-index: 1;
 }
 
+.hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+  z-index: 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
 .hero-sigils {
   position: absolute;
   top: 50px;
@@ -319,6 +331,32 @@ button:not(:disabled):active {
   min-height: 36px;
   padding: 0 12px;
   font-size: 0.86rem;
+}
+
+
+.home-seal-panel {
+  overflow: hidden;
+}
+
+.seal-pair,
+.profile-seals {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.seal-pair {
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.seal-pair img,
+.profile-seals img {
+  width: 54px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  opacity: 0.78;
+  filter: drop-shadow(0 0 16px rgba(32, 211, 238, 0.16));
 }
 
 .dashboard-stack {
@@ -462,6 +500,41 @@ button:not(:disabled):active {
   font-size: 1.5rem;
 }
 
+.week-portal-art {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 118px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.portal-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.portal-card-art {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 132px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.portal-card > h3,
+.portal-card > p,
+.portal-card > small,
+.portal-card > .portal-icon {
+  position: relative;
+  z-index: 1;
+}
+
 .day-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(30px, 1fr));
@@ -531,6 +604,26 @@ button:not(:disabled):active {
   border-radius: 50%;
   color: var(--gold);
   font-size: 1.35rem;
+}
+
+.timer-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.practice-bg-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.timer-panel > :not(.practice-bg-art) {
+  position: relative;
+  z-index: 1;
 }
 
 .timer-panel {
@@ -626,6 +719,56 @@ button:not(:disabled):active {
   padding: 0 12px;
   color: var(--text-strong);
   background: rgba(0, 0, 0, 0.2);
+}
+
+
+.codex-visual-band {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.codex-visual-band > img,
+.featured-card-art {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.codex-visual-band > img {
+  width: 100%;
+  height: 100%;
+  min-height: 214px;
+  object-fit: cover;
+}
+
+.featured-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.featured-card-art {
+  min-height: 214px;
+  padding: 10px;
+  display: grid;
+  align-content: space-between;
+  overflow: hidden;
+}
+
+.featured-card-art img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  opacity: 0.88;
+}
+
+.featured-card-art span {
+  color: var(--text-strong);
+  font-weight: 900;
+  text-align: center;
 }
 
 .bridge-grid {
@@ -727,6 +870,15 @@ button:not(:disabled):active {
   padding: 4px;
 }
 
+
+.ranking-seal-art {
+  width: min(160px, 42vw);
+  display: block;
+  margin: -8px 0 18px auto;
+  opacity: 0.82;
+  filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.16));
+}
+
 .ranking-list {
   display: grid;
   gap: 10px;
@@ -788,6 +940,11 @@ button:not(:disabled):active {
   font-size: 2.1rem;
 }
 
+.profile-seals {
+  justify-content: center;
+  margin-top: -4px;
+}
+
 .profile-card h2,
 .profile-card p {
   margin: 0;
@@ -833,6 +990,14 @@ button:not(:disabled):active {
   .bridge-grid,
   .symbol-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .codex-visual-band {
+    grid-template-columns: 1fr;
+  }
+
+  .featured-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -890,6 +1055,10 @@ button:not(:disabled):active {
     padding: 24px;
   }
 
+  .hero-art {
+    opacity: 0.28;
+  }
+
   .hero-panel::before {
     inset: 14px;
   }
@@ -910,8 +1079,18 @@ button:not(:disabled):active {
   .symbol-grid,
   .code-grid,
   .circle-grid,
-  .profile-stats {
+  .profile-stats,
+  .featured-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .week-portal-art,
+  .portal-card-art {
+    width: 104px;
+  }
+
+  .ranking-seal-art {
+    margin-left: 0;
   }
 
   .timer-controls,

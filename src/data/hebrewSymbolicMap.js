@@ -1,0 +1,26 @@
+export const hebrewSymbolicLetters = [
+  { letter: 'א', name: 'Alef', value: 1, keyword: 'início', d7Meaning: 'o primeiro pulso antes da forma', unlockedBySeal: 'code-alef-om' },
+  { letter: 'ב', name: 'Bet', value: 2, keyword: 'casa', d7Meaning: 'o recipiente da intenção', unlockedBySeal: null },
+  { letter: 'ג', name: 'Gimel', value: 3, keyword: 'movimento', d7Meaning: 'a travessia entre silêncio e gesto', unlockedBySeal: null },
+  { letter: 'ד', name: 'Dalet', value: 4, keyword: 'porta', d7Meaning: 'o limiar que pede escolha', unlockedBySeal: null },
+  { letter: 'ה', name: 'He', value: 5, keyword: 'sopro aberto', d7Meaning: 'percepção que se expande', unlockedBySeal: null },
+  { letter: 'ו', name: 'Vav', value: 6, keyword: 'conexão', d7Meaning: 'linha entre etapas do ciclo', unlockedBySeal: null },
+  { letter: 'ז', name: 'Zayin', value: 7, keyword: 'foco', d7Meaning: 'lâmina simbólica da constância', unlockedBySeal: 'seal-d7' },
+  { letter: 'ח', name: 'Chet', value: 8, keyword: 'campo', d7Meaning: 'cercado vivo da prática', unlockedBySeal: null },
+  { letter: 'ט', name: 'Tet', value: 9, keyword: 'gestação', d7Meaning: 'energia guardada antes da revelação', unlockedBySeal: null },
+  { letter: 'י', name: 'Yod', value: 10, keyword: 'semente', d7Meaning: 'ponto que inicia desenho maior', unlockedBySeal: null },
+  { letter: 'כ', name: 'Kaf', value: 20, keyword: 'palma', d7Meaning: 'capacidade de receber e moldar', unlockedBySeal: null },
+  { letter: 'ל', name: 'Lamed', value: 30, keyword: 'aprendizado', d7Meaning: 'haste de estudo e direção', unlockedBySeal: null },
+  { letter: 'מ', name: 'Mem', value: 40, keyword: 'águas', d7Meaning: 'profundidade emocional observada', unlockedBySeal: 'seal-return' },
+  { letter: 'נ', name: 'Nun', value: 50, keyword: 'continuidade', d7Meaning: 'vida que persiste no ciclo', unlockedBySeal: null },
+  { letter: 'ס', name: 'Samekh', value: 60, keyword: 'sustento', d7Meaning: 'círculo de apoio invisível', unlockedBySeal: null },
+  { letter: 'ע', name: 'Ayin', value: 70, keyword: 'olho', d7Meaning: 'observação sem posse', unlockedBySeal: null },
+  { letter: 'פ', name: 'Pe', value: 80, keyword: 'boca', d7Meaning: 'palavra que sela intenção', unlockedBySeal: null },
+  { letter: 'צ', name: 'Tsadi', value: 90, keyword: 'retidão', d7Meaning: 'alinhamento entre gesto e eixo', unlockedBySeal: null },
+  { letter: 'ק', name: 'Qof', value: 100, keyword: 'limiar', d7Meaning: 'passagem entre ruído e centro', unlockedBySeal: null },
+  { letter: 'ר', name: 'Resh', value: 200, keyword: 'cabeça', d7Meaning: 'direção mental da jornada', unlockedBySeal: null },
+  { letter: 'ש', name: 'Shin', value: 300, keyword: 'fogo', d7Meaning: 'transformação pela permanência', unlockedBySeal: 'seal-stay' },
+  { letter: 'ת', name: 'Tav', value: 400, keyword: 'selo', d7Meaning: 'assinatura do ciclo completo', unlockedBySeal: 'seal-cycle' },
+]
+
+export const hebrewLetterByName = Object.fromEntries(hebrewSymbolicLetters.map((item) => [item.name.toLowerCase(), item]))

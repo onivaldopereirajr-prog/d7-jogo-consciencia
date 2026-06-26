@@ -1415,6 +1415,145 @@ button:not(:disabled):active {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+
+.symbolic-map-panel {
+  margin: 24px 0;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid rgba(167, 139, 250, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.08), rgba(255, 255, 255, 0.025));
+  box-shadow: var(--shadow);
+}
+
+.map-intro h3,
+.map-result-head h3,
+.map-narrative h4,
+.map-card h4 {
+  margin: 4px 0 8px;
+}
+
+.map-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin: 18px 0;
+}
+
+.map-form label {
+  color: var(--text-strong);
+  font-weight: 800;
+}
+
+.map-form input {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--text-strong);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.map-form .primary-action {
+  grid-column: 1 / -1;
+}
+
+.map-card-grid,
+.map-metrics-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.map-card-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.map-card,
+.map-metric,
+.map-narrative {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.map-card {
+  min-height: 132px;
+  padding: 14px;
+}
+
+.map-card.unlocked {
+  border-color: rgba(212, 175, 55, 0.28);
+}
+
+.map-card span,
+.map-metric span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.map-result {
+  margin-top: 18px;
+}
+
+.map-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.map-metrics-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.map-metric {
+  min-height: 92px;
+  padding: 13px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.map-metric strong {
+  font-size: 1.1rem;
+}
+
+.map-narrative {
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.map-steps,
+.token-origin-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.map-steps span,
+.token-origin-grid span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.map-steps span.done,
+.map-steps span.available {
+  color: var(--text-strong);
+  border-color: rgba(32, 211, 238, 0.32);
+}
+
+.map-steps span.done {
+  background: rgba(72, 211, 136, 0.1);
+}
+
 @media (max-width: 1260px) {
   .journey-board,
   .portal-grid,
@@ -1433,7 +1572,9 @@ button:not(:disabled):active {
     grid-template-columns: 1fr;
   }
 
-  .featured-card-grid {
+  .featured-card-grid,
+  .map-card-grid,
+  .map-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1548,8 +1689,15 @@ button:not(:disabled):active {
   }
 
   .seal-room-head,
-  .seal-detail-panel {
+  .seal-detail-panel,
+  .map-result-head {
     display: grid;
+  }
+
+  .map-form,
+  .map-card-grid,
+  .map-metrics-grid {
+    grid-template-columns: 1fr;
   }
 
   .seal-challenge-panel {

@@ -60,6 +60,8 @@ export function makeInitialState(profile = {}) {
     presenceBonusTotal: 0,
     integrityWarnings: 0,
     sealProgress: { unlockedSeals: [], completedChallenges: [], attempts: {}, totalFocusSeconds: 0, lastCompletedAt: null, lastSealId: null },
+    symbolicMaps: [],
+    symbolicMapProgress: { createdCount: 0, lastMapId: null, lastArchetype: null, completedSteps: [] },
   }
 }
 
@@ -89,6 +91,7 @@ export function normalizeState(raw) {
   daily.study = Boolean(daily.study)
 
   const sealProgress = raw.sealProgress && typeof raw.sealProgress === 'object' ? raw.sealProgress : {}
+  const symbolicMapProgress = raw.symbolicMapProgress && typeof raw.symbolicMapProgress === 'object' ? raw.symbolicMapProgress : {}
 
   return {
     ...base,
@@ -121,6 +124,13 @@ export function normalizeState(raw) {
       completedChallenges: unique(arrayOr(sealProgress.completedChallenges, base.sealProgress.completedChallenges)),
       attempts: sealProgress.attempts && typeof sealProgress.attempts === 'object' && !Array.isArray(sealProgress.attempts) ? sealProgress.attempts : {},
       totalFocusSeconds: Math.max(numberOr(sealProgress.totalFocusSeconds, 0), 0),
+    },
+    symbolicMaps: arrayOr(raw.symbolicMaps, base.symbolicMaps).filter((item) => item && typeof item === 'object').slice(0, 12),
+    symbolicMapProgress: {
+      ...base.symbolicMapProgress,
+      ...symbolicMapProgress,
+      createdCount: Math.max(numberOr(symbolicMapProgress.createdCount, 0), 0),
+      completedSteps: unique(arrayOr(symbolicMapProgress.completedSteps, base.symbolicMapProgress.completedSteps)),
     },
   }
 }

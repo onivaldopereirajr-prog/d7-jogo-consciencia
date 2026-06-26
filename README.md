@@ -109,6 +109,45 @@ D7T é um token simbólico interno do MVP. Não é criptomoeda, não usa blockch
 
 Como o MVP ainda usa LocalStorage, a proteção anti-burla dificulta apenas manipulação casual. Segurança robusta exigirá backend, autenticação real, banco de dados e validação no servidor.
 
+## Mapa Simbólico D7
+
+O Mapa Simbólico D7 abre uma nova área do Códice para calcular uma leitura lúdica a partir de nome, data de nascimento, horário de nascimento e contexto textual opcional. Ele é uma experiência narrativa e gamificada: não é mapa astral profissional, previsão científica, diagnóstico espiritual, tradução perfeita ou verdade religiosa definitiva.
+
+- O nome é normalizado, sem acentos, e convertido por aproximações fonéticas simples.
+- A gematria simbólica usa valores tradicionais básicos de letras hebraicas dentro de uma mecânica de jogo.
+- A trilha sânscrita simbólica usa sons e sílabas em Devanagari como inspiração fonética, sem afirmar numerologia tradicional absoluta.
+- Data e hora entram como ciclos narrativos D7 e são reduzidas para números de 1 a 7.
+- O resultado revela Núcleo D7, Eixo D7, Portal D7, sefirá simbólica, som dominante, arquétipo, carta, selo e desafio recomendado.
+- O primeiro mapa salvo concede uma recompensa única: XP, centelhas, D7T, pontos de ranking e a carta "Mapa do Nome".
+- Mapas seguintes podem ser salvos no histórico local, mas não repetem a recompensa principal.
+
+As recompensas usam o mesmo ledger local de D7T e a mesma verificação de recompensa concedida para evitar duplicação ao recarregar a página ou salvar novamente.
+
+## Referências culturais usadas como inspiração
+
+O D7 usa referências culturais de forma simbólica, respeitosa e não definitiva.
+
+- Gematria é tratada como atribuição numérica de letras hebraicas para fins de estudo e jogo.
+- Cabala é citada como tradição mística judaica associada a letras, símbolos e sefirot, sem substituir estudo religioso ou orientação de autoridades da tradição.
+- Sânscrito e Devanagari aparecem como referências linguísticas e sonoras para a trilha simbólica do Códice.
+- A transliteração do nome é uma aproximação lúdica, não uma tradução perfeita nem análise linguística profissional.
+
+## Plano de Backend Seguro
+
+Quando o MVP local evoluir para acompanhamento real em múltiplos dispositivos, o projeto deve migrar para um backend com validação no servidor.
+
+- Supabase Auth para login real.
+- Supabase Postgres para persistir progresso.
+- Row Level Security em todas as tabelas de usuário.
+- Tabelas planejadas: `profiles`, `user_progress`, `practice_events`, `symbolic_maps`, `token_ledger` e `seal_events`.
+- Validação de recompensas, selos, timers e tokens no servidor.
+- Chaves públicas em variáveis de ambiente quando necessário.
+- Nunca expor `service_role_key` no front-end.
+- Confirmação de e-mail, CAPTCHA e proteção básica contra abuso.
+- Painel administrativo protegido, separado da experiência do jogador.
+
+Nenhuma chave real deve ser colocada no repositório. O front-end atual continua estático na Vercel e usa LocalStorage apenas como MVP local.
+
 ## Status do projeto
 
 O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a experiência principal no navegador, com progressão local, timer, recompensas, missões, portais, Códice Dual e ranking local por usuário no navegador.

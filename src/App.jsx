@@ -19,6 +19,8 @@ import { copyLocalReport, downloadLocalReport } from './services/localReports.js
 import { sealDefinitions } from './data/seals.js'
 import { cancelSealAttempt, completeSealChallenge, getRankingScore, getRequiredGateScore, getSealAttempt, getSealGateScore, getSealStatus, requirementText, startSealAttempt, syncSealAttempt, markSealAbsence } from './services/sealEngine.js'
 import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgressIfSafe, resetUserProgress, saveUserProgress } from './services/localProgress.js'
+import D7SymbolicMap from './components/D7SymbolicMap.jsx'
+import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import './App.css'
 
 const visualAssets = {
@@ -314,8 +316,9 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
               <span>{summary.unlockedSeals.length} selos</span>
               <span>{summary.tokenBalance} D7T</span>
               <span>{summary.score} score</span>
+              <span>{summary.symbolicMapsCount ?? 0} mapas</span>
             </div>
-            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Último selo: {summary.lastSealId ?? 'pendente'}</p>
+            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Último selo: {summary.lastSealId ?? 'pendente'} · Último mapa: {summary.lastMapArchetype ?? 'pendente'}</p>
             <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Avisos: {summary.integrityWarnings}</small>
           </article>
         ))}
@@ -498,6 +501,12 @@ function App() {
     setState(result.progress)
     setChallengeValue('')
     setSealMessage({ type: 'success', text: result.message })
+  }
+
+  function handleSaveSymbolicMap(mapResult) {
+    const saved = saveSymbolicMap(state, mapResult)
+    setState(saved.progress)
+    return saved
   }
 
   function navigate(view) {
@@ -702,6 +711,7 @@ function App() {
             <div className="bridge-grid">
               {dualBridges.map((bridge) => <article key={bridge.id} className="bridge-card"><strong>{bridge.formula}</strong><h3>{bridge.title}</h3><p>{bridge.meaning}. {bridge.explanation}</p></article>)}
             </div>
+            <D7SymbolicMap progress={state} onSaveMap={handleSaveSymbolicMap} />
             <SealRoom state={state} activeSealId={activeSealId} challengeValue={challengeValue} sealMessage={sealMessage} tick={tick} onSelectSeal={handleSelectSeal} onStartSeal={handleStartSeal} onCancelSeal={handleCancelSeal} onChallengeChange={setChallengeValue} onCompleteChallenge={handleCompleteSeal} />
             <div className="codex-layout">
               <div>
@@ -760,6 +770,9 @@ function App() {
                 <StatCard label="Ranking" value={currentScore} detail="score local" />
               </div>
               <p className="token-disclaimer">D7T é um token simbólico interno desta versão MVP. Não possui valor financeiro.</p>
+              <div className="token-origin-grid">
+                {Object.entries(tokenTotalsByOrigin(state)).map(([origin, amount]) => <span key={origin}>{origin}: {amount} D7T</span>)}
+              </div>
               <div className="track-progress">
                 <p>Hebraico <strong>{hebrewUnlocked}</strong></p><ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Progresso da trilha hebraica" />
                 <p>Sânscrito <strong>{sanskritUnlocked}</strong></p><ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Progresso da trilha sânscrita" />

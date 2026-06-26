@@ -166,7 +166,7 @@ function sealStatusLabel(status) {
   }[status] ?? 'Bloqueado'
 }
 
-function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSelectSeal, onStartSeal, onCancelSeal, onChallengeChange, onCompleteChallenge }) {
+function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSelectSeal, onStartSeal, onCancelSeal, onChallengeChange, onCompleteChallenge, onCopyPhrase }) {
   const gateScore = getSealGateScore(state)
   const activeSeal = sealDefinitions.find((seal) => seal.id === activeSealId) ?? sealDefinitions[0]
   const activeAttempt = getSealAttempt(state, activeSeal.id)
@@ -214,6 +214,14 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
             <span>+{activeSeal.rewardTokens} D7T</span>
           </div>
           <p className="seal-requirement">Requisito: {requirementText(state, activeSeal)}</p>
+          {activeSeal.challengeType === 'confirm_phrase' && (
+            <div className="seal-phrase-card">
+              <strong>Frase esperada</strong>
+              <p>{activeSeal.requiredPhrase}</p>
+              <small>O ponto final não é obrigatório. Espaços extras e maiúsculas/minúsculas serão normalizados.</small>
+              <button type="button" className="mini-action" onClick={() => onCopyPhrase(activeSeal.requiredPhrase)}>Copiar frase</button>
+            </div>
+          )}
           <p className="seal-requirement">Pontuação de presença: {gateScore} / {getRequiredGateScore(activeSeal.order)}</p>
           {sealMessage && <div className={`auth-message ${sealMessage.type}`} role="status">{sealMessage.text}</div>}
         </div>
@@ -254,7 +262,10 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
               ) : activeSeal.challengeType === 'practice_done' || activeSeal.challengeType === 'active_tab' ? (
                 <p className="seal-requirement">{activeSeal.challengePrompt}</p>
               ) : (
-                <textarea id="seal-challenge" value={challengeValue} onChange={(event) => onChallengeChange(event.target.value)} rows="4" />
+                <>
+                  <textarea id="seal-challenge" value={challengeValue} onChange={(event) => onChallengeChange(event.target.value)} rows="4" placeholder={activeSeal.challengePrompt} />
+                  <small className="seal-helper">Digite a frase do desafio para concluir o selo. A pontuação final é opcional.</small>
+                </>
               )}
               <button type="button" className="complete-action" onClick={() => onCompleteChallenge(activeSeal.id)}>Concluir desafio</button>
             </div>
@@ -674,6 +685,15 @@ function App() {
     setPanelMessage({ type: result.ok ? 'success' : 'error', text: result.message })
   }
 
+  async function handleCopySealPhrase(phrase) {
+    try {
+      await navigator.clipboard.writeText(phrase)
+      setSealMessage({ type: 'success', text: 'Frase copiada para a área de transferência.' })
+    } catch {
+      setSealMessage({ type: 'error', text: 'Não foi possível copiar a frase agora.' })
+    }
+  }
+
   function handleDownloadReport() {
     const result = downloadLocalReport()
     setPanelMessage({ type: result.ok ? 'success' : 'error', text: result.message })
@@ -1024,7 +1044,7 @@ function App() {
               {dualBridges.map((bridge) => <article key={bridge.id} className="bridge-card"><strong>{bridge.formula}</strong><h3>{bridge.title}</h3><p>{bridge.meaning}. {bridge.explanation}</p></article>)}
             </div>
             <D7SymbolicMap progress={state} onSaveMap={handleSaveSymbolicMap} />
-            <SealRoom state={state} activeSealId={activeSealId} challengeValue={challengeValue} sealMessage={sealMessage} tick={tick} onSelectSeal={handleSelectSeal} onStartSeal={handleStartSeal} onCancelSeal={handleCancelSeal} onChallengeChange={setChallengeValue} onCompleteChallenge={handleCompleteSeal} />
+            <SealRoom state={state} activeSealId={activeSealId} challengeValue={challengeValue} sealMessage={sealMessage} tick={tick} onSelectSeal={handleSelectSeal} onStartSeal={handleStartSeal} onCancelSeal={handleCancelSeal} onChallengeChange={setChallengeValue} onCompleteChallenge={handleCompleteSeal} onCopyPhrase={handleCopySealPhrase} />
             <div className="codex-layout">
               <div>
                 <h3 className="subhead">Trilha Hebraica</h3>

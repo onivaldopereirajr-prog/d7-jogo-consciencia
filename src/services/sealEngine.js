@@ -110,6 +110,40 @@ export function hasRewardBeenGranted(progress, sourceType, sourceId) {
   return (progress.tokenLedger ?? []).some((entry) => entry.sourceType === sourceType && entry.sourceId === sourceId)
 }
 
+export function normalizeChallengeText(text) {
+  return String(text ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[.!?,;:]+$/g, '')
+}
+
+function challengeComparisonStatus(seal, value) {
+  const raw = String(value ?? '')
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    return { ok: false, message: 'Digite a frase do desafio para concluir o selo.' }
+  }
+  if (seal.challengeType === 'confirm_phrase') {
+    const normalizedValue = normalizeChallengeText(trimmed)
+    const normalizedRequired = normalizeChallengeText(seal.requiredPhrase)
+    if (normalizedValue === normalizedRequired) return { ok: true }
+    return { ok: false, message: 'Confira a frase do desafio. Você pode copiar exatamente como aparece na tela.' }
+  }
+  if (seal.challengeType === 'reflection') {
+    if (trimmed.length >= seal.requiredTextMinLength) return { ok: true }
+    return { ok: false, message: 'Confira a frase do desafio. Você pode copiar exatamente como aparece na tela.' }
+  }
+  if (seal.challengeType === 'choice') {
+    return trimmed === seal.correctOption ? { ok: true } : { ok: false, message: 'Confira a frase do desafio. Você pode copiar exatamente como aparece na tela.' }
+  }
+  if (seal.challengeType === 'practice_done') return value ? { ok: true } : { ok: false, message: 'Digite a frase do desafio para concluir o selo.' }
+  if (seal.challengeType === 'active_tab') return { ok: true }
+  return { ok: false, message: 'Confira a frase do desafio. Você pode copiar exatamente como aparece na tela.' }
+}
+
 export function getSealAttempt(progress, sealId) {
   return progress.sealProgress?.attempts?.[sealId] ?? null
 }
@@ -204,13 +238,9 @@ export function markSealAbsence(progress, sealId, seconds) {
 }
 
 export function validateSealChallenge(seal, value, progress) {
-  const text = String(value ?? '').trim()
-  if (seal.challengeType === 'confirm_phrase') return text === seal.requiredPhrase
-  if (seal.challengeType === 'reflection') return text.length >= seal.requiredTextMinLength
-  if (seal.challengeType === 'choice') return text === seal.correctOption
-  if (seal.challengeType === 'practice_done') return Boolean(progress.daily?.practice)
-  if (seal.challengeType === 'active_tab') return true
-  return false
+  if (seal.challengeType === 'practice_done') return !!progress.daily?.practice
+  const result = challengeComparisonStatus(seal, value)
+  return result.ok
 }
 
 export async function completeSealChallenge(progress, userId, sealId, challengeValue) {
@@ -218,7 +248,8 @@ export async function completeSealChallenge(progress, userId, sealId, challengeV
   const attempt = getSealAttempt(progress, sealId)
   if (!seal || !attempt || attempt.status !== 'challenge_pending') return { progress, ok: false, message: 'Timer do selo ainda não foi concluído.' }
   if (hasRewardBeenGranted(progress, 'seal', sealId)) return { progress, ok: false, message: 'Recompensa deste selo já foi concedida.' }
-  if (!validateSealChallenge(seal, challengeValue, progress)) return { progress, ok: false, message: 'Desafio ainda não atende ao requisito do selo.' }
+  const validation = seal.challengeType === 'practice_done' ? { ok: Boolean(progress.daily?.practice) } : challengeComparisonStatus(seal, challengeValue)
+  if (!validation.ok) return { progress, ok: false, message: validation.message }
 
   const perfectPresenceBonus = (attempt.hiddenSeconds ?? 0) === 0 ? 2 : 0
   const writtenBonus = ['reflection', 'confirm_phrase'].includes(seal.challengeType) ? 2 : 0
@@ -261,7 +292,7 @@ export async function completeSealChallenge(progress, userId, sealId, challengeV
     },
     lastUnlocks: unique([`${seal.name} desbloqueado`, `+${seal.rewardXp} XP`, `+${tokenAmount} D7T`, ...(progress.lastUnlocks ?? [])]).slice(0, 5),
   }, 1, completedAt)
-  return { progress: next, ok: true, message: `${seal.name} desbloqueado. +${tokenAmount} D7T simbólicos.`, event }
+  return { progress: next, ok: true, message: 'Desafio concluído. Selo desbloqueado.', event }
 }
 
 export function cardsForSeal(sealId) {

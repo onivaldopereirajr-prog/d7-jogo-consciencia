@@ -34,6 +34,22 @@ O Códice Dual D7 é uma criação simbólica do jogo. Ele usa o hebraico como t
 
 Essa união é apresentada de forma lúdica, contemplativa e respeitosa. O projeto não afirma equivalência histórica direta entre as tradições, nem sugere que hebraico e sânscrito tenham a mesma origem ou o mesmo sistema espiritual. No D7, elas funcionam como linguagens simbólicas distintas dentro de uma mecânica de jogo sobre presença, foco e progressão interior.
 
+## Biblioteca Iniciática D7
+
+A Biblioteca Iniciática D7 organiza resumos originais, glossário, missões curtas e cartões educativos sobre sânscrito, Cabala, sefirot, letras hebraicas, Devanagari, fonologia, morfologia, sonhos, visualização e pontes simbólicas do Códice. O conteúdo é narrativo e educativo, não é reprodução extensa de livros nem substitui estudo acadêmico, religioso ou linguístico formal.
+
+A biblioteca se conecta diretamente com a Jornada, a Prática, a Sala dos Selos, o Mapa Simbólico D7, o Ranking, o Perfil, o Acompanhamento e o sistema de D7 Tokens. Cada card estudado pode liberar recompensas únicas, módulos completos, fases da trilha e títulos simbólicos do jogador.
+
+## Fontes de inspiração
+
+A biblioteca usa inspirações gerais de estudo, sem copiar capítulos ou páginas completas:
+
+- Manual de Sânscrito, de G. de Vasconcellos Abreu
+- A Cabala Prática, de Charles Fielding
+- Materiais gerais sobre Sefirot, Árvore da Vida e as 22 letras hebraicas
+
+O jogo transforma essas inspirações em resumos curtos, missões, cartas e interpretações próprias do universo D7.
+
 ## Tecnologias utilizadas
 
 - React

@@ -1,6 +1,7 @@
 import { mockPlayers } from '../data/game.js'
 import { STORAGE_KEY, LEGACY_KEY, ensureToday, getJourneyCode, getStage, loadState, makeInitialState, normalizeState, playerLevel } from '../utils/gameState.js'
 import { getRankingScore, getSealGateScore, getUserSealEvents } from './sealEngine.js'
+import { getLibraryStudyStats } from './libraryEngine.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { getUsers, publicUser } from './localAuth.js'
 
@@ -68,6 +69,7 @@ export function clearLegacyAnonymousProgress() {
 export function userProgressSummary(user, state) {
   const current = ensureToday(state)
   const stage = getStage(current.progress)
+  const library = getLibraryStudyStats(current)
   return {
     user: publicUser(user),
     currentStage: getJourneyCode(current.progress),
@@ -104,6 +106,16 @@ export function userProgressSummary(user, state) {
     portals: current.openedPortals,
     practiceHistory: current.sessions,
     updatedAt: current.updatedAt ?? null,
+    libraryTitle: current.libraryProgress?.currentTitle ?? library.title,
+    libraryCardsStudied: library.studiedCardsCount,
+    libraryCardsUnlocked: library.unlockedStudyCount,
+    libraryModulesCompleted: library.completedModulesCount,
+    libraryPhasesCompleted: library.completedPhasesCount,
+    libraryRecommendation: library.recommended?.id ?? null,
+    lastLibraryCardId: current.libraryProgress?.lastStudiedCardId ?? null,
+    lastLibraryModuleId: current.libraryProgress?.lastModuleId ?? null,
+    lastLibraryPhaseId: current.libraryProgress?.lastPhaseId ?? null,
+    libraryStudyLog: current.libraryProgress?.studyLog ?? [],
   }
 }
 
@@ -129,6 +141,10 @@ export function localRanking(currentUserId) {
     ritualMilestonesUnlocked: summary.ritualMilestonesUnlocked ?? [],
     stage: summary.currentStage,
     score: summary.score,
+    libraryCardsStudied: summary.libraryCardsStudied ?? 0,
+    libraryModulesCompleted: summary.libraryModulesCompleted ?? 0,
+    libraryPhasesCompleted: summary.libraryPhasesCompleted ?? 0,
+    libraryTitle: summary.libraryTitle ?? 'Iniciado do Silêncio',
     current: summary.user.id === currentUserId,
   }))
   return [...mockPlayers.map((item) => ({ ...item, seals: item.portals, tokens: 0, stage: 'D7', score: item.xp + item.streak * 50 + item.cards * 25 + item.portals * 200 + item.codes * 150 })), ...localPlayers].sort((a, b) => b.score - a.score)

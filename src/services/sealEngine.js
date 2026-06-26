@@ -1,4 +1,5 @@
 import { sealDefinitions, sealById } from '../data/seals.js'
+import { studyableLibraryCards } from '../data/initiationLibrary.js'
 import { safeGetStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { recordPresenceTick, unique } from '../utils/gameState.js'
 
@@ -89,6 +90,10 @@ export function getRankingScore(progress) {
   const sealProgress = progress.sealProgress ?? {}
   const ritualMinutesTotal = Math.max(0, Number(progress.ritualMinutesTotal ?? 0) || 0)
   const ritualMilestonesUnlocked = Array.isArray(progress.ritualMilestonesUnlocked) ? progress.ritualMilestonesUnlocked : []
+  const libraryCardIds = new Set(studyableLibraryCards.map((card) => card.id))
+  const libraryStudiedCount = Array.isArray(progress.studiedCards) ? progress.studiedCards.filter((id) => libraryCardIds.has(id)).length : 0
+  const libraryModuleCount = Array.isArray(progress.libraryProgress?.completedModuleIds) ? progress.libraryProgress.completedModuleIds.length : 0
+  const libraryPhaseCount = Array.isArray(progress.libraryProgress?.completedPhaseIds) ? progress.libraryProgress.completedPhaseIds.length : 0
   return Math.max(0,
     (progress.xp ?? 0) +
     (progress.sparks ?? 0) * 7 +
@@ -99,6 +104,9 @@ export function getRankingScore(progress) {
     (progress.progress?.streak ?? 0) * 13 +
     Math.floor((sealProgress.totalFocusSeconds ?? 0) / 60) * 3 +
     Math.floor(ritualMinutesTotal * 2) +
+    libraryStudiedCount * 10 +
+    libraryModuleCount * 30 +
+    libraryPhaseCount * 40 +
     (ritualMilestonesUnlocked.includes(21) ? 21 : 0) +
     (ritualMilestonesUnlocked.includes(108) ? 108 : 0) +
     (progress.presenceBonusTotal ?? 0) -

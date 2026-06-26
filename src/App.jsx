@@ -22,6 +22,8 @@ import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgress
 import D7SymbolicMap from './components/D7SymbolicMap.jsx'
 import D7PulseTimer from './components/D7PulseTimer.jsx'
 import D7DurationSelector from './components/D7DurationSelector.jsx'
+import InitiationLibrary from './components/InitiationLibrary.jsx'
+import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import './App.css'
 
@@ -48,7 +50,7 @@ const codexFeaturedCards = [
   { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
 ]
 
-const appNavItems = [...navItems, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }]
+const appNavItems = [...navItems, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }]
 
 function Sigil({ label = 'D7', tone = 'cyan' }) {
   return (
@@ -486,8 +488,9 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
               <span>{summary.score} score</span>
               <span>{summary.symbolicMapsCount ?? 0} mapas</span>
               <span>{summary.presenceCounter108 ?? 0}/108</span>
+              <span>{summary.libraryCardsStudied ?? 0} cards</span>
             </div>
-            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Duração: {summary.lastPracticeDurationMinutes ?? '—'} min · Último selo: {summary.lastSealId ?? 'pendente'} · Último mapa: {summary.lastMapArchetype ?? 'pendente'}</p>
+            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Duração: {summary.lastPracticeDurationMinutes ?? '—'} min · Último selo: {summary.lastSealId ?? 'pendente'} · Último mapa: {summary.lastMapArchetype ?? 'pendente'} · Biblioteca: {summary.libraryCardsStudied ?? 0}/{summary.libraryCardsUnlocked ?? 0} · Título: {summary.libraryTitle ?? 'Iniciado do Silêncio'}</p>
             <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Marcos: {summary.ritualMilestonesUnlocked?.length ? summary.ritualMilestonesUnlocked.join(' · ') : 'nenhum'} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Timers: {summary.totalTimersCompleted ?? 0} · Avisos: {summary.integrityWarnings}</small>
           </article>
         ))}
@@ -546,6 +549,8 @@ function App() {
   const hebrewUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'hebraica').length
   const sanskritUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
   const currentScore = getRankingScore(state)
+  const libraryStats = getLibraryStudyStats(state)
+  const recommendedLibraryCard = getRecommendedLibraryCard(state)
   const phrase = dayPhrases[(state.progress.day - 1) % dayPhrases.length]
   const rank = localRanking(currentUser?.id)
   const practiceHasPrimaryReward = !state.daily.practice
@@ -894,6 +899,7 @@ function App() {
               <div className="hero-actions">
                 <button type="button" className="primary-action" onClick={() => navigate('pratica')}>Entrar no Nada</button>
                 <button type="button" className="ghost-action" onClick={() => navigate('codice')}>Abrir Códice</button>
+                <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Biblioteca Iniciática</button>
               </div>
             </div>
             <div className="dashboard-stack">
@@ -1015,6 +1021,11 @@ function App() {
                 <small>{practicePreview.text}</small>
                 <small>Portal 21/108: {state.ritualMinutesTotal ?? 0}/108 min · Marcos: {state.ritualMilestonesUnlocked?.length ? state.ritualMilestonesUnlocked.join(' · ') : 'nenhum'}</small>
               </div>
+              <div className="library-tip">
+                <span className="overline">Biblioteca sugerida</span>
+                <strong>{recommendedLibraryCard ? recommendedLibraryCard.title : 'Nenhum card novo no momento'}</strong>
+                <p>{recommendedLibraryCard ? recommendedLibraryCard.summary : 'O próximo estudo recomendado já foi concluído.'}</p>
+              </div>
               <form className="word-form" onSubmit={submitWord}>
                 <label htmlFor="word">Registrar palavra</label>
                 <div>
@@ -1029,6 +1040,13 @@ function App() {
         {activeView === 'codice' && (
           <section className="content-section">
             <SectionTitle eyebrow="Biblioteca simbólica" title="Códice Dual D7">Hebraico e sânscrito aparecem como trilhas simbólicas distintas dentro do jogo, unidas por pontes lúdicas de presença.</SectionTitle>
+            <div className="library-callout">
+              <div>
+                <span className="overline">Biblioteca Iniciática D7</span>
+                <p>Resumos, missões e títulos desbloqueáveis para estudar símbolos com ritmo e progressão.</p>
+              </div>
+              <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Abrir Biblioteca</button>
+            </div>
             <div className="codex-visual-band">
               <img src={visualAssets.codex} alt="Símbolo central do Códice Dual D7" />
               <div className="featured-card-grid">
@@ -1058,6 +1076,10 @@ function App() {
           </section>
         )}
 
+        {activeView === 'biblioteca' && (
+          <InitiationLibrary progress={state} onStudyCard={study} />
+        )}
+
         {activeView === 'ranking' && (
           <section className="content-section">
             <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência + cartas + portais + códigos + D7T + minutos rituais + marcos 21/108.</SectionTitle>
@@ -1068,7 +1090,7 @@ function App() {
                   <strong>#{index + 1}</strong>
                   <div><span>{player.name}</span><small>{player.title}</small></div>
                   <p>{player.score} score</p>
-                  <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T · {player.ritualMinutesTotal ?? 0} min · {Array.isArray(player.ritualMilestonesUnlocked) && player.ritualMilestonesUnlocked.length ? player.ritualMilestonesUnlocked.join(' / ') : '21/108 pendente'}</small>
+                  <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T · {player.ritualMinutesTotal ?? 0} min · Biblioteca {player.libraryCardsStudied ?? 0} · {player.libraryTitle ?? 'Iniciado do Silêncio'} · {Array.isArray(player.ritualMilestonesUnlocked) && player.ritualMilestonesUnlocked.length ? player.ritualMilestonesUnlocked.join(' / ') : '21/108 pendente'}</small>
                 </article>
               ))}
             </div>
@@ -1095,6 +1117,7 @@ function App() {
                 <StatCard label="Sequência" value={state.progress.streak} detail="dias ativos" />
                 <StatCard label="Cartas" value={state.unlockedCards.length} detail={`${codexCards.length} totais`} />
                 <StatCard label="Missões" value={state.completedMissions.length} detail="ativas concluídas" />
+                <StatCard label="Biblioteca" value={`${libraryStats.studiedCardsCount}/${libraryStats.unlockedStudyCount}`} detail={libraryStats.title} />
                 <StatCard label="Portais" value={state.openedPortals.length} detail="4 possíveis" />
                 <StatCard label="Códigos" value={state.unlockedCodes.length} detail="8 possíveis" />
                 <StatCard label="Minutos rituais" value={state.ritualMinutesTotal ?? 0} detail="21/108 simbólico" />

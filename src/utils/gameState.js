@@ -1,4 +1,5 @@
 import { codexCards } from '../data/codex.js'
+import { studyLibraryCard } from '../services/libraryEngine.js'
 import { codes, missions, portals, weeks } from '../data/game.js'
 
 export const STORAGE_KEY = 'd7-jogo-consciencia-state-v2'
@@ -69,6 +70,7 @@ export function makeInitialState(profile = {}) {
     sealProgress: { unlockedSeals: [], completedChallenges: [], attempts: {}, totalFocusSeconds: 0, lastCompletedAt: null, lastSealId: null },
     symbolicMaps: [],
     symbolicMapProgress: { createdCount: 0, lastMapId: null, lastArchetype: null, completedSteps: [] },
+    libraryProgress: { studiedCardIds: [], completedModuleIds: [], completedPhaseIds: [], currentTitle: 'Iniciado do Silêncio', lastStudiedCardId: null, lastModuleId: null, lastPhaseId: null, studyLog: [] },
   }
 }
 
@@ -99,6 +101,7 @@ export function normalizeState(raw) {
 
   const sealProgress = raw.sealProgress && typeof raw.sealProgress === 'object' ? raw.sealProgress : {}
   const symbolicMapProgress = raw.symbolicMapProgress && typeof raw.symbolicMapProgress === 'object' ? raw.symbolicMapProgress : {}
+  const libraryProgress = raw.libraryProgress && typeof raw.libraryProgress === 'object' ? raw.libraryProgress : {}
   const sessionsTotal = arrayOr(raw.sessions, base.sessions).reduce((sum, session) => sum + Number(session?.minutes ?? session?.durationMinutes ?? 0), 0)
   const rawRitualMinutesTotal = Number(raw.ritualMinutesTotal)
   const ritualMinutesTotal = Number.isFinite(rawRitualMinutesTotal) && rawRitualMinutesTotal > 0 ? rawRitualMinutesTotal : sessionsTotal
@@ -152,6 +155,18 @@ export function normalizeState(raw) {
       ...symbolicMapProgress,
       createdCount: Math.max(numberOr(symbolicMapProgress.createdCount, 0), 0),
       completedSteps: unique(arrayOr(symbolicMapProgress.completedSteps, base.symbolicMapProgress.completedSteps)),
+    },
+    libraryProgress: {
+      ...base.libraryProgress,
+      ...libraryProgress,
+      studiedCardIds: unique(arrayOr(libraryProgress.studiedCardIds, base.libraryProgress.studiedCardIds)),
+      completedModuleIds: unique(arrayOr(libraryProgress.completedModuleIds, base.libraryProgress.completedModuleIds)),
+      completedPhaseIds: unique(arrayOr(libraryProgress.completedPhaseIds, base.libraryProgress.completedPhaseIds)),
+      currentTitle: typeof libraryProgress.currentTitle === 'string' && libraryProgress.currentTitle.trim() ? libraryProgress.currentTitle : base.libraryProgress.currentTitle,
+      studyLog: arrayOr(libraryProgress.studyLog, base.libraryProgress.studyLog).filter((item) => item && typeof item === 'object').slice(0, 24),
+      lastStudiedCardId: typeof libraryProgress.lastStudiedCardId === 'string' ? libraryProgress.lastStudiedCardId : base.libraryProgress.lastStudiedCardId,
+      lastModuleId: typeof libraryProgress.lastModuleId === 'string' ? libraryProgress.lastModuleId : base.libraryProgress.lastModuleId,
+      lastPhaseId: typeof libraryProgress.lastPhaseId === 'string' ? libraryProgress.lastPhaseId : base.libraryProgress.lastPhaseId,
     },
   }
 }
@@ -363,6 +378,11 @@ export function recordVisit(state, view) {
 
 export function studyCard(state, cardId) {
   const current = ensureToday(state)
+  const libraryStudy = studyLibraryCard(current, cardId)
+  if (libraryStudy) {
+    if (!libraryStudy.ok) return current
+    return unlockDerived(libraryStudy.progress, libraryStudy.lastUnlocks)
+  }
   if (!current.unlockedCards.includes(cardId)) return current
   const firstStudyToday = !current.daily.study
   return unlockDerived({

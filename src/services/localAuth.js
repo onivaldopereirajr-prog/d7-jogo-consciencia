@@ -46,6 +46,10 @@ export function getUsers() {
   return Array.isArray(users) ? users : []
 }
 
+export function getPublicUsers() {
+  return getUsers().map(publicUser)
+}
+
 export function saveUsers(users) {
   return safeSetStorage(USERS_KEY, users)
 }
@@ -111,13 +115,27 @@ export async function loginUser({ login, password }) {
   if (!cleanLogin || !password) return { ok: false, message: 'Informe login e senha.' }
   const users = getUsers()
   const user = users.find((item) => item.login === cleanLogin)
-  if (!user) return { ok: false, message: 'Usuário local não encontrado.' }
+  if (!user) return { ok: false, message: 'Usuário local não encontrado neste navegador. Verifique o apelido digitado ou crie uma nova conta local.' }
   const passwordHash = await hashPassword(password, user.salt)
   if (passwordHash !== user.passwordHash) return { ok: false, message: 'Senha inválida.' }
   const updated = { ...user, lastLoginAt: new Date().toISOString() }
   saveUsers(users.map((item) => (item.id === user.id ? updated : item)))
   setCurrentSession(user.id)
   return { ok: true, user: updated, message: 'Login local realizado.' }
+}
+
+export async function resetLocalPassword({ userId, password, confirmPassword }) {
+  const users = getUsers()
+  const user = users.find((item) => item.id === userId)
+  if (!user) return { ok: false, message: 'Usuário local não encontrado neste navegador.' }
+  if (!password) return { ok: false, message: 'Informe a nova senha.' }
+  if (password.length < MIN_PASSWORD_LENGTH) return { ok: false, message: `Use pelo menos ${MIN_PASSWORD_LENGTH} caracteres na senha.` }
+  if (password !== confirmPassword) return { ok: false, message: 'A confirmação da nova senha não confere.' }
+  const salt = randomToken()
+  const passwordHash = await hashPassword(password, salt)
+  const updated = { ...user, salt, passwordHash, updatedAt: new Date().toISOString() }
+  saveUsers(users.map((item) => (item.id === user.id ? updated : item)))
+  return { ok: true, user: updated, message: 'Senha local redefinida. Agora você pode entrar novamente.' }
 }
 
 export function deleteUser(userId) {

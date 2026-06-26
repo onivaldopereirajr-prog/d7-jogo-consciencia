@@ -14,7 +14,7 @@ import {
   recordWord,
   studyCard,
 } from './utils/gameState.js'
-import { getCurrentUser, loginUser, logout, registerUser } from './services/localAuth.js'
+import { deleteUser, getCurrentUser, getPublicUsers, loginUser, logout, registerUser, resetLocalPassword } from './services/localAuth.js'
 import { copyLocalReport, downloadLocalReport } from './services/localReports.js'
 import { sealDefinitions } from './data/seals.js'
 import { cancelSealAttempt, completeSealChallenge, getRankingScore, getRequiredGateScore, getSealAttempt, getSealGateScore, getSealStatus, requirementText, startSealAttempt, syncSealAttempt, markSealAbsence } from './services/sealEngine.js'
@@ -244,10 +244,15 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
   )
 }
 
-function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
+function AuthScreen({ mode, message, onModeChange, onLogin, onRegister, onResetPassword, onDeleteAccount }) {
   const [loginData, setLoginData] = useState({ login: '', password: '' })
   const [registerData, setRegisterData] = useState({ name: '', login: '', password: '', confirmPassword: '' })
+  const [recoveryData, setRecoveryData] = useState({ userId: '', password: '', confirmPassword: '', deleteConfirm: '' })
   const isRegister = mode === 'register'
+  const isForgot = mode === 'forgot'
+  const localUsers = getPublicUsers()
+  const effectiveRecoveryUserId = localUsers.some((user) => user.id === recoveryData.userId) ? recoveryData.userId : (localUsers[0]?.id ?? '')
+  const selectedRecoveryUser = localUsers.find((user) => user.id === effectiveRecoveryUserId) ?? null
 
   function updateLogin(field, value) {
     setLoginData((current) => ({ ...current, [field]: value }))
@@ -255,6 +260,30 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
 
   function updateRegister(field, value) {
     setRegisterData((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateRecovery(field, value) {
+    setRecoveryData((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handleRecoverySubmit(event) {
+    event.preventDefault()
+    const result = await onResetPassword({
+      userId: effectiveRecoveryUserId,
+      password: recoveryData.password,
+      confirmPassword: recoveryData.confirmPassword,
+    })
+    if (!result?.ok) return
+    setRecoveryData({ userId: recoveryData.userId, password: '', confirmPassword: '', deleteConfirm: '' })
+    onModeChange('login')
+  }
+
+  async function handleDeleteAccount() {
+    if (recoveryData.deleteConfirm !== 'APAGAR') return
+    const result = await onDeleteAccount(effectiveRecoveryUserId)
+    if (!result?.ok) return
+    setRecoveryData({ userId: '', password: '', confirmPassword: '', deleteConfirm: '' })
+    onModeChange('login')
   }
 
   return (
@@ -285,7 +314,7 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
           <p className="auth-warning">Login local apenas para demonstração neste navegador. Não use senhas pessoais reais; para vários dispositivos será necessário backend futuro.</p>
           {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
 
-          {!isRegister ? (
+          {!isRegister && !isForgot ? (
             <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onLogin(loginData) }}>
               <label htmlFor="login-id">Apelido ou e-mail local</label>
               <input id="login-id" value={loginData.login} onChange={(event) => updateLogin('login', event.target.value)} autoComplete="username" />
@@ -293,8 +322,9 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
               <input id="login-password" type="password" value={loginData.password} onChange={(event) => updateLogin('password', event.target.value)} autoComplete="current-password" />
               <button type="submit" className="primary-action">Entrar</button>
               <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
+              <button type="button" className="ghost-action" onClick={() => onModeChange('forgot')}>Esqueci minha senha</button>
             </form>
-          ) : (
+          ) : isRegister ? (
             <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onRegister(registerData) }}>
               <label htmlFor="register-name">Nome do usuário</label>
               <input id="register-name" value={registerData.name} onChange={(event) => updateRegister('name', event.target.value)} autoComplete="name" />
@@ -307,6 +337,70 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
               <button type="submit" className="primary-action">Criar conta</button>
               <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
             </form>
+          ) : (
+            <div className="auth-recovery">
+              <div className="auth-recovery-head">
+                <div>
+                  <span className="overline">Recuperação local</span>
+                  <h3>Esqueci minha senha</h3>
+                  <p>Esta recuperação funciona apenas neste navegador. O D7 atual usa login local MVP. Para login real em vários dispositivos será necessário backend futuro.</p>
+                </div>
+                <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
+              </div>
+
+              <div className="auth-warning">{localUsers.length > 0 ? 'Selecione um usuário local para redefinir a senha. O progresso permanece intacto porque o `userId` não muda.' : 'Nenhum usuário local encontrado neste navegador. Crie uma nova conta local.'}</div>
+
+              {localUsers.length > 0 && (
+                <>
+                  <div className="recovery-user-list" role="list" aria-label="Usuários locais cadastrados">
+                    {localUsers.map((user) => {
+                      const active = user.id === effectiveRecoveryUserId
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          className={active ? 'recovery-user-card active' : 'recovery-user-card'}
+                          onClick={() => updateRecovery('userId', user.id)}
+                        >
+                          <strong>{user.name}</strong>
+                          <span>{user.login}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="recovery-selected">
+                    <span>Usuário selecionado</span>
+                    <strong>{selectedRecoveryUser?.name ?? 'Selecione um usuário'}</strong>
+                    <small>{selectedRecoveryUser?.login ?? 'Nome de acesso local'}</small>
+                  </div>
+
+                  <form className="auth-form" onSubmit={handleRecoverySubmit}>
+                    <label htmlFor="recovery-password">Nova senha</label>
+                    <input id="recovery-password" type="password" value={recoveryData.password} onChange={(event) => updateRecovery('password', event.target.value)} autoComplete="new-password" />
+                    <label htmlFor="recovery-confirm">Confirmar nova senha</label>
+                    <input id="recovery-confirm" type="password" value={recoveryData.confirmPassword} onChange={(event) => updateRecovery('confirmPassword', event.target.value)} autoComplete="new-password" />
+                    <button type="submit" className="primary-action" disabled={!effectiveRecoveryUserId}>Redefinir senha local</button>
+                    <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+                  </form>
+
+                  <div className="recovery-delete">
+                    <label htmlFor="delete-confirm">Apagar conta local</label>
+                    <input id="delete-confirm" value={recoveryData.deleteConfirm} onChange={(event) => updateRecovery('deleteConfirm', event.target.value.toUpperCase())} placeholder="Digite APAGAR para confirmar" />
+                    <button type="button" className="danger-action" onClick={handleDeleteAccount} disabled={recoveryData.deleteConfirm !== 'APAGAR' || !effectiveRecoveryUserId}>Apagar conta local</button>
+                    <small>Isso remove apenas a conta local deste navegador. O progresso não é apagado por padrão.</small>
+                  </div>
+                </>
+              )}
+
+              {localUsers.length === 0 && (
+                <div className="recovery-empty">
+                  <p>Nenhum usuário local encontrado neste navegador.</p>
+                  <button type="button" className="primary-action" onClick={() => onModeChange('register')}>Criar uma nova conta local</button>
+                  <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+                </div>
+              )}
+            </div>
           )}
         </section>
       </section>
@@ -529,6 +623,20 @@ function App() {
     enterUser(result.user, result.message)
   }
 
+  async function handleResetPassword(data) {
+    const result = await resetLocalPassword(data)
+    setAuthMessage({ type: result.ok ? 'success' : 'error', text: result.message })
+    return result
+  }
+
+  async function handleDeleteAccount(userId) {
+    if (!userId) return { ok: false, message: 'Selecione um usuário local.' }
+    deleteUser(userId)
+    const sessionUser = currentUser?.id === userId ? 'A sessão local foi encerrada.' : ''
+    setAuthMessage({ type: 'success', text: `Conta local apagada. ${sessionUser} O progresso não foi apagado por padrão.`.trim() })
+    return { ok: true, message: 'Conta local apagada.' }
+  }
+
   function handleLogout() {
     logout()
     setCurrentUser(null)
@@ -614,7 +722,7 @@ function App() {
   }
 
   if (!currentUser) {
-    return <AuthScreen mode={authMode} message={authMessage} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} />
+    return <AuthScreen mode={authMode} message={authMessage} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} onResetPassword={handleResetPassword} onDeleteAccount={handleDeleteAccount} />
   }
 
   return (

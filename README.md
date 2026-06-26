@@ -26,7 +26,7 @@ A regra central é a constância. O jogador pratica diariamente e avança um dia
 - Missões diárias e semanais
 - Ranking local com score expandido
 - Perfil do jogador
-- Persistência via LocalStorage
+- Persistência via LocalStorage por usuário local
 
 ## Códice Dual D7
 
@@ -67,9 +67,36 @@ O projeto está preparado para deploy na Vercel como app estático Vite.
 - outputDirectory: `dist`
 - framework: `vite`
 
+
+## Autenticação local
+
+O D7 possui um login local de MVP para testes, demonstração e acompanhamento no mesmo navegador/dispositivo. As contas ficam em `LocalStorage`; a sessão ativa fica em `d7_current_session`.
+
+- O cadastro pede nome, apelido/e-mail local, senha e confirmação.
+- A senha não é salva em texto puro.
+- O app usa Web Crypto API para gerar hash SHA-256 com salt local quando disponível.
+- Se Web Crypto não estiver disponível, há um fallback simples documentado no código, apenas para manter o MVP funcionando.
+- Não use senhas pessoais reais em testes.
+
+## Limitações do MVP local
+
+Este login local não é segurança real de produção. Os dados ficam no navegador do usuário e podem ser apagados ao limpar dados do navegador. Para acompanhamento real de vários usuários em dispositivos diferentes será necessário backend futuro com autenticação, banco de dados e regras de autorização.
+
+## Múltiplos usuários no mesmo navegador
+
+Para testar vários usuários, crie contas diferentes pelo cadastro local. Cada usuário tem progresso próprio: XP, centelhas, práticas, cartas, códigos, portais e sequência. O ranking local inclui usuários cadastrados naquele navegador/dispositivo.
+
+## Limpar progresso local
+
+No Perfil, o botão de reset reinicia apenas o progresso do usuário logado e pede confirmação. Ele não apaga a conta local nem os demais usuários. Para apagar tudo, limpe manualmente os dados do navegador.
+
+## Exportar relatório local
+
+A área `Acompanhamento` permite copiar ou exportar um relatório JSON com usuários locais, etapa, XP, centelhas, práticas, cartas, medalhas/códigos e histórico. O relatório não inclui senha, hash ou salt.
+
 ## Status do projeto
 
-O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a experiência principal no navegador, com progressão local, timer, recompensas, missões, portais, Códice Dual e ranking mockado.
+O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a experiência principal no navegador, com progressão local, timer, recompensas, missões, portais, Códice Dual e ranking local por usuário no navegador.
 
 ## Próximos passos planejados
 

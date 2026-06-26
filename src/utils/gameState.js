@@ -30,9 +30,9 @@ export function scoreOf(player) {
   return Number(player.xp ?? 0) + Number(player.streak ?? 0) * 50 + Number(player.cards ?? 0) * 25 + Number(player.portals ?? 0) * 200 + Number(player.codes ?? 0) * 150
 }
 
-export function makeInitialState() {
+export function makeInitialState(profile = {}) {
   return {
-    profile: { name: 'Jogador D7', title: 'Iniciado do Nada', avatar: 'D7' },
+    profile: { name: 'Jogador D7', title: 'Iniciado do Nada', avatar: 'D7', ...profile },
     progress: { weekIndex: 0, day: 1, streak: 0, lastPracticeDate: null, completedDays: [], resets: 0 },
     xp: 0,
     sparks: 0,

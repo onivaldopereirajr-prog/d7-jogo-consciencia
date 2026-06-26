@@ -1,23 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { codexCards, dualBridges, hebrewLetters, hebrewWords, sanskritItems } from './data/codex.js'
-import { codes, dayPhrases, missions, mockPlayers, navItems, portals, weeks } from './data/game.js'
+import { codes, dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
 import {
   cardById,
   completePractice,
   ensureToday,
   getJourneyCode,
   getStage,
-  loadState,
   missionStatus,
   openPortal,
   playerLevel,
   recordVisit,
   recordWord,
-  resetStoredState,
-  saveState,
   scoreOf,
   studyCard,
 } from './utils/gameState.js'
+import { getCurrentUser, loginUser, logout, registerUser } from './services/localAuth.js'
+import { copyLocalReport, downloadLocalReport } from './services/localReports.js'
+import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgressIfSafe, resetUserProgress, saveUserProgress } from './services/localProgress.js'
 import './App.css'
 
 const visualAssets = {
@@ -42,6 +42,8 @@ const codexFeaturedCards = [
   { id: 'card-ruach-prana', title: 'Ruach Prana', image: '/images/d7/cartas/carta-ruach-prana.svg' },
   { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
 ]
+
+const appNavItems = [...navItems, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }]
 
 function Sigil({ label = 'D7', tone = 'cyan' }) {
   return (
@@ -119,6 +121,112 @@ function formatTime(seconds) {
   return `${minutes}:${rest}`
 }
 
+
+function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
+  const [loginData, setLoginData] = useState({ login: '', password: '' })
+  const [registerData, setRegisterData] = useState({ name: '', login: '', password: '', confirmPassword: '' })
+  const isRegister = mode === 'register'
+
+  function updateLogin(field, value) {
+    setLoginData((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateRegister(field, value) {
+    setRegisterData((current) => ({ ...current, [field]: value }))
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-panel" aria-labelledby="auth-title">
+        <div className="auth-brand">
+          <Sigil label="D7" />
+          <div>
+            <span className="overline">Acesso local MVP</span>
+            <h1 id="auth-title">D7: O Jogo da Consciência</h1>
+          </div>
+        </div>
+        <p className="auth-warning">Login local apenas para demonstração neste navegador. Não use senhas pessoais reais; para vários dispositivos será necessário backend futuro.</p>
+        {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
+
+        {!isRegister ? (
+          <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onLogin(loginData) }}>
+            <label htmlFor="login-id">Apelido ou e-mail local</label>
+            <input id="login-id" value={loginData.login} onChange={(event) => updateLogin('login', event.target.value)} autoComplete="username" />
+            <label htmlFor="login-password">Senha</label>
+            <input id="login-password" type="password" value={loginData.password} onChange={(event) => updateLogin('password', event.target.value)} autoComplete="current-password" />
+            <button type="submit" className="primary-action">Entrar</button>
+            <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onRegister(registerData) }}>
+            <label htmlFor="register-name">Nome do usuário</label>
+            <input id="register-name" value={registerData.name} onChange={(event) => updateRegister('name', event.target.value)} autoComplete="name" />
+            <label htmlFor="register-login">Apelido ou e-mail local</label>
+            <input id="register-login" value={registerData.login} onChange={(event) => updateRegister('login', event.target.value)} autoComplete="username" />
+            <label htmlFor="register-password">Senha</label>
+            <input id="register-password" type="password" value={registerData.password} onChange={(event) => updateRegister('password', event.target.value)} autoComplete="new-password" />
+            <label htmlFor="register-confirm">Confirmar senha</label>
+            <input id="register-confirm" type="password" value={registerData.confirmPassword} onChange={(event) => updateRegister('confirmPassword', event.target.value)} autoComplete="new-password" />
+            <button type="submit" className="primary-action">Criar conta</button>
+            <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+          </form>
+        )}
+      </section>
+      <ClosingMantra />
+    </main>
+  )
+}
+
+function UserProfileBar({ user, onLogout }) {
+  return (
+    <div className="user-profile-bar" aria-label="Sessão local atual">
+      <div>
+        <span className="overline">Usuário local</span>
+        <strong>{user.name}</strong>
+        <small>{user.login}</small>
+      </div>
+      <button type="button" className="ghost-action" onClick={onLogout}>Sair</button>
+    </div>
+  )
+}
+
+function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadReport }) {
+  const summaries = getAllLocalSummaries()
+  return (
+    <section className="content-section local-panel">
+      <SectionTitle eyebrow="Acompanhamento Local" title="Relatório Local D7">Este painel mostra apenas contas e progresso salvos neste navegador/dispositivo. Não é banco de dados remoto.</SectionTitle>
+      <div className="report-actions">
+        <button type="button" className="primary-action" onClick={onCopyReport}>Copiar relatório</button>
+        <button type="button" className="ghost-action" onClick={onDownloadReport}>Exportar JSON</button>
+      </div>
+      {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
+      <div className="local-user-grid">
+        {summaries.map((summary) => (
+          <article key={summary.user.id} className={summary.user.id === currentUserId ? 'local-user-card current-local-user' : 'local-user-card'}>
+            <div className="local-user-head">
+              <div>
+                <span>{summary.user.id === currentUserId ? 'Sessão atual' : 'Usuário local'}</span>
+                <h3>{summary.user.name}</h3>
+                <p>{summary.user.login}</p>
+              </div>
+              <strong>{summary.currentStage}</strong>
+            </div>
+            <div className="local-metrics">
+              <span>{summary.xp} XP</span>
+              <span>{summary.sparks} Centelhas</span>
+              <span>{summary.streak} dias</span>
+              <span>{summary.completedPractices} práticas</span>
+            </div>
+            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'}</p>
+            <small>Cartas: {summary.cards.length} · Medalhas/Códigos: {summary.medals.length} · Portais: {summary.portals.length}</small>
+          </article>
+        ))}
+        {summaries.length === 0 && <p className="empty-state">Nenhum usuário local cadastrado neste navegador.</p>}
+      </div>
+    </section>
+  )
+}
+
 function ClosingMantra() {
   return (
     <footer className="closing-mantra" aria-label="Epígrafe final do D7">
@@ -132,10 +240,18 @@ function ClosingMantra() {
 }
 
 function App() {
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser())
+  const [authMode, setAuthMode] = useState('login')
+  const [authMessage, setAuthMessage] = useState(null)
+  const [panelMessage, setPanelMessage] = useState(null)
   const [activeView, setActiveView] = useState('home')
-  const [state, setState] = useState(() => ensureToday(loadState()))
+  const [state, setState] = useState(() => {
+    const user = getCurrentUser()
+    return user ? getUserState(user) : ensureToday(getUserState(null))
+  })
   const [timer, setTimer] = useState(() => {
-    const loaded = ensureToday(loadState())
+    const user = getCurrentUser()
+    const loaded = user ? getUserState(user) : ensureToday(getUserState(null))
     const loadedStage = getStage(loaded.progress)
     return { journeyCode: getJourneyCode(loaded.progress), remaining: loadedStage.minutes * 60, status: 'idle' }
   })
@@ -152,23 +268,11 @@ function App() {
   const sanskritUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
   const currentScore = scoreOf({ xp: state.xp, streak: state.progress.streak, cards: state.unlockedCards.length, portals: state.openedPortals.length, codes: state.unlockedCodes.length })
   const phrase = dayPhrases[(state.progress.day - 1) % dayPhrases.length]
-  const rank = useMemo(() => {
-    const player = {
-      name: state.profile.name,
-      title: state.profile.title,
-      xp: state.xp,
-      streak: state.progress.streak,
-      cards: state.unlockedCards.length,
-      portals: state.openedPortals.length,
-      codes: state.unlockedCodes.length,
-      current: true,
-    }
-    return [...mockPlayers, player].map((item) => ({ ...item, score: scoreOf(item) })).sort((a, b) => b.score - a.score)
-  }, [state])
+  const rank = localRanking(currentUser?.id)
 
   useEffect(() => {
-    saveState(state)
-  }, [state])
+    if (currentUser) saveUserProgress(currentUser.id, state)
+  }, [currentUser, state])
 
   useEffect(() => {
     if (timerStatus !== 'running') return undefined
@@ -181,6 +285,51 @@ function App() {
     }, 1000)
     return () => clearInterval(interval)
   }, [journeyCode, timerStatus, totalSeconds])
+
+  function enterUser(user, successMessage) {
+    const migration = migrateLegacyProgressIfSafe(user)
+    const loaded = getUserState(user)
+    setCurrentUser(user)
+    setState(loaded)
+    setTimer({ journeyCode: getJourneyCode(loaded.progress), remaining: getStage(loaded.progress).minutes * 60, status: 'idle' })
+    setActiveView('home')
+    setAuthMessage({ type: 'success', text: migration.migrated ? `${successMessage} Progresso anônimo antigo migrado com segurança.` : successMessage })
+  }
+
+  async function handleLogin(credentials) {
+    const result = await loginUser(credentials)
+    if (!result.ok) {
+      setAuthMessage({ type: 'error', text: result.message })
+      return
+    }
+    enterUser(result.user, result.message)
+  }
+
+  async function handleRegister(data) {
+    const result = await registerUser(data)
+    if (!result.ok) {
+      setAuthMessage({ type: 'error', text: result.message })
+      return
+    }
+    enterUser(result.user, result.message)
+  }
+
+  function handleLogout() {
+    logout()
+    setCurrentUser(null)
+    setAuthMode('login')
+    setAuthMessage({ type: 'success', text: 'Sessão local encerrada. O progresso não foi apagado.' })
+  }
+
+  async function handleCopyReport() {
+    const result = await copyLocalReport()
+    setPanelMessage({ type: result.ok ? 'success' : 'error', text: result.message })
+  }
+
+  function handleDownloadReport() {
+    const result = downloadLocalReport()
+    setPanelMessage({ type: result.ok ? 'success' : 'error', text: result.message })
+  }
 
   function navigate(view) {
     setActiveView(view)
@@ -201,8 +350,10 @@ function App() {
   }
 
   function resetMvp() {
-    resetStoredState()
-    const fresh = ensureToday(loadState())
+    if (!currentUser) return
+    const confirmed = window.confirm('Resetar apenas o progresso deste usuário local? A conta e outros usuários não serão apagados.')
+    if (!confirmed) return
+    const fresh = ensureToday(resetUserProgress(currentUser))
     setState(fresh)
     setActiveView('home')
     setTimer({ journeyCode: getJourneyCode(fresh.progress), remaining: getStage(fresh.progress).minutes * 60, status: 'idle' })
@@ -210,6 +361,10 @@ function App() {
 
   function study(cardId) {
     setState((current) => studyCard(current, cardId))
+  }
+
+  if (!currentUser) {
+    return <AuthScreen mode={authMode} message={authMessage} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} />
   }
 
   return (
@@ -223,7 +378,7 @@ function App() {
           </div>
         </div>
         <nav className="nav-list">
-          {navItems.map((item) => (
+          {appNavItems.map((item) => (
             <button key={item.id} className={activeView === item.id ? 'active' : ''} type="button" aria-current={activeView === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
               <span>{item.icon}</span>
               {item.label}
@@ -233,6 +388,8 @@ function App() {
       </aside>
 
       <main className="main-panel">
+        <UserProfileBar user={currentUser} onLogout={handleLogout} />
+
         <header className="topbar">
           <div>
             <span className="overline">Ciclo atual</span>
@@ -421,7 +578,7 @@ function App() {
               <h2>{state.profile.name}</h2>
               <p>{state.profile.title}</p>
               <div className="profile-level">Nível {playerLevel(state.xp)}</div>
-              <button type="button" className="ghost-action" onClick={resetMvp}>Resetar MVP local</button>
+              <button type="button" className="ghost-action" onClick={resetMvp}>Resetar meu progresso</button>
             </div>
             <div className="inventory-card">
               <SectionTitle eyebrow="Perfil do jogador" title="Progressão e Selos" />
@@ -439,6 +596,10 @@ function App() {
               </div>
             </div>
           </section>
+        )}
+
+        {activeView === 'acompanhamento' && (
+          <LocalProgressPanel currentUserId={currentUser.id} message={panelMessage} onCopyReport={handleCopyReport} onDownloadReport={handleDownloadReport} />
         )}
 
         {activeView === 'circulos' && (

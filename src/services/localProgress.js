@@ -1,0 +1,108 @@
+import { mockPlayers } from '../data/game.js'
+import { STORAGE_KEY, LEGACY_KEY, ensureToday, getJourneyCode, getStage, loadState, makeInitialState, normalizeState, playerLevel, scoreOf } from '../utils/gameState.js'
+import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
+import { getUsers, publicUser } from './localAuth.js'
+
+export const PROGRESS_BY_USER_KEY = 'd7_progress_by_user'
+
+export function getProgressByUser() {
+  const data = safeGetStorage(PROGRESS_BY_USER_KEY, {})
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {}
+}
+
+export function saveProgressByUser(data) {
+  return safeSetStorage(PROGRESS_BY_USER_KEY, data)
+}
+
+export function makeUserInitialState(user) {
+  const base = makeInitialState()
+  return {
+    ...base,
+    profile: { name: user.name, title: 'Iniciado do Nada', avatar: user.name.slice(0, 2).toUpperCase() || 'D7' },
+  }
+}
+
+export function getUserState(user) {
+  if (!user?.id) return ensureToday(makeInitialState())
+  const all = getProgressByUser()
+  const saved = all[user.id]
+  return ensureToday(normalizeState(saved ?? makeUserInitialState(user)))
+}
+
+export function saveUserProgress(userId, state) {
+  if (!userId) return false
+  const all = getProgressByUser()
+  return saveProgressByUser({ ...all, [userId]: { ...normalizeState(state), updatedAt: new Date().toISOString() } })
+}
+
+export function resetUserProgress(user) {
+  if (!user?.id) return makeInitialState()
+  const fresh = makeUserInitialState(user)
+  saveUserProgress(user.id, fresh)
+  return fresh
+}
+
+export function deleteUserProgress(userId) {
+  const all = getProgressByUser()
+  delete all[userId]
+  saveProgressByUser(all)
+}
+
+export function migrateLegacyProgressIfSafe(user) {
+  if (!user?.id) return { migrated: false, reason: 'Usuário ausente.' }
+  const all = getProgressByUser()
+  if (all[user.id]) return { migrated: false, reason: 'Usuário já possui progresso local.' }
+  const legacy = loadState()
+  const hasLegacyProgress = legacy.xp > 0 || legacy.sparks > 0 || legacy.sessions.length > 0 || legacy.progress.completedDays.length > 0 || legacy.unlockedCards.length > 2
+  if (!hasLegacyProgress) return { migrated: false, reason: 'Nenhum progresso antigo relevante encontrado.' }
+  saveProgressByUser({ ...all, [user.id]: { ...normalizeState(legacy), profile: { ...legacy.profile, name: user.name, avatar: user.name.slice(0, 2).toUpperCase() || 'D7' }, migratedFromAnonymousAt: new Date().toISOString() } })
+  return { migrated: true, reason: 'Progresso anônimo antigo migrado para este usuário.' }
+}
+
+export function clearLegacyAnonymousProgress() {
+  safeRemoveStorage(STORAGE_KEY)
+  safeRemoveStorage(LEGACY_KEY)
+}
+
+export function userProgressSummary(user, state) {
+  const current = ensureToday(state)
+  const stage = getStage(current.progress)
+  return {
+    user: publicUser(user),
+    currentStage: getJourneyCode(current.progress),
+    currentWeek: stage.id,
+    currentDay: current.progress.day,
+    xp: current.xp,
+    sparks: current.sparks,
+    level: playerLevel(current.xp),
+    score: scoreOf({ xp: current.xp, streak: current.progress.streak, cards: current.unlockedCards.length, portals: current.openedPortals.length, codes: current.unlockedCodes.length }),
+    streak: current.progress.streak,
+    completedPractices: current.sessions.length,
+    lastPracticeDate: current.progress.lastPracticeDate,
+    cards: current.unlockedCards,
+    medals: current.unlockedCodes,
+    portals: current.openedPortals,
+    practiceHistory: current.sessions,
+    updatedAt: current.updatedAt ?? null,
+  }
+}
+
+export function getAllLocalSummaries() {
+  const users = getUsers()
+  const all = getProgressByUser()
+  return users.map((user) => userProgressSummary(user, normalizeState(all[user.id] ?? makeUserInitialState(user))))
+}
+
+export function localRanking(currentUserId) {
+  const localPlayers = getAllLocalSummaries().map((summary) => ({
+    name: summary.user.name,
+    title: summary.user.login,
+    xp: summary.xp,
+    streak: summary.streak,
+    cards: summary.cards.length,
+    portals: summary.portals.length,
+    codes: summary.medals.length,
+    current: summary.user.id === currentUserId,
+  }))
+  return [...mockPlayers, ...localPlayers].map((item) => ({ ...item, score: scoreOf(item) })).sort((a, b) => b.score - a.score)
+}

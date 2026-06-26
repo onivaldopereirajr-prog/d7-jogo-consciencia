@@ -1,5 +1,6 @@
 import { mockPlayers } from '../data/game.js'
-import { STORAGE_KEY, LEGACY_KEY, ensureToday, getJourneyCode, getStage, loadState, makeInitialState, normalizeState, playerLevel, scoreOf } from '../utils/gameState.js'
+import { STORAGE_KEY, LEGACY_KEY, ensureToday, getJourneyCode, getStage, loadState, makeInitialState, normalizeState, playerLevel } from '../utils/gameState.js'
+import { getRankingScore, getSealGateScore, getUserSealEvents } from './sealEngine.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { getUsers, publicUser } from './localAuth.js'
 
@@ -75,7 +76,16 @@ export function userProgressSummary(user, state) {
     xp: current.xp,
     sparks: current.sparks,
     level: playerLevel(current.xp),
-    score: scoreOf({ xp: current.xp, streak: current.progress.streak, cards: current.unlockedCards.length, portals: current.openedPortals.length, codes: current.unlockedCodes.length }),
+    score: getRankingScore(current),
+    gateScore: getSealGateScore(current),
+    tokenBalance: current.tokenBalance ?? 0,
+    totalTokenEarned: current.totalTokenEarned ?? 0,
+    unlockedSeals: current.sealProgress?.unlockedSeals ?? [],
+    completedChallenges: current.sealProgress?.completedChallenges ?? [],
+    totalSealFocusSeconds: current.sealProgress?.totalFocusSeconds ?? 0,
+    integrityWarnings: current.integrityWarnings ?? 0,
+    lastSealId: current.sealProgress?.lastSealId ?? null,
+    sealEvents: getUserSealEvents(user.id).slice(-6),
     streak: current.progress.streak,
     completedPractices: current.sessions.length,
     lastPracticeDate: current.progress.lastPracticeDate,
@@ -98,11 +108,16 @@ export function localRanking(currentUserId) {
     name: summary.user.name,
     title: summary.user.login,
     xp: summary.xp,
+    sparks: summary.sparks,
     streak: summary.streak,
     cards: summary.cards.length,
     portals: summary.portals.length,
     codes: summary.medals.length,
+    seals: summary.unlockedSeals.length,
+    tokens: summary.tokenBalance,
+    stage: summary.currentStage,
+    score: summary.score,
     current: summary.user.id === currentUserId,
   }))
-  return [...mockPlayers, ...localPlayers].map((item) => ({ ...item, score: scoreOf(item) })).sort((a, b) => b.score - a.score)
+  return [...mockPlayers.map((item) => ({ ...item, seals: item.portals, tokens: 0, stage: 'D7', score: item.xp + item.streak * 50 + item.cards * 25 + item.portals * 200 + item.codes * 150 })), ...localPlayers].sort((a, b) => b.score - a.score)
 }

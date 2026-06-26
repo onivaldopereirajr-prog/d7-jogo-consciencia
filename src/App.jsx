@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { codexCards, dualBridges, hebrewLetters, hebrewWords, sanskritItems } from './data/codex.js'
-import { codes, dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
+import { dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
 import {
   cardById,
   completePractice,
@@ -12,11 +12,12 @@ import {
   playerLevel,
   recordVisit,
   recordWord,
-  scoreOf,
   studyCard,
 } from './utils/gameState.js'
 import { getCurrentUser, loginUser, logout, registerUser } from './services/localAuth.js'
 import { copyLocalReport, downloadLocalReport } from './services/localReports.js'
+import { sealDefinitions } from './data/seals.js'
+import { cancelSealAttempt, completeSealChallenge, getRankingScore, getRequiredGateScore, getSealAttempt, getSealGateScore, getSealStatus, requirementText, startSealAttempt, syncSealAttempt, markSealAbsence } from './services/sealEngine.js'
 import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgressIfSafe, resetUserProgress, saveUserProgress } from './services/localProgress.js'
 import './App.css'
 
@@ -87,7 +88,7 @@ function ProgressLine({ value, max, label = 'Progresso' }) {
   )
 }
 
-function SymbolCard({ card, unlocked, studied, onStudy }) {
+function SymbolCard({ card, unlocked, studied, onStudy, hint }) {
   return (
     <article className={`symbol-card ${unlocked ? 'unlocked' : 'locked'}`}>
       <div className="symbol-top">
@@ -96,21 +97,9 @@ function SymbolCard({ card, unlocked, studied, onStudy }) {
       </div>
       <div className="glyph">{unlocked ? card.symbol : '✧'}</div>
       <h3>{unlocked ? card.transliteration : 'Carta selada'}</h3>
-      <p>{unlocked ? `${card.meaning}. ${card.explanation}` : 'Desbloqueie pela prática, missões e portais.'}</p>
+      <p>{unlocked ? `${card.meaning}. ${card.explanation}` : hint}</p>
       {unlocked && <small>Uso no jogo: {card.gameUse}</small>}
       {unlocked && <button type="button" className="mini-action" onClick={() => onStudy(card.id)}>{studied ? 'Revisar carta' : 'Estudar carta'}</button>}
-    </article>
-  )
-}
-
-function CodeCard({ code, unlocked }) {
-  return (
-    <article className={`code-card ${unlocked ? 'unlocked' : ''}`}>
-      <div className="code-glyph">{unlocked ? code.glyph : '•••'}</div>
-      <div>
-        <h3>{code.name}</h3>
-        <p>{unlocked ? 'Chave ativa na Sala dos Códigos.' : code.unlock}</p>
-      </div>
     </article>
   )
 }
@@ -121,6 +110,112 @@ function formatTime(seconds) {
   return `${minutes}:${rest}`
 }
 
+
+
+function cardUnlockHint(card) {
+  const hints = {
+    'he-alef': 'Requer: Código Alef-Om.',
+    'sa-om': 'Requer: Código Alef-Om ou primeira prática.',
+    'hw-or': 'Requer: Código Or-Śānti.',
+    'sa-shanti': 'Requer: Código Or-Śānti.',
+    'hw-ruach': 'Requer: Código Ruach-Prāṇa + 2 práticas.',
+    'sa-prana': 'Requer: Código Ruach-Prāṇa + 2 práticas.',
+    'hw-emet': 'Requer: Código Emet-Dhyāna.',
+    'sa-dhyana': 'Requer: Código Emet-Dhyāna.',
+    'he-zayin': 'Requer: Selo D7.',
+    'he-mem': 'Requer: Selo do Retorno.',
+    'he-shin': 'Requer: Selo da Permanência.',
+    'he-tav': 'Requer: Selo do Ciclo Completo.',
+  }
+  return hints[card.id] ?? 'Desbloqueie concluindo práticas, selos e desafios do Códice.'
+}
+
+function sealStatusLabel(status) {
+  return {
+    locked: 'Bloqueado',
+    cooldown: 'Em cooldown',
+    available: 'Disponível',
+    running: 'Em andamento',
+    challenge_pending: 'Desafio pendente',
+    unlocked: 'Desbloqueado',
+    failed: 'Falhou por ausência',
+  }[status] ?? 'Bloqueado'
+}
+
+function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSelectSeal, onStartSeal, onCancelSeal, onChallengeChange, onCompleteChallenge }) {
+  const gateScore = getSealGateScore(state)
+  const activeSeal = sealDefinitions.find((seal) => seal.id === activeSealId) ?? sealDefinitions[0]
+  const activeAttempt = getSealAttempt(state, activeSeal.id)
+  const remaining = activeAttempt?.status === 'running' ? Math.max(0, Math.ceil((new Date(activeAttempt.expectedEndAt).getTime() - tick) / 1000)) : 0
+  const activeStatus = getSealStatus(state, activeSeal)
+
+  return (
+    <section className="seal-room" aria-labelledby="seal-room-title">
+      <div className="seal-room-head">
+        <div>
+          <span className="overline">Sala dos Selos</span>
+          <h3 id="seal-room-title">Chaves, desafios e D7 Tokens</h3>
+          <p>D7T é token simbólico interno do MVP. Não possui valor financeiro, saque, venda ou transferência.</p>
+        </div>
+        <div className="token-pill"><strong>{state.tokenBalance ?? 0}</strong><span>D7T</span></div>
+      </div>
+      <div className="seal-grid">
+        {sealDefinitions.map((seal) => {
+          const status = getSealStatus(state, seal)
+          return (
+            <button key={seal.id} type="button" className={activeSeal.id === seal.id ? 'seal-card active' : `seal-card ${status}`} onClick={() => onSelectSeal(seal.id)}>
+              <span>{sealStatusLabel(status)}</span>
+              <strong>{seal.name}</strong>
+              <small>{seal.durationSeconds / 60} min · +{seal.rewardTokens} D7T</small>
+              <em>Presença {gateScore}/{getRequiredGateScore(seal.order)}</em>
+            </button>
+          )
+        })}
+      </div>
+      <article className="seal-detail-panel">
+        <div className="seal-detail-main">
+          <span className={`seal-state ${activeStatus}`}>{sealStatusLabel(activeStatus)}</span>
+          <h3>{activeSeal.name}</h3>
+          <p>{activeSeal.description}</p>
+          <div className="seal-rewards">
+            <span>{activeSeal.durationSeconds / 60} min</span>
+            <span>+{activeSeal.rewardXp} XP</span>
+            <span>+{activeSeal.rewardSparks} Centelhas</span>
+            <span>+{activeSeal.rewardRankingPoints} ranking</span>
+            <span>+{activeSeal.rewardTokens} D7T</span>
+          </div>
+          <p className="seal-requirement">Requisito: {requirementText(state, activeSeal)}</p>
+          <p className="seal-requirement">Pontuação de presença: {gateScore} / {getRequiredGateScore(activeSeal.order)}</p>
+          {sealMessage && <div className={`auth-message ${sealMessage.type}`} role="status">{sealMessage.text}</div>}
+        </div>
+        <div className="seal-challenge-panel">
+          <div className="seal-timer" role="timer" aria-live="polite">{formatTime(remaining || activeSeal.durationSeconds)}</div>
+          {activeAttempt?.status === 'running' && <p>O selo exige presença ativa. Volte para concluir com integridade.</p>}
+          {activeStatus === 'available' || activeStatus === 'failed' ? <button type="button" className="primary-action" onClick={() => onStartSeal(activeSeal.id)}>Iniciar selo</button> : null}
+          {activeAttempt?.status === 'running' && <button type="button" className="ghost-action" onClick={() => onCancelSeal(activeSeal.id)}>Cancelar tentativa</button>}
+          {activeAttempt?.status === 'challenge_pending' && (
+            <div className="seal-challenge-form">
+              <label htmlFor="seal-challenge">{activeSeal.challengePrompt}</label>
+              {activeSeal.challengeType === 'choice' ? (
+                <select id="seal-challenge" value={challengeValue} onChange={(event) => onChallengeChange(event.target.value)}>
+                  <option value="">Selecione</option>
+                  {activeSeal.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              ) : activeSeal.challengeType === 'practice_done' || activeSeal.challengeType === 'active_tab' ? (
+                <p className="seal-requirement">{activeSeal.challengePrompt}</p>
+              ) : (
+                <textarea id="seal-challenge" value={challengeValue} onChange={(event) => onChallengeChange(event.target.value)} rows="4" />
+              )}
+              <button type="button" className="complete-action" onClick={() => onCompleteChallenge(activeSeal.id)}>Concluir desafio</button>
+            </div>
+          )}
+          {activeStatus === 'unlocked' && <button type="button" className="mini-action" disabled>Selo desbloqueado</button>}
+          {['locked', 'cooldown'].includes(activeStatus) && <button type="button" className="mini-action" disabled>{activeStatus === 'cooldown' ? 'Aguardando integração' : 'Ver requisito'}</button>}
+        </div>
+      </article>
+    </section>
+  )
+}
 
 function AuthScreen({ mode, message, onModeChange, onLogin, onRegister }) {
   const [loginData, setLoginData] = useState({ login: '', password: '' })
@@ -216,9 +311,12 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
               <span>{summary.sparks} Centelhas</span>
               <span>{summary.streak} dias</span>
               <span>{summary.completedPractices} práticas</span>
+              <span>{summary.unlockedSeals.length} selos</span>
+              <span>{summary.tokenBalance} D7T</span>
+              <span>{summary.score} score</span>
             </div>
-            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'}</p>
-            <small>Cartas: {summary.cards.length} · Medalhas/Códigos: {summary.medals.length} · Portais: {summary.portals.length}</small>
+            <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Último selo: {summary.lastSealId ?? 'pendente'}</p>
+            <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Avisos: {summary.integrityWarnings}</small>
           </article>
         ))}
         {summaries.length === 0 && <p className="empty-state">Nenhum usuário local cadastrado neste navegador.</p>}
@@ -256,6 +354,10 @@ function App() {
     return { journeyCode: getJourneyCode(loaded.progress), remaining: loadedStage.minutes * 60, status: 'idle' }
   })
   const [word, setWord] = useState('')
+  const [activeSealId, setActiveSealId] = useState(sealDefinitions[0].id)
+  const [challengeValue, setChallengeValue] = useState('')
+  const [sealMessage, setSealMessage] = useState(null)
+  const [tick, setTick] = useState(() => Date.now())
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
@@ -266,7 +368,7 @@ function App() {
   const timerProgress = Math.round(((totalSeconds - remaining) / totalSeconds) * 100)
   const hebrewUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'hebraica').length
   const sanskritUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
-  const currentScore = scoreOf({ xp: state.xp, streak: state.progress.streak, cards: state.unlockedCards.length, portals: state.openedPortals.length, codes: state.unlockedCodes.length })
+  const currentScore = getRankingScore(state)
   const phrase = dayPhrases[(state.progress.day - 1) % dayPhrases.length]
   const rank = localRanking(currentUser?.id)
 
@@ -285,6 +387,44 @@ function App() {
     }, 1000)
     return () => clearInterval(interval)
   }, [journeyCode, timerStatus, totalSeconds])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(Date.now())
+      setState((current) => syncSealAttempt(current, activeSealId))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [activeSealId])
+
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.hidden) {
+        setState((current) => {
+          const attempt = getSealAttempt(current, activeSealId)
+          if (!attempt || attempt.status !== 'running') return current
+          return {
+            ...current,
+            sealProgress: {
+              ...current.sealProgress,
+              attempts: {
+                ...current.sealProgress.attempts,
+                [activeSealId]: { ...attempt, visibilityLostAt: new Date().toISOString() },
+              },
+            },
+          }
+        })
+        return
+      }
+      setState((current) => {
+        const attempt = getSealAttempt(current, activeSealId)
+        if (!attempt?.visibilityLostAt) return current
+        const seconds = Math.round((Date.now() - new Date(attempt.visibilityLostAt).getTime()) / 1000)
+        return markSealAbsence(current, activeSealId, seconds)
+      })
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [activeSealId])
 
   function enterUser(user, successMessage) {
     const migration = migrateLegacyProgressIfSafe(user)
@@ -329,6 +469,35 @@ function App() {
   function handleDownloadReport() {
     const result = downloadLocalReport()
     setPanelMessage({ type: result.ok ? 'success' : 'error', text: result.message })
+  }
+
+  function handleSelectSeal(sealId) {
+    setActiveSealId(sealId)
+    setChallengeValue('')
+    setSealMessage(null)
+    setState((current) => syncSealAttempt(current, sealId))
+  }
+
+  function handleStartSeal(sealId) {
+    setState((current) => startSealAttempt(current, sealId))
+    setChallengeValue('')
+    setSealMessage({ type: 'success', text: 'Selo iniciado. Mantenha presença ativa até o fim do timer.' })
+  }
+
+  function handleCancelSeal(sealId) {
+    setState((current) => cancelSealAttempt(current, sealId))
+    setSealMessage({ type: 'success', text: 'Tentativa cancelada sem recompensa.' })
+  }
+
+  async function handleCompleteSeal(sealId) {
+    const result = await completeSealChallenge(state, currentUser.id, sealId, challengeValue)
+    if (!result.ok) {
+      setSealMessage({ type: 'error', text: result.message })
+      return
+    }
+    setState(result.progress)
+    setChallengeValue('')
+    setSealMessage({ type: 'success', text: result.message })
   }
 
   function navigate(view) {
@@ -533,19 +702,16 @@ function App() {
             <div className="bridge-grid">
               {dualBridges.map((bridge) => <article key={bridge.id} className="bridge-card"><strong>{bridge.formula}</strong><h3>{bridge.title}</h3><p>{bridge.meaning}. {bridge.explanation}</p></article>)}
             </div>
+            <SealRoom state={state} activeSealId={activeSealId} challengeValue={challengeValue} sealMessage={sealMessage} tick={tick} onSelectSeal={handleSelectSeal} onStartSeal={handleStartSeal} onCancelSeal={handleCancelSeal} onChallengeChange={setChallengeValue} onCompleteChallenge={handleCompleteSeal} />
             <div className="codex-layout">
               <div>
                 <h3 className="subhead">Trilha Hebraica</h3>
-                <div className="symbol-grid">{[...hebrewLetters, ...hebrewWords].map((card) => <SymbolCard key={card.id} card={card} unlocked={state.unlockedCards.includes(card.id)} studied={state.studiedCards.includes(card.id)} onStudy={study} />)}</div>
+                <div className="symbol-grid">{[...hebrewLetters, ...hebrewWords].map((card) => <SymbolCard key={card.id} card={card} unlocked={state.unlockedCards.includes(card.id)} studied={state.studiedCards.includes(card.id)} onStudy={study} hint={cardUnlockHint(card)} />)}</div>
               </div>
               <div>
                 <h3 className="subhead">Trilha Sânscrita</h3>
-                <div className="symbol-grid">{sanskritItems.map((card) => <SymbolCard key={card.id} card={card} unlocked={state.unlockedCards.includes(card.id)} studied={state.studiedCards.includes(card.id)} onStudy={study} />)}</div>
+                <div className="symbol-grid">{sanskritItems.map((card) => <SymbolCard key={card.id} card={card} unlocked={state.unlockedCards.includes(card.id)} studied={state.studiedCards.includes(card.id)} onStudy={study} hint={cardUnlockHint(card)} />)}</div>
               </div>
-            </div>
-            <div className="code-section">
-              <SectionTitle eyebrow="Sala dos Códigos" title="Chaves e Selos" />
-              <div className="code-grid">{codes.map((code) => <CodeCard key={code.id} code={code} unlocked={state.unlockedCodes.includes(code.id)} />)}</div>
             </div>
           </section>
         )}
@@ -560,7 +726,7 @@ function App() {
                   <strong>#{index + 1}</strong>
                   <div><span>{player.name}</span><small>{player.title}</small></div>
                   <p>{player.score} score</p>
-                  <small>{player.xp} XP · {player.streak} dias · {player.cards} cartas · {player.portals} portais · {player.codes} códigos</small>
+                  <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T</small>
                 </article>
               ))}
             </div>
@@ -589,7 +755,11 @@ function App() {
                 <StatCard label="Missões" value={state.completedMissions.length} detail="ativas concluídas" />
                 <StatCard label="Portais" value={state.openedPortals.length} detail="4 possíveis" />
                 <StatCard label="Códigos" value={state.unlockedCodes.length} detail="8 possíveis" />
+                <StatCard label="D7 Tokens" value={state.tokenBalance ?? 0} detail="simbólicos MVP" />
+                <StatCard label="Selos" value={state.sealProgress.unlockedSeals.length} detail="8 possíveis" />
+                <StatCard label="Ranking" value={currentScore} detail="score local" />
               </div>
+              <p className="token-disclaimer">D7T é um token simbólico interno desta versão MVP. Não possui valor financeiro.</p>
               <div className="track-progress">
                 <p>Hebraico <strong>{hebrewUnlocked}</strong></p><ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Progresso da trilha hebraica" />
                 <p>Sânscrito <strong>{sanskritUnlocked}</strong></p><ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Progresso da trilha sânscrita" />

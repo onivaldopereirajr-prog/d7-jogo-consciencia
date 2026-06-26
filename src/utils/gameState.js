@@ -53,6 +53,13 @@ export function makeInitialState(profile = {}) {
       { id: 'dual', name: 'Biblioteca Dual', members: 12, pulse: 'Estudo', focus: 'Códice Dual', seal: '✦' },
     ],
     lastUnlocks: [],
+    tokenBalance: 0,
+    totalTokenEarned: 0,
+    tokenLedger: [],
+    rankingPoints: 0,
+    presenceBonusTotal: 0,
+    integrityWarnings: 0,
+    sealProgress: { unlockedSeals: [], completedChallenges: [], attempts: {}, totalFocusSeconds: 0, lastCompletedAt: null, lastSealId: null },
   }
 }
 
@@ -81,6 +88,8 @@ export function normalizeState(raw) {
   daily.word = Boolean(daily.word)
   daily.study = Boolean(daily.study)
 
+  const sealProgress = raw.sealProgress && typeof raw.sealProgress === 'object' ? raw.sealProgress : {}
+
   return {
     ...base,
     ...raw,
@@ -99,6 +108,20 @@ export function normalizeState(raw) {
     codex: arrayOr(raw.codex).length ? raw.codex : base.codex,
     sessions: arrayOr(raw.sessions, base.sessions),
     lastUnlocks: unique(arrayOr(raw.lastUnlocks, base.lastUnlocks)).slice(0, 5),
+    tokenBalance: Math.max(numberOr(raw.tokenBalance, base.tokenBalance), 0),
+    totalTokenEarned: Math.max(numberOr(raw.totalTokenEarned, base.totalTokenEarned), 0),
+    tokenLedger: arrayOr(raw.tokenLedger, base.tokenLedger).filter((entry) => entry && typeof entry === 'object'),
+    rankingPoints: Math.max(numberOr(raw.rankingPoints, base.rankingPoints), 0),
+    presenceBonusTotal: Math.max(numberOr(raw.presenceBonusTotal, base.presenceBonusTotal), 0),
+    integrityWarnings: Math.max(numberOr(raw.integrityWarnings, base.integrityWarnings), 0),
+    sealProgress: {
+      ...base.sealProgress,
+      ...sealProgress,
+      unlockedSeals: unique(arrayOr(sealProgress.unlockedSeals, base.sealProgress.unlockedSeals)),
+      completedChallenges: unique(arrayOr(sealProgress.completedChallenges, base.sealProgress.completedChallenges)),
+      attempts: sealProgress.attempts && typeof sealProgress.attempts === 'object' && !Array.isArray(sealProgress.attempts) ? sealProgress.attempts : {},
+      totalFocusSeconds: Math.max(numberOr(sealProgress.totalFocusSeconds, 0), 0),
+    },
   }
 }
 

@@ -94,6 +94,21 @@ No Perfil, o botão de reset reinicia apenas o progresso do usuário logado e pe
 
 A área `Acompanhamento` permite copiar ou exportar um relatório JSON com usuários locais, etapa, XP, centelhas, práticas, cartas, medalhas/códigos e histórico. O relatório não inclui senha, hash ou salt.
 
+
+## Sala dos Selos, Ranking e D7 Tokens
+
+A Sala dos Selos expande o Códice Dual D7 com oito selos progressivos. Cada selo possui timer de presença, requisito, cooldown, desafio e recompensa. Os selos liberam cartas, XP, centelhas, pontos de ranking e D7 Tokens simbólicos.
+
+- Cada selo exige presença ativa durante o timer.
+- Cada selo exige um desafio textual, confirmação, escolha ou prática concluída.
+- A liberação usa pontuação de presença, cooldown, selo anterior e histórico do jogador.
+- O ranking local considera XP, centelhas, cartas, selos, desafios, D7T, sequência e tempo em selos.
+- O sistema mantém ledger local para evitar recompensa duplicada por selo.
+
+D7T é um token simbólico interno do MVP. Não é criptomoeda, não usa blockchain, não possui valor financeiro, não pode ser sacado, vendido, comprado, convertido ou transferido. Ele existe apenas como recurso de gamificação local e preparação conceitual para uma futura integração com login real e banco de dados.
+
+Como o MVP ainda usa LocalStorage, a proteção anti-burla dificulta apenas manipulação casual. Segurança robusta exigirá backend, autenticação real, banco de dados e validação no servidor.
+
 ## Status do projeto
 
 O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a experiência principal no navegador, com progressão local, timer, recompensas, missões, portais, Códice Dual e ranking local por usuário no navegador.

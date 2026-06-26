@@ -1196,11 +1196,231 @@ button:not(:disabled):active {
   margin-top: 4px;
 }
 
+
+.seal-room {
+  margin: 24px 0;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid rgba(32, 211, 238, 0.2);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(32, 211, 238, 0.07), rgba(255, 255, 255, 0.025));
+  box-shadow: var(--shadow);
+}
+
+.seal-room-head,
+.seal-detail-panel,
+.local-user-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.seal-room-head h3,
+.seal-detail-panel h3 {
+  margin: 4px 0 8px;
+}
+
+.token-pill {
+  min-width: 96px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.token-pill strong {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.token-pill span {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.seal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.seal-card {
+  min-height: 132px;
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: left;
+  cursor: pointer;
+}
+
+.seal-card strong,
+.seal-card span,
+.seal-card small,
+.seal-card em {
+  display: block;
+}
+
+.seal-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.seal-card strong {
+  color: var(--text-strong);
+}
+
+.seal-card em {
+  color: var(--cyan);
+  font-style: normal;
+  font-size: 0.8rem;
+}
+
+.seal-card.active,
+.seal-card.available,
+.seal-card.challenge_pending {
+  border-color: rgba(32, 211, 238, 0.42);
+  background: linear-gradient(135deg, rgba(32, 211, 238, 0.12), rgba(212, 175, 55, 0.04));
+}
+
+.seal-card.unlocked {
+  border-color: rgba(72, 211, 136, 0.44);
+}
+
+.seal-card.locked,
+.seal-card.cooldown {
+  opacity: 0.68;
+}
+
+.seal-detail-panel {
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.seal-detail-main,
+.seal-challenge-panel {
+  min-width: 0;
+}
+
+.seal-detail-main {
+  flex: 1 1 auto;
+}
+
+.seal-challenge-panel {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.seal-state {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.seal-state.unlocked { color: var(--green); }
+.seal-state.running,
+.seal-state.challenge_pending { color: var(--cyan); }
+.seal-state.failed { color: var(--danger); }
+
+.seal-rewards,
+.local-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.seal-rewards span,
+.local-metrics span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.seal-requirement,
+.token-disclaimer {
+  color: var(--text);
+}
+
+.seal-timer {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(32, 211, 238, 0.25);
+  border-radius: 8px;
+  color: var(--text-strong);
+  background: radial-gradient(circle, rgba(32, 211, 238, 0.14), rgba(255, 255, 255, 0.025));
+  font-size: clamp(2.2rem, 8vw, 4rem);
+  font-weight: 950;
+}
+
+.seal-challenge-form {
+  display: grid;
+  gap: 10px;
+}
+
+.seal-challenge-form label {
+  color: var(--text-strong);
+  font-weight: 800;
+}
+
+.seal-challenge-form textarea,
+.seal-challenge-form select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-strong);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.codex-visual-band > img {
+  min-height: 180px;
+}
+
+.featured-card-art {
+  min-height: 160px;
+}
+
+.symbol-card {
+  min-height: 220px;
+}
+
+.glyph {
+  width: 60px;
+}
+
+.profile-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 1260px) {
   .journey-board,
   .portal-grid,
   .circle-grid,
-  .code-grid {
+  .code-grid,
+  .seal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1322,8 +1542,18 @@ button:not(:disabled):active {
   .code-grid,
   .circle-grid,
   .profile-stats,
-  .featured-card-grid {
+  .featured-card-grid,
+  .seal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .seal-room-head,
+  .seal-detail-panel {
+    display: grid;
+  }
+
+  .seal-challenge-panel {
+    width: 100%;
   }
 
   .week-portal-art,
@@ -1361,7 +1591,9 @@ button:not(:disabled):active {
   .portal-card,
   .bridge-card,
   .circle-card,
-  .week-card {
+  .week-card,
+  .seal-detail-panel,
+  .seal-card {
     padding: 16px;
   }
 

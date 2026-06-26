@@ -1,16 +1,77 @@
-# React + Vite
+# D7: O Jogo da Consciência
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+D7 é um game web experimental de presença, foco, disciplina diária e progressão simbólica. O jogador percorre uma jornada de A1 até D7, usando práticas curtas, ranking, missões, portais, recompensas e um Códice Dual inspirado em hebraico e sânscrito.
 
-Currently, two official plugins are available:
+## Visão geral
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+O jogo funciona como uma jornada progressiva de 4 semanas. Cada semana possui 7 dias, formando o caminho completo de A1 até D7.
 
-## React Compiler
+- Semana A: 1 minuto
+- Semana B: 2 minutos
+- Semana C: 3 minutos
+- Semana D: 4 minutos
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+A regra central é a constância. O jogador pratica diariamente e avança um dia por vez. Se esquecer um dia, a jornada retorna para A1, reforçando a ideia de recomeço consciente e disciplina diária.
 
-## Expanding the ESLint configuration
+## Funcionalidades principais
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Jornada A1 até D7
+- Modo Nada com timer
+- Sistema de XP e Centelhas
+- Códice Dual D7
+- Trilha hebraica com letras, palavras e valores simbólicos
+- Trilha sânscrita com sons, mantras e estados de consciência
+- Portais A, B, C e D
+- Sala dos Códigos
+- Missões diárias e semanais
+- Ranking local com score expandido
+- Perfil do jogador
+- Persistência via LocalStorage
+
+## Códice Dual D7
+
+O Códice Dual D7 é uma criação simbólica do jogo. Ele usa o hebraico como trilha de letras, números, palavras e códigos, e o sânscrito como trilha de sons, mantras e estados simbólicos.
+
+Essa união é apresentada de forma lúdica, contemplativa e respeitosa. O projeto não afirma equivalência histórica direta entre as tradições, nem sugere que hebraico e sânscrito tenham a mesma origem ou o mesmo sistema espiritual. No D7, elas funcionam como linguagens simbólicas distintas dentro de uma mecânica de jogo sobre presença, foco e progressão interior.
+
+## Tecnologias utilizadas
+
+- React
+- Vite
+- JavaScript
+- CSS puro
+- LocalStorage
+
+## Como rodar localmente
+
+```bash
+npm install
+npm run dev
+```
+
+Depois, acesse a URL local indicada pelo Vite no terminal.
+
+## Como gerar build
+
+```bash
+npm run build
+```
+
+O build de produção será gerado na pasta `dist`.
+
+## Status do projeto
+
+O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a experiência principal no navegador, com progressão local, timer, recompensas, missões, portais, Códice Dual e ranking mockado.
+
+## Próximos passos planejados
+
+- Melhorar onboarding
+- Criar sistema de temporadas
+- Melhorar animações
+- Preparar deploy no GitHub Pages
+- Evoluir a experiência de prática
+- Criar mais conteúdos para o Códice
+
+## Observação ética
+
+O D7 é um protótipo educativo e experimental. Ele não substitui acompanhamento psicológico, médico ou terapêutico. As práticas propostas são curtas, simbólicas e voltadas para uma experiência lúdica de foco e presença.

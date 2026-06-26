@@ -38,34 +38,50 @@ function formatPhaseReward(phase) {
   return [`+${reward.xp ?? 0} XP`, `+${reward.sparks ?? 0} Centelhas`, `+${reward.d7t ?? 0} D7T`].join(' · ')
 }
 
-export default function InitiationLibrary({ progress, onStudyCard }) {
-  const stats = getLibraryStudyStats(progress)
+export default function InitiationLibrary({ progress, onStudyCard, onNavigate }) {
+  const safeProgress = progress ?? {}
+  const stats = getLibraryStudyStats(safeProgress)
   const [selectedTradition, setSelectedTradition] = useState('all')
   const [selectedModuleId, setSelectedModuleId] = useState(() => stats.completedModules[0] ?? initiationModules[0]?.id ?? 'codex-introduction')
   const [glossaryQuery, setGlossaryQuery] = useState('')
 
-  const recommended = getRecommendedLibraryCard(progress)
+  const recommended = getRecommendedLibraryCard(safeProgress)
   const recommendedTitle = recommended ? `${recommended.title} · ${recommended.summary}` : 'Tudo que está disponível já foi estudado nesta camada.'
 
-  const focusedModuleId = visibleModules.some((module) => module.id === selectedModuleId) ? selectedModuleId : (visibleModules[0]?.id ?? initiationModules[0]?.id ?? 'codex-introduction')
-  const selectedModule = initiationModules.find((module) => module.id === focusedModuleId) ?? initiationModules[0]
-  const selectedModuleStatus = selectedModule ? getLibraryModuleStatus(progress, selectedModule.id) : null
-  const selectedPhase = selectedModule?.phaseId ? libraryPhasesById[selectedModule.phaseId] : null
-  const selectedPhaseStatus = selectedPhase ? getLibraryPhaseStatus(progress, selectedPhase.id) : null
-
   const visibleModules = useMemo(() => {
-    return initiationModules.filter((module) => selectedTradition === 'all' || module.tradition === selectedTradition)
+    const modules = Array.isArray(initiationModules) ? initiationModules : []
+    return modules.filter((module) => selectedTradition === 'all' || module.tradition === selectedTradition)
   }, [selectedTradition])
 
   const visibleCards = useMemo(() => {
-    return studyableLibraryCards.filter((card) => selectedTradition === 'all' || card.tradition === selectedTradition)
+    const cards = Array.isArray(studyableLibraryCards) ? studyableLibraryCards : []
+    return cards.filter((card) => selectedTradition === 'all' || card.tradition === selectedTradition)
   }, [selectedTradition])
 
   const visibleGlossary = useMemo(() => {
+    const glossary = Array.isArray(libraryGlossary) ? libraryGlossary : []
     const query = glossaryQuery.trim().toLowerCase()
-    if (!query) return libraryGlossary
-    return libraryGlossary.filter((entry) => `${entry.term} ${entry.definition}`.toLowerCase().includes(query))
+    if (!query) return glossary
+    return glossary.filter((entry) => `${entry.term} ${entry.definition}`.toLowerCase().includes(query))
   }, [glossaryQuery])
+
+  const hasVisibleModules = visibleModules.length > 0
+  const fallbackModuleId = visibleModules[0]?.id ?? initiationModules[0]?.id ?? 'codex-introduction'
+  const focusedModuleId = hasVisibleModules && visibleModules.some((module) => module.id === selectedModuleId) ? selectedModuleId : fallbackModuleId
+  const selectedModule = initiationModules.find((module) => module.id === focusedModuleId) ?? initiationModules[0] ?? null
+  const selectedModuleStatus = selectedModule ? getLibraryModuleStatus(safeProgress, selectedModule.id) : null
+  const selectedPhase = selectedModule?.phaseId ? libraryPhasesById?.[selectedModule.phaseId] : null
+  const selectedPhaseStatus = selectedPhase ? getLibraryPhaseStatus(safeProgress, selectedPhase.id) : null
+
+  function navigateTo(view) {
+    if (typeof onNavigate === 'function') {
+      onNavigate(view)
+      return
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('d7:navigate', { detail: { view } }))
+    }
+  }
 
   function handleStudyRecommended() {
     if (!recommended) return
@@ -88,14 +104,14 @@ export default function InitiationLibrary({ progress, onStudyCard }) {
       </div>
 
       <div className="library-phases">
-        {Object.values(libraryPhasesById).map((phase) => {
+        {Object.values(libraryPhasesById ?? {}).map((phase) => {
           const completed = selectedModule?.phaseId === phase.id ? selectedPhaseStatus?.completed : stats.completedPhases.includes(phase.id)
           return (
             <article key={phase.id} className={completed ? 'library-phase-card completed' : 'library-phase-card'}>
               <span>{phase.title}</span>
               <strong>{phase.subtitle}</strong>
               <p>{phase.summary}</p>
-              <small>{progressLabel(phase.requiredCards.filter((id) => progress.studiedCards?.includes(id)).length, phase.requiredCards.length)} · {formatPhaseReward(phase)}</small>
+              <small>{progressLabel(phase.requiredCards.filter((id) => safeProgress.studiedCards?.includes(id)).length, phase.requiredCards.length)} · {formatPhaseReward(phase)}</small>
             </article>
           )
         })}
@@ -146,6 +162,21 @@ export default function InitiationLibrary({ progress, onStudyCard }) {
               </div>
             </StudyCard>
           )}
+          {!selectedModule && (
+            <article className="library-empty-state">
+              <span className="overline">Biblioteca Iniciática D7</span>
+              <h3>A biblioteca foi carregada, mas nenhum módulo foi encontrado.</h3>
+              <p>Verifique os dados de estudo do Códice. O restante do app continua disponível.</p>
+              <div className="library-empty-state__actions">
+                <button type="button" className="secondary-action" onClick={() => navigateTo('home')}>
+                  Voltar para Home
+                </button>
+                <button type="button" className="secondary-action" onClick={() => navigateTo('codice')}>
+                  Abrir Códice
+                </button>
+              </div>
+            </article>
+          )}
           {selectedPhase && selectedPhaseStatus && (
             <StudyCard
               badge="Trilha"
@@ -166,7 +197,7 @@ export default function InitiationLibrary({ progress, onStudyCard }) {
 
         <div className="library-module-grid">
           {visibleModules.map((module) => {
-            const moduleStatus = getLibraryModuleStatus(progress, module.id)
+            const moduleStatus = getLibraryModuleStatus(safeProgress, module.id)
             const selected = module.id === selectedModuleId
             return (
               <StudyCard
@@ -187,6 +218,12 @@ export default function InitiationLibrary({ progress, onStudyCard }) {
               />
             )
           })}
+          {!hasVisibleModules && (
+            <article className="library-empty-state library-empty-state--grid">
+              <h3>Nenhum módulo disponível nesta filtragem.</h3>
+              <p>Troque o filtro de tradição para visualizar a biblioteca.</p>
+            </article>
+          )}
         </div>
       </div>
 
@@ -201,7 +238,7 @@ export default function InitiationLibrary({ progress, onStudyCard }) {
         </div>
         <div className="library-card-grid">
           {visibleCards.map((card) => {
-            const status = getLibraryCardStatus(progress, card.id)
+            const status = getLibraryCardStatus(safeProgress, card.id)
             const unlocked = status !== 'locked'
             const studied = status === 'studied'
             return (

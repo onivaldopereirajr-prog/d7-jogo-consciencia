@@ -1077,7 +1077,7 @@ function App() {
         )}
 
         {activeView === 'biblioteca' && (
-          <InitiationLibrary progress={state} onStudyCard={study} />
+          <InitiationLibrary progress={state} onStudyCard={study} onNavigate={navigate} />
         )}
 
         {activeView === 'ranking' && (

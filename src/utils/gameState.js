@@ -58,6 +58,10 @@ export function makeInitialState(profile = {}) {
     tokenLedger: [],
     rankingPoints: 0,
     presenceBonusTotal: 0,
+    presenceCounter108: 0,
+    totalPresenceTicks: 0,
+    totalTimersCompleted: 0,
+    lastPresenceTickAt: null,
     integrityWarnings: 0,
     sealProgress: { unlockedSeals: [], completedChallenges: [], attempts: {}, totalFocusSeconds: 0, lastCompletedAt: null, lastSealId: null },
     symbolicMaps: [],
@@ -117,6 +121,10 @@ export function normalizeState(raw) {
     rankingPoints: Math.max(numberOr(raw.rankingPoints, base.rankingPoints), 0),
     presenceBonusTotal: Math.max(numberOr(raw.presenceBonusTotal, base.presenceBonusTotal), 0),
     integrityWarnings: Math.max(numberOr(raw.integrityWarnings, base.integrityWarnings), 0),
+    presenceCounter108: Math.min(108, Math.max(numberOr(raw.presenceCounter108, base.presenceCounter108), 0)),
+    totalPresenceTicks: Math.max(numberOr(raw.totalPresenceTicks, base.totalPresenceTicks), 0),
+    totalTimersCompleted: Math.max(numberOr(raw.totalTimersCompleted, base.totalTimersCompleted), 0),
+    lastPresenceTickAt: typeof raw.lastPresenceTickAt === 'string' ? raw.lastPresenceTickAt : base.lastPresenceTickAt,
     sealProgress: {
       ...base.sealProgress,
       ...sealProgress,
@@ -200,6 +208,20 @@ function nextCardsForSession(totalSessions, completedDays) {
   return ids
 }
 
+export function recordPresenceTick(state, amount = 1, at = new Date().toISOString()) {
+  const current = ensureToday(state)
+  const increment = Math.max(0, Number(amount) || 0)
+  if (!increment) return current
+  const nextTicks = (current.totalPresenceTicks ?? 0) + increment
+  return {
+    ...current,
+    presenceCounter108: Math.min(108, (current.presenceCounter108 ?? 0) + increment),
+    totalPresenceTicks: nextTicks,
+    totalTimersCompleted: (current.totalTimersCompleted ?? 0) + 1,
+    lastPresenceTickAt: at,
+  }
+}
+
 export function completePractice(state) {
   const current = ensureToday(state)
   if (current.daily.practice) return unlockDerived(current, ['Prática de hoje já registrada'])
@@ -211,7 +233,8 @@ export function completePractice(state) {
   const xp = 45 + stage.minutes * 20
   const sparks = 4 + stage.minutes
   const unlockedCards = unique([...current.unlockedCards, ...nextCardsForSession(totalSessions, completedDays)])
-  const next = {
+  const completedAt = new Date().toISOString()
+  const next = recordPresenceTick({
     ...current,
     xp: current.xp + xp,
     sparks: current.sparks + sparks,
@@ -220,7 +243,7 @@ export function completePractice(state) {
     progress: advanceProgress({ ...current.progress, streak: newStreak, lastPracticeDate: todayKey(), completedDays }),
     sessions: [{ id: `sessao-${Date.now()}`, mode: 'Nada', code, minutes: stage.minutes, xp, sparks, date: todayKey() }, ...current.sessions],
     codex: [{ id: `codice-${Date.now()}`, title: `${code}: Nada concluído`, text: `Prática de ${stage.minutes} minuto(s), +${xp} XP e +${sparks} Centelhas.`, date: new Date().toLocaleDateString('pt-BR') }, ...current.codex],
-  }
+  }, 1, completedAt)
   return unlockDerived(next, ['Prática registrada', `+${xp} XP`, `+${sparks} Centelhas`])
 }
 

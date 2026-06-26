@@ -109,6 +109,16 @@ D7T é um token simbólico interno do MVP. Não é criptomoeda, não usa blockch
 
 Como o MVP ainda usa LocalStorage, a proteção anti-burla dificulta apenas manipulação casual. Segurança robusta exigirá backend, autenticação real, banco de dados e validação no servidor.
 
+## Timer Ritual D7
+
+O D7 usa um timer visual premium inspirado na ideia geral de contadores meditativos, com identidade própria: escura, gamer, ritualística e tecnológica. Ele aparece na Prática e na Sala dos Selos como um contador central grande, com anel de progresso, núcleo pulsante e animação de batimento cardíaco enquanto a contagem está ativa.
+
+- O timer reaproveita a lógica já existente de prática e selos.
+- A animação reduz o impacto visual quando o usuário prefere menos movimento.
+- O contador de presença `108` é simbólico e local nesta versão MVP.
+- O histórico local registra timers concluídos sem duplicar recompensas.
+- A versão atual continua funcionando apenas com LocalStorage no navegador.
+
 ## Mapa Simbólico D7
 
 O Mapa Simbólico D7 abre uma nova área do Códice para calcular uma leitura lúdica a partir de nome, data de nascimento, horário de nascimento e contexto textual opcional. Ele é uma experiência narrativa e gamificada: não é mapa astral profissional, previsão científica, diagnóstico espiritual, tradução perfeita ou verdade religiosa definitiva.

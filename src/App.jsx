@@ -20,6 +20,7 @@ import { sealDefinitions } from './data/seals.js'
 import { cancelSealAttempt, completeSealChallenge, getRankingScore, getRequiredGateScore, getSealAttempt, getSealGateScore, getSealStatus, requirementText, startSealAttempt, syncSealAttempt, markSealAbsence } from './services/sealEngine.js'
 import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgressIfSafe, resetUserProgress, saveUserProgress } from './services/localProgress.js'
 import D7SymbolicMap from './components/D7SymbolicMap.jsx'
+import D7PulseTimer from './components/D7PulseTimer.jsx'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import './App.css'
 
@@ -150,6 +151,11 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
   const activeAttempt = getSealAttempt(state, activeSeal.id)
   const remaining = activeAttempt?.status === 'running' ? Math.max(0, Math.ceil((new Date(activeAttempt.expectedEndAt).getTime() - tick) / 1000)) : 0
   const activeStatus = getSealStatus(state, activeSeal)
+  const sealProgress = activeSeal.durationSeconds ? Math.round(((activeSeal.durationSeconds - remaining) / activeSeal.durationSeconds) * 100) : 0
+  const isSealRunning = activeAttempt?.status === 'running'
+  const isSealCompleted = activeStatus === 'unlocked'
+  const isSealFailed = activeStatus === 'failed'
+  const isChallengePending = activeAttempt?.status === 'challenge_pending'
 
   return (
     <section className="seal-room" aria-labelledby="seal-room-title">
@@ -190,12 +196,33 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
           <p className="seal-requirement">Pontuação de presença: {gateScore} / {getRequiredGateScore(activeSeal.order)}</p>
           {sealMessage && <div className={`auth-message ${sealMessage.type}`} role="status">{sealMessage.text}</div>}
         </div>
-        <div className="seal-challenge-panel">
-          <div className="seal-timer" role="timer" aria-live="polite">{formatTime(remaining || activeSeal.durationSeconds)}</div>
-          {activeAttempt?.status === 'running' && <p>O selo exige presença ativa. Volte para concluir com integridade.</p>}
-          {activeStatus === 'available' || activeStatus === 'failed' ? <button type="button" className="primary-action" onClick={() => onStartSeal(activeSeal.id)}>Iniciar selo</button> : null}
-          {activeAttempt?.status === 'running' && <button type="button" className="ghost-action" onClick={() => onCancelSeal(activeSeal.id)}>Cancelar tentativa</button>}
-          {activeAttempt?.status === 'challenge_pending' && (
+        <D7PulseTimer
+          label="Timer Ritual D7"
+          subtitle={activeSeal.name}
+          hint={activeStatus === 'available' ? 'Respire e permaneça' : activeStatus === 'failed' ? 'Presença interrompida' : activeStatus === 'cooldown' ? 'Aguarde a integração' : activeSeal.challengePrompt}
+          totalSeconds={activeSeal.durationSeconds}
+          remainingSeconds={isSealRunning ? remaining : isSealCompleted || isChallengePending ? 0 : activeSeal.durationSeconds}
+          isRunning={isSealRunning}
+          isCompleted={isSealCompleted}
+          isFailed={isSealFailed}
+          isChallengePending={isChallengePending}
+          mode="seal"
+          progressPercent={isSealRunning || isChallengePending || isSealCompleted ? (isChallengePending || isSealCompleted ? 100 : sealProgress) : 0}
+          currentCount={state.presenceCounter108 ?? 0}
+          countTarget={108}
+          onStart={['available', 'failed'].includes(activeStatus) ? () => onStartSeal(activeSeal.id) : null}
+          onCancel={isSealRunning ? () => onCancelSeal(activeSeal.id) : null}
+          onReset={null}
+          onComplete={isChallengePending ? () => onCompleteChallenge(activeSeal.id) : null}
+          completeDisabled={!isChallengePending}
+          startLabel="Iniciar selo"
+          cancelLabel="Cancelar tentativa"
+          resetLabel="Reiniciar"
+          completeLabel="Concluir desafio"
+          statusText={isSealRunning ? 'O selo exige presença ativa. Volte para concluir com integridade.' : isChallengePending ? 'Timer concluído. Complete o desafio para abrir o selo.' : isSealCompleted ? 'Selo desbloqueado.' : sealStatusLabel(activeStatus)}
+          ariaLabel={`Timer ritual do selo ${activeSeal.name}`}
+        >
+          {isChallengePending && (
             <div className="seal-challenge-form">
               <label htmlFor="seal-challenge">{activeSeal.challengePrompt}</label>
               {activeSeal.challengeType === 'choice' ? (
@@ -211,9 +238,7 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
               <button type="button" className="complete-action" onClick={() => onCompleteChallenge(activeSeal.id)}>Concluir desafio</button>
             </div>
           )}
-          {activeStatus === 'unlocked' && <button type="button" className="mini-action" disabled>Selo desbloqueado</button>}
-          {['locked', 'cooldown'].includes(activeStatus) && <button type="button" className="mini-action" disabled>{activeStatus === 'cooldown' ? 'Aguardando integração' : 'Ver requisito'}</button>}
-        </div>
+        </D7PulseTimer>
       </article>
     </section>
   )
@@ -333,9 +358,10 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
               <span>{summary.tokenBalance} D7T</span>
               <span>{summary.score} score</span>
               <span>{summary.symbolicMapsCount ?? 0} mapas</span>
+              <span>{summary.presenceCounter108 ?? 0}/108</span>
             </div>
             <p>Última prática: {summary.lastPracticeDate ?? 'sem registro'} · Último selo: {summary.lastSealId ?? 'pendente'} · Último mapa: {summary.lastMapArchetype ?? 'pendente'}</p>
-            <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Avisos: {summary.integrityWarnings}</small>
+            <small>Cartas: {summary.cards.length} · Desafios: {summary.completedChallenges.length} · Presença: {summary.gateScore} · Tempo em selos: {Math.floor(summary.totalSealFocusSeconds / 60)} min · Timers: {summary.totalTimersCompleted ?? 0} · Avisos: {summary.integrityWarnings}</small>
           </article>
         ))}
         {summaries.length === 0 && <p className="empty-state">Nenhum usuário local cadastrado neste navegador.</p>}
@@ -679,16 +705,32 @@ function App() {
             <div className="timer-panel">
               <img className="practice-bg-art" src={visualAssets.practice} alt="" />
               <SectionTitle eyebrow={`${journeyCode} · modo Nada`} title="Fechar os olhos. Permanecer. Concluir.">{phrase}</SectionTitle>
-              <div className="timer-orb" style={{ '--progress': `${timerProgress}%`, '--stage': stage.color }} role="timer" aria-live="polite" aria-label={`Tempo restante ${formatTime(remaining)}`}>
-                <span>{formatTime(remaining)}</span>
-                <small>{state.daily.practice ? 'prática de hoje concluída' : timerStatus === 'running' ? 'em prática' : timerStatus === 'complete' ? 'portal interno aberto' : 'aguardando entrada'}</small>
-              </div>
-              <div className="timer-controls">
-                <button type="button" className="primary-action" onClick={() => setTimer({ journeyCode, remaining, status: 'running' })} disabled={state.daily.practice || timerStatus === 'running' || remaining === 0}>Iniciar</button>
-                <button type="button" className="ghost-action" onClick={() => setTimer({ journeyCode, remaining, status: 'paused' })} disabled={timerStatus !== 'running'}>Pausar</button>
-                <button type="button" className="ghost-action" onClick={() => setTimer({ journeyCode, remaining: totalSeconds, status: 'idle' })} disabled={state.daily.practice}>Reiniciar</button>
-                <button type="button" className="complete-action" onClick={finishPractice} disabled={remaining > 0 || state.daily.practice}>{state.daily.practice ? 'Prática registrada' : 'Concluir prática'}</button>
-              </div>
+              <D7PulseTimer
+                label="Timer Ritual D7"
+                subtitle="Prática de presença"
+                hint="Permaneça. O código desperta no silêncio."
+                totalSeconds={totalSeconds}
+                remainingSeconds={timerStatus === 'running' ? remaining : timerStatus === 'complete' || state.daily.practice ? 0 : totalSeconds}
+                isRunning={timerStatus === 'running'}
+                isCompleted={state.daily.practice}
+                isFailed={false}
+                isChallengePending={timerStatus === 'complete' && !state.daily.practice}
+                mode="practice"
+                progressPercent={state.daily.practice ? 100 : timerStatus === 'running' ? timerProgress : 0}
+                currentCount={state.presenceCounter108 ?? 0}
+                countTarget={108}
+                onStart={() => setTimer({ journeyCode, remaining, status: 'running' })}
+                onPause={timerStatus === 'running' ? () => setTimer((current) => ({ ...current, status: 'paused' })) : null}
+                onReset={state.daily.practice ? null : () => setTimer({ journeyCode, remaining: totalSeconds, status: 'idle' })}
+                onComplete={remaining > 0 || state.daily.practice ? null : finishPractice}
+                completeDisabled={remaining > 0 || state.daily.practice}
+                startLabel="Iniciar"
+                pauseLabel="Pausar"
+                resetLabel="Reiniciar"
+                completeLabel={state.daily.practice ? 'Prática registrada' : 'Concluir prática'}
+                statusText={state.daily.practice ? 'prática de hoje concluída' : timerStatus === 'running' ? 'em prática' : timerStatus === 'complete' ? 'timer concluído' : 'aguardando entrada'}
+                ariaLabel={`Tempo restante ${formatTime(timerStatus === 'running' ? remaining : timerStatus === 'complete' || state.daily.practice ? 0 : totalSeconds)}`}
+              />
               {state.lastUnlocks.length > 0 && <div className="unlock-feed" aria-live="polite">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
             </div>
             <aside className="ritual-panel">

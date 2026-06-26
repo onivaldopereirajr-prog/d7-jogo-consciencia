@@ -1,6 +1,6 @@
 import { sealDefinitions, sealById } from '../data/seals.js'
 import { safeGetStorage, safeSetStorage } from '../utils/storageSafe.js'
-import { unique } from '../utils/gameState.js'
+import { recordPresenceTick, unique } from '../utils/gameState.js'
 
 export const SEAL_EVENTS_KEY = 'd7_seal_events_by_user'
 const ABSENCE_LIMIT_SECONDS = 15
@@ -234,7 +234,7 @@ export async function completeSealChallenge(progress, userId, sealId, challengeV
   })
   const attempts = { ...progress.sealProgress.attempts }
   delete attempts[sealId]
-  const next = {
+  const next = recordPresenceTick({
     ...progress,
     xp: (progress.xp ?? 0) + seal.rewardXp,
     sparks: (progress.sparks ?? 0) + seal.rewardSparks,
@@ -255,7 +255,7 @@ export async function completeSealChallenge(progress, userId, sealId, challengeV
       lastSealId: sealId,
     },
     lastUnlocks: unique([`${seal.name} desbloqueado`, `+${seal.rewardXp} XP`, `+${tokenAmount} D7T`, ...(progress.lastUnlocks ?? [])]).slice(0, 5),
-  }
+  }, 1, completedAt)
   return { progress: next, ok: true, message: `${seal.name} desbloqueado. +${tokenAmount} D7T simbólicos.`, event }
 }
 

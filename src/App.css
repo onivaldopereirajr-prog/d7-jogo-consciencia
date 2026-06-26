@@ -101,7 +101,8 @@
 }
 
 .nav-list button:hover,
-.nav-list button.active {
+.nav-list button.active,
+.nav-list button[aria-current='page'] {
   color: var(--text-strong);
   border-color: rgba(32, 211, 238, 0.28);
   background: linear-gradient(135deg, rgba(32, 211, 238, 0.12), rgba(212, 175, 55, 0.04));
@@ -283,12 +284,13 @@ button {
 
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--cyan);
+  outline: 3px solid var(--cyan);
   outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(32, 211, 238, 0.14);
 }
 
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -306,6 +308,7 @@ button:not(:disabled):active {
   font: inherit;
   font-weight: 800;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .primary-action {
@@ -328,7 +331,7 @@ button:not(:disabled):active {
 }
 
 .mini-action {
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 12px;
   font-size: 0.86rem;
 }
@@ -456,6 +459,12 @@ button:not(:disabled):active {
   overflow: hidden;
   padding: 18px;
   border-color: color-mix(in srgb, var(--week) 42%, var(--line));
+  display: flex;
+  flex-direction: column;
+}
+
+.week-card .mini-action {
+  margin-top: 14px;
 }
 
 .week-card::before {
@@ -543,7 +552,7 @@ button:not(:disabled):active {
 }
 
 .day-grid span {
-  min-height: 34px;
+  min-height: 36px;
   display: grid;
   place-items: center;
   border: 1px solid var(--line);
@@ -638,6 +647,7 @@ button:not(:disabled):active {
 
 .timer-orb {
   width: min(68vw, 390px);
+  min-width: 230px;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -891,6 +901,7 @@ button:not(:disabled):active {
   gap: 14px;
   align-items: center;
   padding: 13px 16px;
+  overflow-wrap: anywhere;
 }
 
 .rank-row > strong {
@@ -979,6 +990,36 @@ button:not(:disabled):active {
   border-style: dashed;
 }
 
+
+.closing-mantra {
+  margin-top: 28px;
+  padding: clamp(22px, 5vw, 42px);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(32, 211, 238, 0.08), rgba(212, 175, 55, 0.06)),
+    rgba(255, 255, 255, 0.025);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.closing-mantra p {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: clamp(1rem, 2.5vw, 1.24rem);
+  line-height: 1.75;
+  font-weight: 500;
+}
+
+.closing-mantra p:first-child {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.closing-mantra p + p {
+  margin-top: 4px;
+}
+
 @media (max-width: 1260px) {
   .journey-board,
   .portal-grid,
@@ -1023,10 +1064,13 @@ button:not(:disabled):active {
     grid-auto-flow: column;
     grid-auto-columns: max-content;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
     padding-bottom: 6px;
+    scrollbar-width: thin;
   }
 
   .nav-list button {
+    min-height: 46px;
     white-space: nowrap;
   }
 
@@ -1042,6 +1086,14 @@ button:not(:disabled):active {
     padding: 14px;
   }
 
+  .brand-mark strong {
+    font-size: 0.96rem;
+  }
+
+  .brand-mark small {
+    font-size: 0.68rem;
+  }
+
   .topbar {
     display: grid;
   }
@@ -1050,9 +1102,22 @@ button:not(:disabled):active {
     justify-content: flex-start;
   }
 
+  .resource-strip span {
+    padding: 7px 10px;
+    font-size: 0.88rem;
+  }
+
   .hero-panel {
-    min-height: 620px;
+    min-height: 540px;
     padding: 24px;
+  }
+
+  .hero-panel h2 {
+    line-height: 1;
+  }
+
+  .hero-panel p {
+    font-size: 0.98rem;
   }
 
   .hero-art {
@@ -1070,7 +1135,7 @@ button:not(:disabled):active {
   }
 
   .hero-sigils .sigil-mark {
-    width: 92px;
+    width: 82px;
   }
 
   .journey-board,
@@ -1100,6 +1165,23 @@ button:not(:disabled):active {
     width: 100%;
   }
 
+  .timer-orb {
+    width: min(82vw, 330px);
+  }
+
+  .featured-card-art {
+    min-height: 184px;
+  }
+
+  .symbol-card,
+  .code-card,
+  .portal-card,
+  .bridge-card,
+  .circle-card,
+  .week-card {
+    padding: 16px;
+  }
+
   .rank-row {
     grid-template-columns: 44px minmax(0, 1fr);
   }
@@ -1116,5 +1198,66 @@ button:not(:disabled):active {
 
   .mission-row small {
     grid-column: 2;
+  }
+}
+
+
+@media (max-width: 420px) {
+  .sidebar {
+    padding: 12px 10px 8px;
+  }
+
+  .main-panel {
+    padding: 10px;
+  }
+
+  .sigil-mark {
+    width: 50px;
+  }
+
+  .hero-panel {
+    min-height: 500px;
+    padding: 20px;
+  }
+
+  .hero-sigils {
+    top: 28px;
+    right: 18px;
+  }
+
+  .hero-sigils .sigil-mark {
+    width: 66px;
+  }
+
+  .hero-panel h2 {
+    font-size: 2rem;
+  }
+
+  .content-section,
+  .timer-panel,
+  .ritual-panel,
+  .profile-card,
+  .inventory-card,
+  .mission-panel {
+    padding: 16px;
+  }
+
+  .day-grid {
+    gap: 4px;
+  }
+
+  .day-grid span {
+    min-height: 32px;
+    font-size: 0.72rem;
+  }
+
+  .rank-row {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .closing-mantra {
+    margin-top: 20px;
+    padding: 20px 16px;
   }
 }

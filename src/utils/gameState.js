@@ -15,7 +15,7 @@ export function daysBetween(start, end) {
 }
 
 export function getStage(progress) {
-  return weeks[progress.weekIndex] ?? weeks[0]
+  return weeks[progress?.weekIndex] ?? weeks[0]
 }
 
 export function getJourneyCode(progress) {
@@ -27,7 +27,7 @@ export function unique(items) {
 }
 
 export function scoreOf(player) {
-  return player.xp + player.streak * 50 + player.cards * 25 + player.portals * 200 + player.codes * 150
+  return Number(player.xp ?? 0) + Number(player.streak ?? 0) * 50 + Number(player.cards ?? 0) * 25 + Number(player.portals ?? 0) * 200 + Number(player.codes ?? 0) * 150
 }
 
 export function makeInitialState() {
@@ -56,17 +56,49 @@ export function makeInitialState() {
   }
 }
 
+function arrayOr(value, fallback = []) {
+  return Array.isArray(value) ? value : fallback
+}
+
+function numberOr(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback
+}
+
 export function normalizeState(raw) {
   const base = makeInitialState()
-  if (!raw) return base
+  if (!raw || typeof raw !== 'object') return base
+
+  const progress = { ...base.progress, ...(raw.progress && typeof raw.progress === 'object' ? raw.progress : {}) }
+  progress.weekIndex = Math.min(Math.max(numberOr(progress.weekIndex, 0), 0), weeks.length - 1)
+  progress.day = Math.min(Math.max(numberOr(progress.day, 1), 1), 7)
+  progress.streak = Math.max(numberOr(progress.streak, 0), 0)
+  progress.resets = Math.max(numberOr(progress.resets, 0), 0)
+  progress.completedDays = unique(arrayOr(progress.completedDays, base.progress.completedDays))
+
+  const daily = { ...base.daily, ...(raw.daily && typeof raw.daily === 'object' ? raw.daily : {}) }
+  daily.visited = unique(arrayOr(daily.visited, base.daily.visited))
+  daily.practice = Boolean(daily.practice)
+  daily.word = Boolean(daily.word)
+  daily.study = Boolean(daily.study)
+
   return {
     ...base,
     ...raw,
-    profile: { ...base.profile, ...(raw.profile ?? {}) },
-    progress: { ...base.progress, ...(raw.progress ?? {}) },
-    daily: { ...base.daily, ...(raw.daily ?? {}) },
-    circles: raw.circles?.length ? raw.circles : base.circles,
-    unlockedCards: raw.unlockedCards?.includes('nada') ? ['he-alef', 'sa-om'] : unique([...(raw.unlockedCards ?? base.unlockedCards)]),
+    profile: { ...base.profile, ...(raw.profile && typeof raw.profile === 'object' ? raw.profile : {}) },
+    progress,
+    xp: Math.max(numberOr(raw.xp, base.xp), 0),
+    sparks: Math.max(numberOr(raw.sparks, base.sparks), 0),
+    daily,
+    circles: arrayOr(raw.circles).length ? raw.circles : base.circles,
+    unlockedCards: arrayOr(raw.unlockedCards).includes('nada') ? ['he-alef', 'sa-om'] : unique(arrayOr(raw.unlockedCards, base.unlockedCards)),
+    studiedCards: unique(arrayOr(raw.studiedCards, base.studiedCards)),
+    unlockedCodes: unique(arrayOr(raw.unlockedCodes, base.unlockedCodes)),
+    openedPortals: unique(arrayOr(raw.openedPortals, base.openedPortals)),
+    completedMissions: unique(arrayOr(raw.completedMissions, base.completedMissions)),
+    wordLog: arrayOr(raw.wordLog, base.wordLog).slice(0, 12),
+    codex: arrayOr(raw.codex).length ? raw.codex : base.codex,
+    sessions: arrayOr(raw.sessions, base.sessions),
+    lastUnlocks: unique(arrayOr(raw.lastUnlocks, base.lastUnlocks)).slice(0, 5),
   }
 }
 
@@ -76,6 +108,23 @@ export function loadState() {
     return normalizeState(saved ? JSON.parse(saved) : null)
   } catch {
     return makeInitialState()
+  }
+}
+
+export function saveState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeState(state)))
+  } catch {
+    // Storage can be unavailable in private mode or blocked browsers.
+  }
+}
+
+export function resetStoredState() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(LEGACY_KEY)
+  } catch {
+    // Reset remains safe even when storage is unavailable.
   }
 }
 
@@ -120,6 +169,7 @@ function nextCardsForSession(totalSessions, completedDays) {
 
 export function completePractice(state) {
   const current = ensureToday(state)
+  if (current.daily.practice) return unlockDerived(current, ['Prática de hoje já registrada'])
   const stage = getStage(current.progress)
   const code = getJourneyCode(current.progress)
   const totalSessions = current.sessions.length + 1

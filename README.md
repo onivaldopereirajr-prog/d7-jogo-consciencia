@@ -59,6 +59,14 @@ npm run build
 
 O build de produção será gerado na pasta `dist`.
 
+## Deploy
+
+O projeto está preparado para deploy na Vercel como app estático Vite.
+
+- buildCommand: `npm run build`
+- outputDirectory: `dist`
+- framework: `vite`
+
 ## Status do projeto
 
 O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a experiência principal no navegador, com progressão local, timer, recompensas, missões, portais, Códice Dual e ranking mockado.
@@ -68,7 +76,7 @@ O D7 está em fase de protótipo/MVP em evolução. A versão atual valida a exp
 - Melhorar onboarding
 - Criar sistema de temporadas
 - Melhorar animações
-- Preparar deploy no GitHub Pages
+- Evoluir checklist de produção na Vercel
 - Evoluir a experiência de prática
 - Criar mais conteúdos para o Códice
 

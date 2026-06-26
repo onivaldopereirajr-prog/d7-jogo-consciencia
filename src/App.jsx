@@ -13,10 +13,10 @@ import {
   playerLevel,
   recordVisit,
   recordWord,
+  resetStoredState,
+  saveState,
   scoreOf,
-  STORAGE_KEY,
   studyCard,
-  weeklyMissionStatus,
 } from './utils/gameState.js'
 import './App.css'
 
@@ -76,9 +76,13 @@ function StatCard({ label, value, detail }) {
   )
 }
 
-function ProgressLine({ value, max }) {
+function ProgressLine({ value, max, label = 'Progresso' }) {
   const width = max ? Math.min(100, Math.round((value / max) * 100)) : 0
-  return <span className="progress-line"><i style={{ width: `${width}%` }} /></span>
+  return (
+    <span className="progress-line" role="progressbar" aria-label={label} aria-valuemin="0" aria-valuemax={max} aria-valuenow={value}>
+      <i style={{ width: `${width}%` }} aria-hidden="true" />
+    </span>
+  )
 }
 
 function SymbolCard({ card, unlocked, studied, onStudy }) {
@@ -115,16 +119,34 @@ function formatTime(seconds) {
   return `${minutes}:${rest}`
 }
 
+function ClosingMantra() {
+  return (
+    <footer className="closing-mantra" aria-label="Epígrafe final do D7">
+      <p>Indu declara a Kyara</p>
+      <p>Além do Véu da Madrugada</p>
+      <p>A Luz permanece acesa.</p>
+      <p>Além do nome e da distância.</p>
+      <p>As almas recordam a sua origem.</p>
+    </footer>
+  )
+}
+
 function App() {
   const [activeView, setActiveView] = useState('home')
   const [state, setState] = useState(() => ensureToday(loadState()))
-  const [remaining, setRemaining] = useState(() => getStage(state.progress).minutes * 60)
-  const [timerStatus, setTimerStatus] = useState('idle')
+  const [timer, setTimer] = useState(() => {
+    const loaded = ensureToday(loadState())
+    const loadedStage = getStage(loaded.progress)
+    return { journeyCode: getJourneyCode(loaded.progress), remaining: loadedStage.minutes * 60, status: 'idle' }
+  })
   const [word, setWord] = useState('')
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
   const totalSeconds = stage.minutes * 60
+  const timerSynced = timer.journeyCode === journeyCode
+  const remaining = timerSynced ? Math.min(timer.remaining, totalSeconds) : totalSeconds
+  const timerStatus = timerSynced ? timer.status : 'idle'
   const timerProgress = Math.round(((totalSeconds - remaining) / totalSeconds) * 100)
   const hebrewUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'hebraica').length
   const sanskritUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
@@ -145,28 +167,20 @@ function App() {
   }, [state])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    saveState(state)
   }, [state])
-
-  useEffect(() => {
-    setRemaining(totalSeconds)
-    setTimerStatus('idle')
-  }, [totalSeconds, journeyCode])
 
   useEffect(() => {
     if (timerStatus !== 'running') return undefined
     const interval = setInterval(() => {
-      setRemaining((value) => {
-        if (value <= 1) {
-          clearInterval(interval)
-          setTimerStatus('complete')
-          return 0
-        }
-        return value - 1
+      setTimer((current) => {
+        const activeTimer = current.journeyCode === journeyCode ? current : { journeyCode, remaining: totalSeconds, status: 'running' }
+        if (activeTimer.remaining <= 1) return { ...activeTimer, remaining: 0, status: 'complete' }
+        return { ...activeTimer, remaining: activeTimer.remaining - 1 }
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [timerStatus])
+  }, [journeyCode, timerStatus, totalSeconds])
 
   function navigate(view) {
     setActiveView(view)
@@ -174,9 +188,10 @@ function App() {
   }
 
   function finishPractice() {
-    setState((current) => completePractice(current))
-    setTimerStatus('idle')
-    navigate('jornada')
+    if (remaining > 0 || state.daily.practice) return
+    setState((current) => recordVisit(completePractice(current), 'jornada'))
+    setTimer({ journeyCode, remaining: totalSeconds, status: 'idle' })
+    setActiveView('jornada')
   }
 
   function submitWord(event) {
@@ -186,12 +201,11 @@ function App() {
   }
 
   function resetMvp() {
-    localStorage.removeItem(STORAGE_KEY)
+    resetStoredState()
     const fresh = ensureToday(loadState())
     setState(fresh)
     setActiveView('home')
-    setRemaining(getStage(fresh.progress).minutes * 60)
-    setTimerStatus('idle')
+    setTimer({ journeyCode: getJourneyCode(fresh.progress), remaining: getStage(fresh.progress).minutes * 60, status: 'idle' })
   }
 
   function study(cardId) {
@@ -210,7 +224,7 @@ function App() {
         </div>
         <nav className="nav-list">
           {navItems.map((item) => (
-            <button key={item.id} className={activeView === item.id ? 'active' : ''} type="button" onClick={() => navigate(item.id)}>
+            <button key={item.id} className={activeView === item.id ? 'active' : ''} type="button" aria-current={activeView === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
               <span>{item.icon}</span>
               {item.label}
             </button>
@@ -287,7 +301,7 @@ function App() {
                         return <span key={code} className={`${current ? 'current' : ''} ${done ? 'done' : ''}`}>{code}</span>
                       })}
                     </div>
-                    <ProgressLine value={Array.from({ length: 7 }, (_, index) => `${week.id}${index + 1}`).filter((day) => state.progress.completedDays.includes(day)).length} max={7} />
+                    <ProgressLine value={Array.from({ length: 7 }, (_, index) => `${week.id}${index + 1}`).filter((day) => state.progress.completedDays.includes(day)).length} max={7} label={`Progresso da semana ${week.id}`} />
                     <button type="button" className="mini-action" disabled={!complete || state.openedPortals.includes(portal.id)} onClick={() => setState((current) => openPortal(current, portal.id))}>
                       {state.openedPortals.includes(portal.id) ? 'Portal aberto' : complete ? 'Abrir portal' : 'Portal selado'}
                     </button>
@@ -314,17 +328,17 @@ function App() {
             <div className="timer-panel">
               <img className="practice-bg-art" src={visualAssets.practice} alt="" />
               <SectionTitle eyebrow={`${journeyCode} · modo Nada`} title="Fechar os olhos. Permanecer. Concluir.">{phrase}</SectionTitle>
-              <div className="timer-orb" style={{ '--progress': `${timerProgress}%`, '--stage': stage.color }}>
+              <div className="timer-orb" style={{ '--progress': `${timerProgress}%`, '--stage': stage.color }} role="timer" aria-live="polite" aria-label={`Tempo restante ${formatTime(remaining)}`}>
                 <span>{formatTime(remaining)}</span>
-                <small>{timerStatus === 'running' ? 'em prática' : timerStatus === 'complete' ? 'portal interno aberto' : 'aguardando entrada'}</small>
+                <small>{state.daily.practice ? 'prática de hoje concluída' : timerStatus === 'running' ? 'em prática' : timerStatus === 'complete' ? 'portal interno aberto' : 'aguardando entrada'}</small>
               </div>
               <div className="timer-controls">
-                <button type="button" className="primary-action" onClick={() => setTimerStatus('running')} disabled={timerStatus === 'running' || remaining === 0}>Iniciar</button>
-                <button type="button" className="ghost-action" onClick={() => setTimerStatus('paused')} disabled={timerStatus !== 'running'}>Pausar</button>
-                <button type="button" className="ghost-action" onClick={() => { setRemaining(totalSeconds); setTimerStatus('idle') }}>Reiniciar</button>
-                <button type="button" className="complete-action" onClick={finishPractice} disabled={remaining > 0}>Concluir prática</button>
+                <button type="button" className="primary-action" onClick={() => setTimer({ journeyCode, remaining, status: 'running' })} disabled={state.daily.practice || timerStatus === 'running' || remaining === 0}>Iniciar</button>
+                <button type="button" className="ghost-action" onClick={() => setTimer({ journeyCode, remaining, status: 'paused' })} disabled={timerStatus !== 'running'}>Pausar</button>
+                <button type="button" className="ghost-action" onClick={() => setTimer({ journeyCode, remaining: totalSeconds, status: 'idle' })} disabled={state.daily.practice}>Reiniciar</button>
+                <button type="button" className="complete-action" onClick={finishPractice} disabled={remaining > 0 || state.daily.practice}>{state.daily.practice ? 'Prática registrada' : 'Concluir prática'}</button>
               </div>
-              {state.lastUnlocks.length > 0 && <div className="unlock-feed">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
+              {state.lastUnlocks.length > 0 && <div className="unlock-feed" aria-live="polite">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
             </div>
             <aside className="ritual-panel">
               <h3>Meta ritual</h3>
@@ -420,8 +434,8 @@ function App() {
                 <StatCard label="Códigos" value={state.unlockedCodes.length} detail="8 possíveis" />
               </div>
               <div className="track-progress">
-                <p>Hebraico <strong>{hebrewUnlocked}</strong></p><ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} />
-                <p>Sânscrito <strong>{sanskritUnlocked}</strong></p><ProgressLine value={sanskritUnlocked} max={sanskritItems.length} />
+                <p>Hebraico <strong>{hebrewUnlocked}</strong></p><ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Progresso da trilha hebraica" />
+                <p>Sânscrito <strong>{sanskritUnlocked}</strong></p><ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Progresso da trilha sânscrita" />
               </div>
             </div>
           </section>
@@ -450,6 +464,8 @@ function App() {
             </div>
           </section>
         )}
+
+        <ClosingMantra />
       </main>
     </div>
   )

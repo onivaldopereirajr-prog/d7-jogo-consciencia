@@ -35,6 +35,8 @@ import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js
 import { translate } from './i18n/translations.js'
 import { getStoredLanguage, saveLanguage } from './services/languageService.js'
 import { recordLocalEvent, summarizeLocalEvents } from './services/analyticsLocal.js'
+import { createSecurityAlert, trackAdminEvent } from './services/adminAnalyticsService.js'
+import { markPresenceInactive, updatePresence } from './services/presenceService.js'
 import { spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
 import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarService.js'
@@ -550,6 +552,8 @@ function App() {
   const [sealMessage, setSealMessage] = useState(null)
   const [tick, setTick] = useState(() => Date.now())
   const practiceTimerIntervalRef = useRef(null)
+  const presenceStateRef = useRef(state)
+  const presenceViewRef = useRef(activeView)
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
@@ -575,6 +579,39 @@ function App() {
   useEffect(() => {
     if (currentUser) saveUserProgress(currentUser.id, state)
   }, [currentUser, state])
+  useEffect(() => {
+    presenceStateRef.current = state
+    presenceViewRef.current = activeView
+  }, [activeView, state])
+
+  useEffect(() => {
+    if (!currentUser) return undefined
+    const heartbeat = (eventType = 'heartbeat') => updatePresence(currentUser, presenceStateRef.current, presenceViewRef.current, eventType)
+    heartbeat('session_started')
+    const interval = setInterval(() => {
+      heartbeat('heartbeat')
+      trackAdminEvent(currentUser, 'session_heartbeat', { view: presenceViewRef.current }, presenceViewRef.current)
+    }, 30000)
+    const handleFocus = () => heartbeat('focus')
+    const handleBlur = () => markPresenceInactive(currentUser.id)
+    const handleVisibility = () => {
+      if (document.hidden) markPresenceInactive(currentUser.id)
+      else heartbeat('visibility')
+    }
+    const handleUnload = () => markPresenceInactive(currentUser.id)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('beforeunload', handleUnload)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('beforeunload', handleUnload)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [currentUser])
+
 
   useEffect(() => {
     if (practiceTimerIntervalRef.current) {
@@ -660,12 +697,17 @@ function App() {
     setTimer({ journeyCode: getJourneyCode(loaded.progress), startedAt: null, expectedEndAt: null, remaining: loadedPracticeMinutes * 60, status: 'idle' })
     setActiveView('home')
     recordLocalEvent(user.id, 'login', { migrated: migration.migrated })
+    updatePresence(user, loaded, 'home', 'session_started')
+    trackAdminEvent(user, 'user_login', { migrated: migration.migrated }, 'home')
+    trackAdminEvent(user, 'session_started', {}, 'home')
     setAuthMessage({ type: 'success', text: migration.migrated ? `${successMessage} Progresso anônimo antigo migrado com segurança.` : successMessage })
   }
 
   async function handleLogin(credentials) {
     const result = await loginUser(credentials)
     if (!result.ok) {
+      createSecurityAlert({ severity: 'warning', message: 'Tentativa de login local falhou.', metadata: { login: credentials.login } })
+      trackAdminEvent('anonymous', 'login_failed', { login: credentials.login })
       setAuthMessage({ type: 'error', text: result.message })
       return
     }
@@ -683,6 +725,8 @@ function App() {
 
   async function handleResetPassword(data) {
     const result = await resetLocalPassword(data)
+    trackAdminEvent(data.userId || 'anonymous', 'password_reset_local', { ok: result.ok })
+    if (result.ok) createSecurityAlert({ severity: 'info', message: 'Senha local redefinida neste navegador.', userId: data.userId })
     setAuthMessage({ type: result.ok ? 'success' : 'error', text: result.message })
     return result
   }
@@ -696,7 +740,11 @@ function App() {
   }
 
   function handleLogout() {
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'logout')
+    if (currentUser?.id) {
+      recordLocalEvent(currentUser.id, 'logout')
+      trackAdminEvent(currentUser, 'user_logout', { view: activeView }, activeView)
+      markPresenceInactive(currentUser.id)
+    }
     logout()
     setCurrentUser(null)
     setAuthMode('login')
@@ -762,7 +810,11 @@ function App() {
   }
 
   function handleStartPractice() {
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes })
+    if (currentUser?.id) {
+      recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes })
+      trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes }, activeView)
+      updatePresence(currentUser, state, activeView, 'practice_started')
+    }
     const normalizedMinutes = normalizePracticeMinutes(practiceDurationMinutes)
     const total = normalizedMinutes * 60
     const startedAt = Date.now()
@@ -800,7 +852,7 @@ function App() {
   }
 
   function handleStartSeal(sealId) {
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'seal_started', { sealId })
+    if (currentUser?.id) { recordLocalEvent(currentUser.id, 'seal_started', { sealId }); trackAdminEvent(currentUser, 'seal_started', { sealId }, activeView) }
     setState((current) => startSealAttempt(current, sealId))
     setChallengeValue('')
     setSealMessage({ type: 'success', text: 'Selo iniciado. Mantenha presença ativa até o fim do timer.' })
@@ -812,7 +864,7 @@ function App() {
   }
 
   async function handleCompleteSeal(sealId) {
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'seal_completed', { sealId })
+    if (currentUser?.id) { recordLocalEvent(currentUser.id, 'seal_completed', { sealId }); trackAdminEvent(currentUser, 'seal_completed', { sealId }, activeView) }
     const result = await completeSealChallenge(state, currentUser.id, sealId, challengeValue)
     if (!result.ok) {
       setSealMessage({ type: 'error', text: result.message })
@@ -825,20 +877,29 @@ function App() {
 
   function handleSaveSymbolicMap(mapResult) {
     const saved = saveSymbolicMap(state, mapResult)
+    trackAdminEvent(currentUser, 'symbolic_map_created', { archetype: mapResult?.archetype }, activeView)
     setState(saved.progress)
     return saved
   }
 
   function navigate(view) {
     setActiveView(view)
-    if (currentUser?.id) recordLocalEvent(currentUser.id, `view_${view}`)
+    if (currentUser?.id) {
+      recordLocalEvent(currentUser.id, `view_${view}`)
+      trackAdminEvent(currentUser, `view_${view}`, { view }, view)
+      updatePresence(currentUser, state, view, 'view_change')
+    }
     setState((current) => recordVisit(current, view))
   }
 
   function finishPractice() {
     if (timerStatus !== 'complete') return
     const rewardMode = state.daily.practice ? 'free' : 'primary'
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode })
+    if (currentUser?.id) {
+      recordLocalEvent(currentUser.id, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode })
+      trackAdminEvent(currentUser, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode }, activeView)
+      trackAdminEvent(currentUser, 'd7t_earned', { amount: practicePreview.d7t }, activeView)
+    }
     setState((current) => recordVisit(completePractice(current, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada'))
     setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
     setActiveView('jornada')
@@ -865,14 +926,14 @@ function App() {
   }
 
   function study(cardId) {
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'study_card_completed', { cardId })
+    if (currentUser?.id) { recordLocalEvent(currentUser.id, 'study_card_completed', { cardId }); trackAdminEvent(currentUser, 'study_card_completed', { cardId }, activeView) }
     setState((current) => studyCard(current, cardId))
   }
 
   function handleLanguageChange(nextLanguage) {
     const saved = saveLanguage(nextLanguage)
     setLanguage(saved)
-    if (currentUser?.id) recordLocalEvent(currentUser.id, 'language_changed', { language: saved })
+    if (currentUser?.id) { recordLocalEvent(currentUser.id, 'language_changed', { language: saved }); trackAdminEvent(currentUser, 'language_changed', { language: saved }, activeView) }
   }
 
   function handleWheelSpin() {
@@ -881,6 +942,8 @@ function App() {
     if (!result.ok) return
     setState(result.state)
     recordLocalEvent(currentUser.id, 'wheel_spin', { rewardType: result.event.rewardType, costD7T: result.event.costD7T })
+    trackAdminEvent(currentUser, 'wheel_spin', { rewardType: result.event.rewardType, costD7T: result.event.costD7T }, activeView)
+    trackAdminEvent(currentUser, 'd7t_spent', { amount: result.event.costD7T, costD7T: result.event.costD7T }, activeView)
   }
 
   function handleAvatarChoice(symbolId, themeId = state.profile?.avatarTheme ?? 'aurora') {
@@ -1136,7 +1199,7 @@ function App() {
         )}
 
         {activeView === 'sala' && (
-          <D7Room user={currentUser} progress={state} t={t} onEvent={(eventType) => recordLocalEvent(currentUser.id, eventType)} />
+          <D7Room user={currentUser} progress={state} t={t} onEvent={(eventType, metadata = {}) => { recordLocalEvent(currentUser.id, eventType, metadata); trackAdminEvent(currentUser, eventType, metadata, 'sala'); updatePresence(currentUser, state, 'sala', eventType) }} />
         )}
 
         {activeView === 'roda' && (

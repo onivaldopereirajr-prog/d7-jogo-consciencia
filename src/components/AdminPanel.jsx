@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createAdminLocal, endAdminSession, getObserverMode, hasAdminSession, loginAdminLocal, setObserverMode } from '../services/adminLocal.js'
-import { summarizeLocalEvents } from '../services/analyticsLocal.js'
-import { getAvatarSymbol } from '../services/avatarService.js'
-
-function formatDate(value) {
-  if (!value) return 'sem registro'
-  try { return new Date(value).toLocaleString('pt-BR') } catch { return value }
-}
+import AdminControlCenter from './AdminControlCenter.jsx'
+import { trackAdminEvent } from '../services/adminAnalyticsService.js'
 
 function AdminAccessForm({ hasAdmin, onDone }) {
   const [form, setForm] = useState({ name: '', password: '', confirmPassword: '' })
@@ -17,7 +12,10 @@ function AdminAccessForm({ hasAdmin, onDone }) {
     event.preventDefault()
     const result = hasAdmin ? await loginAdminLocal(form) : await createAdminLocal(form)
     setMessage({ type: result.ok ? 'success' : 'error', text: result.message })
-    if (result.ok) onDone()
+    if (result.ok) {
+      trackAdminEvent('local-admin', hasAdmin ? 'admin_login' : 'admin_created', { admin: true })
+      onDone()
+    }
   }
 
   return (
@@ -44,10 +42,9 @@ function AdminAccessForm({ hasAdmin, onDone }) {
   )
 }
 
-export default function AdminPanel({ summaries, analytics, t = (path) => path, onRefresh, onAdminOpened }) {
+export default function AdminPanel({ summaries, t = (path) => path, onRefresh, onAdminOpened }) {
   const [session, setSession] = useState(() => hasAdminSession())
   const [observer, setObserver] = useState(() => getObserverMode())
-  const localAnalytics = analytics ?? summarizeLocalEvents(summaries)
   const openedRef = useRef(false)
   const hasAdmin = Boolean(localStorage.getItem('d7_admin_local'))
 
@@ -94,39 +91,7 @@ export default function AdminPanel({ summaries, analytics, t = (path) => path, o
         <p>Quando ativo, a Sala D7 mostra aviso de moderação. Não grava, não espiona e não acessa câmera/microfone.</p>
       </div>
 
-      <div className="admin-metrics-grid">
-        <article><span>Total de acessos locais</span><strong>{localAnalytics.totalAccesses}</strong></article>
-        <article><span>Último acesso</span><strong>{formatDate(localAnalytics.lastAccess)}</strong></article>
-        <article><span>Práticas concluídas</span><strong>{localAnalytics.practicesCompleted}</strong></article>
-        <article><span>Giros da Roda D7</span><strong>{localAnalytics.wheelSpins}</strong></article>
-      </div>
-
-      <div className="admin-columns">
-        <section className="admin-card-list" aria-labelledby="admin-users-title">
-          <h3 id="admin-users-title">Usuários locais neste navegador</h3>
-          {summaries.map((summary) => (
-            <article key={summary.user.id} className="admin-user-card">
-              <div className="admin-user-head"><span className="d7-avatar sm" style={{ '--avatar-color': summary.avatarColor ?? '#20d3ee' }} aria-hidden="true"><strong>{getAvatarSymbol(summary.avatarSymbol).glyph}</strong></span><div><strong>{summary.user.name}</strong><small>{summary.user.login} · {summary.avatarTitle}</small></div></div>
-              <p>Criado: {formatDate(summary.user.createdAt)} · Último login: {formatDate(summary.user.lastLoginAt)}</p>
-              <div className="admin-chip-grid">
-                <span>{summary.currentStage}</span><span>{summary.xp} XP</span><span>{summary.sparks} centelhas</span><span>{summary.tokenBalance} D7T</span><span>{summary.score} score</span><span>{summary.completedPractices} práticas</span><span>{summary.ritualMinutesTotal} min</span><span>Marcos {summary.ritualMilestonesUnlocked?.join(' / ') || 'pendente'}</span><span>{summary.unlockedSeals.length} selos</span><span>{summary.libraryCardsStudied} cards</span><span>{summary.libraryTitle}</span>
-              </div>
-            </article>
-          ))}
-        </section>
-        <section className="admin-card-list" aria-labelledby="admin-events-title">
-          <h3 id="admin-events-title">Eventos recentes</h3>
-          <div className="admin-top-views">
-            {localAnalytics.topViews.map(([view, count]) => <span key={view}>{view}: {count}</span>)}
-          </div>
-          {localAnalytics.recentEvents.map((event) => (
-            <article key={event.id} className="admin-event-row">
-              <strong>{event.eventType}</strong>
-              <span>{formatDate(event.createdAt)}</span>
-            </article>
-          ))}
-        </section>
-      </div>
+      <AdminControlCenter summaries={summaries} onResolvedAlert={onRefresh} />
     </section>
   )
 }

@@ -203,6 +203,43 @@ O D7 usa referências culturais de forma simbólica, respeitosa e não definitiv
 - A transliteração do nome é uma aproximação lúdica, não uma tradução perfeita nem análise linguística profissional.
 
 
+
+## Monitoramento real e presença online — plano futuro
+
+O Centro de Controle D7 atual é local e transparente: ele registra presença, eventos, alertas e métricas apenas neste navegador/dispositivo. Ele não mostra usuários online reais em outros celulares ou computadores, não cria monitoramento invisível e não coleta câmera, microfone ou dados sensíveis sem consentimento.
+
+Para saber de verdade quantas pessoas estão online, quem acessou de dispositivos diferentes e quais ações ocorreram em uma rede social real, será necessário backend com autenticação, banco de dados, políticas de privacidade e regras de acesso.
+
+Tabelas futuras sugeridas:
+
+- `profiles`
+- `sessions`
+- `presence`
+- `audit_events`
+- `security_alerts`
+- `admin_roles`
+- `user_progress`
+- `social_posts`
+- `social_comments`
+- `social_reactions`
+- `friendships`
+- `reports`
+- `room_participants`
+- `room_messages`
+- `token_ledger`
+
+Regras futuras:
+
+- `admin_roles` define quem pode ver o painel administrativo.
+- `presence` registra presença online real com expiração curta.
+- `audit_events` registra ações importantes com minimização de dados.
+- Row Level Security protege dados por usuário e papel.
+- Usuário comum vê apenas dados permitidos e perfis públicos/resumidos.
+- Admin vê métricas necessárias para segurança, suporte e moderação.
+- Logs precisam seguir política de privacidade, retenção e consentimento.
+- Câmera e microfone exigem ação explícita do usuário e consentimento claro.
+- Relatórios administrativos nunca devem expor senha, hash, salt ou segredos técnicos.
+
 ## Plano de Backend Real
 
 Para transformar o MVP local em uma plataforma real com administração, métricas entre dispositivos, chat, áudio/vídeo e moderação operacional, será necessário implementar backend com privacidade e consentimento desde a arquitetura.

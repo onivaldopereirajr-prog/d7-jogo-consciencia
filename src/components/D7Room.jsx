@@ -22,17 +22,26 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
     event.preventDefault()
     const next = sendRoomMessage(user, message, progress)
     setRoom(next)
+    onEvent?.('room_message_sent', { length: message.trim().length })
     setMessage('')
   }
 
   function request(kind) {
     const next = updateRoomPermission(user, { [kind]: 'requested' }, progress)
     setRoom(next)
-    onEvent?.(kind === 'speech' ? 'room_speech_requested' : 'room_camera_requested')
+    onEvent?.(kind === 'speech' ? 'room_speech_requested' : 'room_camera_requested', { permission: kind })
   }
 
   function moderate(userId, kind, value) {
     setRoom(moderateRoomPermission(userId, { [kind]: value }))
+    onEvent?.('room_permission_changed', { targetUserId: userId, permission: kind, value })
+  }
+
+  function togglePreview() {
+    setCameraPreview((value) => {
+      onEvent?.('room_preview_toggled', { enabled: !value })
+      return !value
+    })
   }
 
   return (
@@ -57,7 +66,7 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
           <div className="room-actions">
             <button type="button" className="primary-action" onClick={() => request('speech')} disabled={current.speech === 'requested' || current.speech === 'approved'}>Solicitar fala</button>
             <button type="button" className="ghost-action" onClick={() => request('camera')} disabled={current.camera === 'requested' || current.camera === 'approved'}>Solicitar câmera</button>
-            <button type="button" className="ghost-action" onClick={() => setCameraPreview((value) => !value)}>{cameraPreview ? 'Desativar preview' : 'Ativar minha câmera'}</button>
+            <button type="button" className="ghost-action" onClick={togglePreview}>{cameraPreview ? 'Desativar preview' : 'Ativar minha câmera'}</button>
           </div>
         </section>
 

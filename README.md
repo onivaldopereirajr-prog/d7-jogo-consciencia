@@ -64,6 +64,18 @@ A tela de login possui a Rádio D7, um player local em HTML5 para criar atmosfer
 - Configurações simples de volume, mute, repetir, aleatório e última faixa ficam em `d7_radio_settings` no LocalStorage.
 - Se uma faixa não existir ou falhar, o app não quebra e exibe uma mensagem amigável para adicionar arquivos MP3.
 
+## Mantra Ritual D7
+
+O Timer Ritual D7 possui áudio ritual opcional para foco e presença durante a prática.
+
+- Os mantras devem ser arquivos próprios ou autorizados.
+- Coloque os MP3 em `public/audio/d7/mantras/`.
+- A playlist local fica em `src/data/d7MantraTracks.js`.
+- O áudio só começa após ação explícita do usuário, ao iniciar a prática ou tocar áudio.
+- O usuário pode desativar, pausar, silenciar e ajustar o volume.
+- A versão atual não usa streaming externo, API externa, download automático ou áudio subliminar.
+- Se um arquivo não existir ou falhar, o timer continua funcionando e o painel exibe um aviso amigável.
+
 ## Camada profissional local
 
 A versão atual adiciona uma camada profissional ainda baseada em LocalStorage:

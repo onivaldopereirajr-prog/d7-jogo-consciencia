@@ -30,6 +30,7 @@ import D7Room from './components/D7Room.jsx'
 import D7Wheel from './components/D7Wheel.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
 import D7RadioPlayer from './components/D7RadioPlayer.jsx'
+import D7MantraPlayer from './components/D7MantraPlayer.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import { translate } from './i18n/translations.js'
@@ -552,6 +553,8 @@ function App() {
   const [sealMessage, setSealMessage] = useState(null)
   const [tick, setTick] = useState(() => Date.now())
   const practiceTimerIntervalRef = useRef(null)
+  const mantraAudioRef = useRef(null)
+  const mantraCompletionFadeRef = useRef(false)
   const presenceStateRef = useRef(state)
   const presenceViewRef = useRef(activeView)
 
@@ -654,6 +657,12 @@ function App() {
     }, 1000)
     return () => clearInterval(interval)
   }, [activeSealId])
+
+  useEffect(() => {
+    if (timerStatus !== 'complete' || mantraCompletionFadeRef.current) return
+    mantraCompletionFadeRef.current = true
+    mantraAudioRef.current?.fadeOutAndStop()
+  }, [timerStatus])
 
   useEffect(() => {
     function handleVisibility() {
@@ -811,14 +820,16 @@ function App() {
 
   function handleStartPractice() {
     if (currentUser?.id) {
-      recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes })
-      trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes }, activeView)
+      recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' })
+      trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' }, activeView)
       updatePresence(currentUser, state, activeView, 'practice_started')
     }
     const normalizedMinutes = normalizePracticeMinutes(practiceDurationMinutes)
-    const total = normalizedMinutes * 60
+    const total = timerStatus === 'paused' ? Math.max(1, timer.remaining) : normalizedMinutes * 60
     const startedAt = Date.now()
+    mantraCompletionFadeRef.current = false
     setPracticeDurationError('')
+    mantraAudioRef.current?.start()
     setTimer({
       journeyCode,
       startedAt,
@@ -828,7 +839,14 @@ function App() {
     })
   }
 
+  function handlePausePractice() {
+    mantraAudioRef.current?.pause()
+    setTimer((current) => ({ ...current, status: 'paused', expectedEndAt: null }))
+  }
+
   function handleCancelPractice() {
+    mantraAudioRef.current?.stop({ reset: true })
+    mantraCompletionFadeRef.current = false
     setTimer((current) => ({
       ...current,
       journeyCode,
@@ -840,6 +858,8 @@ function App() {
   }
 
   function handleResetPractice() {
+    mantraAudioRef.current?.stop({ reset: true })
+    mantraCompletionFadeRef.current = false
     setPracticeDurationError('')
     syncPracticeTimer(practiceDurationMinutes)
   }
@@ -894,6 +914,7 @@ function App() {
 
   function finishPractice() {
     if (timerStatus !== 'complete') return
+    mantraAudioRef.current?.fadeOutAndStop()
     const rewardMode = state.daily.practice ? 'free' : 'primary'
     if (currentUser?.id) {
       recordLocalEvent(currentUser.id, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode })
@@ -1091,6 +1112,14 @@ function App() {
                 error={practiceDurationError}
                 disabled={timerStatus === 'running' || timerStatus === 'complete'}
               />
+              <D7MantraPlayer
+                ref={mantraAudioRef}
+                t={t}
+                selectedDurationMinutes={practiceDurationMinutes}
+                isPracticeRunning={timerStatus === 'running'}
+                isPracticePaused={timerStatus === 'paused'}
+                isPracticeCompleted={timerStatus === 'complete'}
+              />
               <D7PulseTimer
                 label="Timer Ritual D7"
                 subtitle="Prática de presença"
@@ -1106,12 +1135,12 @@ function App() {
                 currentCount={state.presenceCounter108 ?? 0}
                 countTarget={108}
                 onStart={handleStartPractice}
-                onPause={timerStatus === 'running' ? () => setTimer((current) => ({ ...current, status: 'paused', expectedEndAt: null })) : null}
+                onPause={timerStatus === 'running' ? handlePausePractice : null}
                 onCancel={timerStatus === 'running' || timerStatus === 'paused' ? handleCancelPractice : null}
                 onReset={timerStatus === 'idle' ? handleResetPractice : null}
                 onComplete={timerStatus === 'complete' ? finishPractice : null}
                 completeDisabled={timerStatus !== 'complete'}
-                startLabel={state.daily.practice ? 'Iniciar prática livre' : 'Iniciar prática'}
+                startLabel={timerStatus === 'paused' ? 'Retomar prática' : state.daily.practice ? 'Iniciar prática livre' : 'Iniciar prática'}
                 pauseLabel="Pausar"
                 cancelLabel="Cancelar prática"
                 resetLabel="Reiniciar seleção"

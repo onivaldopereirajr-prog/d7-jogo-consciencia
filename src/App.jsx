@@ -761,6 +761,8 @@ function App() {
       setAuthMessage({ type: 'error', text: result.message })
       return
     }
+    recordLocalEvent(result.user.id, 'user_created')
+    trackAdminEvent(result.user, 'user_created', { createdAt: result.user.createdAt }, 'auth')
     enterUser(result.user, result.message)
   }
 
@@ -1279,7 +1281,7 @@ function App() {
         )}
 
         {activeView === 'admin' && (
-          <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh })} />
+          <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => { recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh }); trackAdminEvent(currentUser, 'admin_opened', { refresh: adminRefresh }, 'admin') }} />
         )}
 
         {activeView === 'ranking' && (

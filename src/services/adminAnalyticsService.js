@@ -17,19 +17,20 @@ function cleanMetadata(metadata = {}) {
 }
 
 function categoryOf(eventType = '') {
-  if (eventType.includes('login') || eventType.includes('logout') || eventType.includes('session')) return 'acesso'
+  if (eventType.includes('admin')) return 'admin'
+  if (eventType.includes('login') || eventType.includes('logout') || eventType.includes('session') || eventType.includes('created')) return 'acesso'
   if (eventType.includes('practice') || eventType.includes('seal')) return 'prática'
   if (eventType.includes('study') || eventType.includes('library') || eventType.includes('codex')) return 'estudo'
   if (eventType.includes('social') || eventType.includes('room') || eventType.includes('comment') || eventType.includes('post') || eventType.includes('friend')) return 'social'
   if (eventType.includes('security') || eventType.includes('blocked') || eventType.includes('reported') || eventType.includes('password')) return 'segurança'
   if (eventType.includes('d7t') || eventType.includes('wheel') || eventType.includes('token')) return 'token'
-  if (eventType.includes('admin')) return 'admin'
   return 'sistema'
 }
 
 function describe(event) {
   const name = event.nickname || 'Usuário local'
   const map = {
+    user_created: `${name} criou conta local`,
     user_login: `${name} entrou no app`,
     user_logout: `${name} saiu do app`,
     session_started: `${name} iniciou sessão local`,
@@ -51,9 +52,13 @@ function describe(event) {
     user_blocked: `${name} bloqueou usuário local`,
     post_reported: `${name} registrou denúncia local`,
     admin_opened: `${name} abriu o admin`,
-    admin_login: `${name} autenticou admin local`,
+    admin_created: `${name} criou administrador pleno local`,
+    admin_login: `${name} autenticou admin pleno local`,
+    admin_login_failed: `${name} falhou ao autenticar admin pleno local`,
+    admin_logout: `${name} saiu do admin pleno local`,
     language_changed: `${name} mudou idioma`,
     radio_played: `${name} iniciou Rádio D7`,
+    mantra_started: `${name} iniciou Mantra Ritual D7`,
     room_message_sent: `${name} enviou mensagem na Sala D7`,
     room_speech_requested: `${name} solicitou fala`,
     room_camera_requested: `${name} solicitou câmera`,
@@ -163,14 +168,20 @@ export function buildAdminReport({ summaries, presence, analytics, roomState }) 
       login: summary.user.login,
       createdAt: summary.user.createdAt,
       lastLoginAt: summary.user.lastLoginAt,
+      lastActivityAt: summary.updatedAt,
+      level: summary.level,
       xp: summary.xp,
       sparks: summary.sparks,
       d7t: summary.tokenBalance,
       score: summary.score,
       stage: summary.currentStage,
+      currentWeek: summary.currentWeek,
+      currentDay: summary.currentDay,
       practices: summary.completedPractices,
+      ritualMinutesTotal: summary.ritualMinutesTotal,
       libraryCardsStudied: summary.libraryCardsStudied,
       unlockedSeals: summary.unlockedSeals.length,
+      wheelSpins: 0,
       privacy: 'perfil privado local por padrão',
     })),
     metrics: analytics,

@@ -4910,3 +4910,45 @@ button:not(:disabled):active {
     width: 100%;
   }
 }
+
+.owner-metrics-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.access-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(32, 211, 238, 0.14);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.access-card small,
+.access-card span {
+  color: var(--muted);
+}
+
+.admin-owner-center .professional-notice {
+  border-color: rgba(212, 175, 55, 0.22);
+}
+
+@media (max-width: 900px) {
+  .owner-metrics-grid,
+  .access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .owner-metrics-grid,
+  .access-grid {
+    grid-template-columns: 1fr;
+  }
+}

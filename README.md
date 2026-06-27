@@ -229,6 +229,18 @@ O D7 usa referências culturais de forma simbólica, respeitosa e não definitiv
 
 
 
+## Administrador Pleno e Crescimento Real
+
+O D7 possui um Administrador Pleno Local para o dono do app acompanhar usuários, presença, eventos, métricas, alertas e relatórios salvos neste navegador/dispositivo.
+
+- O primeiro acesso cria o administrador local com nome, apelido administrativo e PIN/senha.
+- O acesso é salvo com hash/salt; a interface nunca mostra senha, hash ou salt.
+- O painel mostra apenas usuários locais cadastrados neste navegador, progresso local, eventos locais, presença local, Sala D7 local, Roda D7 e alertas locais.
+- O relatório JSON exportado não inclui senha, hash, salt nem segredos de recuperação.
+- Esta versão não vê usuários reais de outros celulares ou computadores.
+
+Para crescimento real entre dispositivos será necessário backend com autenticação real, banco de dados, sessões, presença online, eventos auditáveis, papéis administrativos, segurança, progresso sincronizado, mensagens, denúncias e política de privacidade.
+
 ## Monitoramento real e presença online — plano futuro
 
 O Centro de Controle D7 atual é local e transparente: ele registra presença, eventos, alertas e métricas apenas neste navegador/dispositivo. Ele não mostra usuários online reais em outros celulares ou computadores, não cria monitoramento invisível e não coleta câmera, microfone ou dados sensíveis sem consentimento.

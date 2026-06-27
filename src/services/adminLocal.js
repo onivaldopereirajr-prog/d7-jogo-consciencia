@@ -1,8 +1,10 @@
 import { hashPassword } from './localAuth.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 
-export const ADMIN_KEY = 'd7_admin_local'
-export const ADMIN_SESSION_KEY = 'd7_admin_session'
+export const ADMIN_KEY = 'd7_owner_admin'
+export const ADMIN_SESSION_KEY = 'd7_owner_admin_session'
+export const LEGACY_ADMIN_KEY = 'd7_admin_local'
+export const LEGACY_ADMIN_SESSION_KEY = 'd7_admin_session'
 export const OBSERVER_KEY = 'd7_room_observer_mode'
 const MIN_PIN_LENGTH = 6
 
@@ -17,35 +19,48 @@ function randomToken() {
 
 export function getAdminLocal() {
   const admin = safeGetStorage(ADMIN_KEY, null)
-  return admin && typeof admin === 'object' && admin.passwordHash && admin.salt ? admin : null
+  if (admin && typeof admin === 'object' && admin.passwordHash && admin.salt) return admin
+  const legacy = safeGetStorage(LEGACY_ADMIN_KEY, null)
+  if (legacy && typeof legacy === 'object' && legacy.passwordHash && legacy.salt) {
+    const migrated = { ...legacy, alias: legacy.alias ?? 'admin', migratedFrom: LEGACY_ADMIN_KEY }
+    safeSetStorage(ADMIN_KEY, migrated)
+    return migrated
+  }
+  return null
 }
 
 export function getPublicAdminLocal() {
   const admin = getAdminLocal()
   if (!admin) return null
-  return { id: admin.id, name: admin.name, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
+  return { id: admin.id, name: admin.name, alias: admin.alias, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
 }
 
 export function hasAdminSession() {
-  const session = safeGetStorage(ADMIN_SESSION_KEY, null)
+  const session = safeGetStorage(ADMIN_SESSION_KEY, null) ?? safeGetStorage(LEGACY_ADMIN_SESSION_KEY, null)
   const admin = getAdminLocal()
   return Boolean(session?.adminId && admin?.id === session.adminId)
 }
 
 export function endAdminSession() {
   safeRemoveStorage(ADMIN_SESSION_KEY)
+  safeRemoveStorage(LEGACY_ADMIN_SESSION_KEY)
 }
 
-export async function createAdminLocal({ name, password, confirmPassword }) {
+
+export async function createAdminLocal({ name, alias, password, confirmPassword }) {
   const cleanName = String(name ?? '').trim()
+  const cleanAlias = String(alias ?? '').trim().toLowerCase()
   if (getAdminLocal()) return { ok: false, message: 'Já existe acesso administrativo local neste navegador.' }
   if (!cleanName) return { ok: false, message: 'Informe o nome do administrador.' }
+  if (!cleanAlias) return { ok: false, message: 'Informe o apelido administrativo.' }
   if (!password || password.length < MIN_PIN_LENGTH) return { ok: false, message: `Use pelo menos ${MIN_PIN_LENGTH} caracteres no PIN/senha admin.` }
   if (password !== confirmPassword) return { ok: false, message: 'A confirmação do PIN/senha não confere.' }
   const salt = randomToken()
   const admin = {
     id: `d7_admin_${Date.now()}_${randomToken().slice(0, 8)}`,
     name: cleanName,
+    alias: cleanAlias,
+    role: 'owner-local-admin',
     passwordHash: await hashPassword(password, salt),
     salt,
     createdAt: new Date().toISOString(),
@@ -56,9 +71,12 @@ export async function createAdminLocal({ name, password, confirmPassword }) {
   return { ok: true, admin: getPublicAdminLocal(), message: 'Acesso administrativo local criado.' }
 }
 
-export async function loginAdminLocal({ password }) {
+export async function loginAdminLocal({ alias, password }) {
   const admin = getAdminLocal()
+  const cleanAlias = String(alias ?? '').trim().toLowerCase()
   if (!admin) return { ok: false, message: 'Crie o acesso administrativo local primeiro.' }
+  if (!cleanAlias) return { ok: false, message: 'Informe o apelido administrativo.' }
+  if ((admin.alias ?? 'admin') !== cleanAlias) return { ok: false, message: 'Apelido administrativo inválido.' }
   if (!password) return { ok: false, message: 'Informe o PIN/senha admin.' }
   const passwordHash = await hashPassword(password, admin.salt)
   if (passwordHash !== admin.passwordHash) return { ok: false, message: 'PIN/senha admin inválido.' }

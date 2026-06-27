@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createAdminLocal, endAdminSession, getObserverMode, hasAdminSession, loginAdminLocal, setObserverMode } from '../services/adminLocal.js'
 import { summarizeLocalEvents } from '../services/analyticsLocal.js'
+import { getAvatarSymbol } from '../services/avatarService.js'
 
 function formatDate(value) {
   if (!value) return 'sem registro'
@@ -105,7 +106,7 @@ export default function AdminPanel({ summaries, analytics, t = (path) => path, o
           <h3 id="admin-users-title">Usuários locais neste navegador</h3>
           {summaries.map((summary) => (
             <article key={summary.user.id} className="admin-user-card">
-              <div><strong>{summary.user.name}</strong><small>{summary.user.login}</small></div>
+              <div className="admin-user-head"><span className="d7-avatar sm" style={{ '--avatar-color': summary.avatarColor ?? '#20d3ee' }} aria-hidden="true"><strong>{getAvatarSymbol(summary.avatarSymbol).glyph}</strong></span><div><strong>{summary.user.name}</strong><small>{summary.user.login} · {summary.avatarTitle}</small></div></div>
               <p>Criado: {formatDate(summary.user.createdAt)} · Último login: {formatDate(summary.user.lastLoginAt)}</p>
               <div className="admin-chip-grid">
                 <span>{summary.currentStage}</span><span>{summary.xp} XP</span><span>{summary.sparks} centelhas</span><span>{summary.tokenBalance} D7T</span><span>{summary.score} score</span><span>{summary.completedPractices} práticas</span><span>{summary.ritualMinutesTotal} min</span><span>Marcos {summary.ritualMilestonesUnlocked?.join(' / ') || 'pendente'}</span><span>{summary.unlockedSeals.length} selos</span><span>{summary.libraryCardsStudied} cards</span><span>{summary.libraryTitle}</span>

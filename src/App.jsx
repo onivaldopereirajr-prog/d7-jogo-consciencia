@@ -28,12 +28,15 @@ import D7Footer from './components/D7Footer.jsx'
 import AdminPanel from './components/AdminPanel.jsx'
 import D7Room from './components/D7Room.jsx'
 import D7Wheel from './components/D7Wheel.jsx'
+import UserAvatar from './components/UserAvatar.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import { translate } from './i18n/translations.js'
 import { getStoredLanguage, saveLanguage } from './services/languageService.js'
 import { recordLocalEvent, summarizeLocalEvents } from './services/analyticsLocal.js'
 import { spinD7Wheel } from './services/wheelService.js'
+import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
+import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarService.js'
 import './App.css'
 
 const visualAssets = {
@@ -453,14 +456,10 @@ function AuthScreen({ mode, message, t, language, onLanguageChange, onModeChange
   )
 }
 
-function UserProfileBar({ user, t, language, onLanguageChange, onLogout }) {
+function UserProfileBar({ user, progress, t, language, onLanguageChange, onLogout }) {
   return (
     <div className="user-profile-bar" aria-label="Sessão local atual">
-      <div>
-        <span className="overline">Usuário local</span>
-        <strong>{user.name}</strong>
-        <small>{user.login}</small>
-      </div>
+      <UserAvatar user={user} progress={progress} showMeta />
       <div className="user-profile-actions">
         <LanguageToggle language={language} onChange={onLanguageChange} />
         <button type="button" className="ghost-action" onClick={onLogout}>{t('common.logout')}</button>
@@ -471,9 +470,20 @@ function UserProfileBar({ user, t, language, onLanguageChange, onLogout }) {
 
 function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadReport }) {
   const summaries = getAllLocalSummaries()
+  const currentSummary = summaries.find((summary) => summary.user.id === currentUserId) ?? summaries[0] ?? null
   return (
     <section className="content-section local-panel">
-      <SectionTitle eyebrow="Acompanhamento Local" title="Relatório Local D7">Este painel mostra apenas contas e progresso salvos neste navegador/dispositivo. Não é banco de dados remoto.</SectionTitle>
+      <SectionTitle eyebrow="Acompanhamento Local" title="Relatório visual D7">Este painel mostra apenas contas e progresso salvos neste navegador/dispositivo. Não é banco de dados remoto.</SectionTitle>
+      {currentSummary && (
+        <div className="report-summary-grid">
+          <article><span>Jogador</span><UserAvatar user={currentSummary.user} progress={{ profile: { name: currentSummary.user.name, avatarSymbol: currentSummary.avatarSymbol, avatarColor: currentSummary.avatarColor, avatarTitle: currentSummary.avatarTitle }, xp: currentSummary.xp }} showMeta /></article>
+          <article><span>Prática</span><strong>{currentSummary.completedPractices} sessões</strong><small>{currentSummary.ritualMinutesTotal ?? 0} minutos rituais</small></article>
+          <article><span>Biblioteca</span><strong>{currentSummary.libraryCardsStudied} cards</strong><small>{currentSummary.libraryTitle}</small></article>
+          <article><span>Selos</span><strong>{currentSummary.unlockedSeals.length}</strong><small>{currentSummary.completedChallenges.length} desafios</small></article>
+          <article><span>D7T</span><strong>{currentSummary.tokenBalance}</strong><small>token simbólico interno</small></article>
+          <article><span>Roda/Sala/Eventos</span><strong>{currentSummary.score} score</strong><small>relatório local exportável</small></article>
+        </div>
+      )}
       <div className="report-actions">
         <button type="button" className="primary-action" onClick={onCopyReport}>Copiar relatório</button>
         <button type="button" className="ghost-action" onClick={onDownloadReport}>Exportar JSON</button>
@@ -483,11 +493,7 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
         {summaries.map((summary) => (
           <article key={summary.user.id} className={summary.user.id === currentUserId ? 'local-user-card current-local-user' : 'local-user-card'}>
             <div className="local-user-head">
-              <div>
-                <span>{summary.user.id === currentUserId ? 'Sessão atual' : 'Usuário local'}</span>
-                <h3>{summary.user.name}</h3>
-                <p>{summary.user.login}</p>
-              </div>
+              <UserAvatar user={summary.user} progress={{ profile: { name: summary.user.name, avatarSymbol: summary.avatarSymbol, avatarColor: summary.avatarColor, avatarTitle: summary.avatarTitle }, xp: summary.xp }} showMeta />
               <strong>{summary.currentStage}</strong>
             </div>
             <div className="local-metrics">
@@ -875,6 +881,12 @@ function App() {
     recordLocalEvent(currentUser.id, 'wheel_spin', { rewardType: result.event.rewardType, costD7T: result.event.costD7T })
   }
 
+  function handleAvatarChoice(symbolId, themeId = state.profile?.avatarTheme ?? 'aurora') {
+    const next = applyAvatarChoice(state, symbolId, themeId)
+    setState(next)
+    recordLocalEvent(currentUser.id, 'avatar_changed', { symbolId, themeId })
+  }
+
   if (!currentUser) {
     return <AuthScreen mode={authMode} message={authMessage} t={t} language={language} onLanguageChange={handleLanguageChange} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} onResetPassword={handleResetPassword} onDeleteAccount={handleDeleteAccount} />
   }
@@ -900,7 +912,7 @@ function App() {
       </aside>
 
       <main className="main-panel">
-        <UserProfileBar user={currentUser} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
+        <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
 
         <header className="topbar">
           <div>
@@ -928,8 +940,12 @@ function App() {
               <p>{t('home.body')}</p>
               <div className="hero-actions">
                 <button type="button" className="primary-action" onClick={() => navigate('pratica')}>{t('home.practice')}</button>
-                <button type="button" className="ghost-action" onClick={() => navigate('codice')}>{t('home.codex')}</button>
                 <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>{t('home.library')}</button>
+                <button type="button" className="ghost-action" onClick={() => navigate('sala')}>Sala D7</button>
+              </div>
+              <div className="home-next-action">
+                <UserAvatar user={currentUser} progress={state} showMeta />
+                <div><span className="overline">Próxima ação</span><strong>{state.daily.practice ? 'Estudar Biblioteca ou entrar na Sala D7' : `Prática ritual de ${practiceDurationMinutes} min`}</strong><p>{recommendedLibraryCard ? `Estudo recomendado: ${recommendedLibraryCard.title}` : 'Acompanhe seu ciclo e mantenha presença.'}</p></div>
               </div>
             </div>
             <div className="dashboard-stack">
@@ -1070,7 +1086,14 @@ function App() {
         {activeView === 'codice' && (
           <section className="content-section">
             <SectionTitle eyebrow="Biblioteca simbólica" title="Códice Dual D7">Hebraico e sânscrito aparecem como trilhas simbólicas distintas dentro do jogo, unidas por pontes lúdicas de presença.</SectionTitle>
-            <div className="library-callout">
+            <nav className="codex-quick-nav" aria-label="Navegação interna do Códice">
+              <a href="#codex-overview">Visão geral</a>
+              <a href="#codex-map">Mapa Simbólico</a>
+              <a href="#codex-seals">Selos</a>
+              <a href="#codex-cards">Letras e Sons</a>
+              <button type="button" onClick={() => navigate('biblioteca')}>Biblioteca relacionada</button>
+            </nav>
+            <div id="codex-overview" className="library-callout">
               <div>
                 <span className="overline">Biblioteca Iniciática D7</span>
                 <p>Resumos, missões e títulos desbloqueáveis para estudar símbolos com ritmo e progressão.</p>
@@ -1091,9 +1114,9 @@ function App() {
             <div className="bridge-grid">
               {dualBridges.map((bridge) => <article key={bridge.id} className="bridge-card"><strong>{bridge.formula}</strong><h3>{bridge.title}</h3><p>{bridge.meaning}. {bridge.explanation}</p></article>)}
             </div>
-            <D7SymbolicMap progress={state} onSaveMap={handleSaveSymbolicMap} />
-            <SealRoom state={state} activeSealId={activeSealId} challengeValue={challengeValue} sealMessage={sealMessage} tick={tick} onSelectSeal={handleSelectSeal} onStartSeal={handleStartSeal} onCancelSeal={handleCancelSeal} onChallengeChange={setChallengeValue} onCompleteChallenge={handleCompleteSeal} onCopyPhrase={handleCopySealPhrase} />
-            <div className="codex-layout">
+            <div id="codex-map"><D7SymbolicMap progress={state} onSaveMap={handleSaveSymbolicMap} /></div>
+            <div id="codex-seals"><SealRoom state={state} activeSealId={activeSealId} challengeValue={challengeValue} sealMessage={sealMessage} tick={tick} onSelectSeal={handleSelectSeal} onStartSeal={handleStartSeal} onCancelSeal={handleCancelSeal} onChallengeChange={setChallengeValue} onCompleteChallenge={handleCompleteSeal} onCopyPhrase={handleCopySealPhrase} /></div>
+            <div id="codex-cards" className="codex-layout">
               <div>
                 <h3 className="subhead">Trilha Hebraica</h3>
                 <div className="symbol-grid">{[...hebrewLetters, ...hebrewWords].map((card) => <SymbolCard key={card.id} card={card} unlocked={state.unlockedCards.includes(card.id)} studied={state.studiedCards.includes(card.id)} onStudy={study} hint={cardUnlockHint(card)} />)}</div>
@@ -1111,7 +1134,7 @@ function App() {
         )}
 
         {activeView === 'sala' && (
-          <D7Room user={currentUser} t={t} onEvent={(eventType) => recordLocalEvent(currentUser.id, eventType)} />
+          <D7Room user={currentUser} progress={state} t={t} onEvent={(eventType) => recordLocalEvent(currentUser.id, eventType)} />
         )}
 
         {activeView === 'roda' && (
@@ -1130,7 +1153,7 @@ function App() {
               {rank.map((player, index) => (
                 <article key={player.name} className={player.current ? 'rank-row current-player' : 'rank-row'}>
                   <strong>#{index + 1}</strong>
-                  <div><span>{player.name}</span><small>{player.title}</small></div>
+                  <div className="rank-player"><span className="d7-avatar sm" style={{ '--avatar-color': player.avatarColor ?? '#20d3ee' }} aria-hidden="true"><strong>{player.avatarSymbol ? getUserAvatarProfile({ name: player.name }, { profile: { avatarSymbol: player.avatarSymbol } }).glyph : 'D7'}</strong></span><div><span>{player.name}</span><small>{player.avatarTitle ?? player.title}</small></div></div>
                   <p>{player.score} score</p>
                   <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T · {player.ritualMinutesTotal ?? 0} min · Biblioteca {player.libraryCardsStudied ?? 0} · {player.libraryTitle ?? 'Iniciado do Silêncio'} · {Array.isArray(player.ritualMilestonesUnlocked) && player.ritualMilestonesUnlocked.length ? player.ritualMilestonesUnlocked.join(' / ') : '21/108 pendente'}</small>
                 </article>
@@ -1141,15 +1164,28 @@ function App() {
 
         {activeView === 'perfil' && (
           <section className="profile-grid">
-            <div className="profile-card">
-              <Sigil label={state.profile.avatar} tone="gold" />
+            <div className="profile-card profile-identity-card">
+              <UserAvatar user={currentUser} progress={state} size="lg" showMeta />
               <div className="profile-seals" aria-hidden="true">
                 <img src={visualAssets.sealD7} alt="" />
                 <img src={visualAssets.cycle} alt="" />
               </div>
-              <h2>{state.profile.name}</h2>
-              <p>{state.profile.title}</p>
-              <div className="profile-level">Nível {playerLevel(state.xp)}</div>
+              <span className="overline">Identidade D7</span>
+              <h2>{getUserAvatarProfile(currentUser, state).title}</h2>
+              <p>Sua identidade simbólica dentro da jornada.</p>
+              <div className="profile-level">Nível {playerLevel(state.xp)} · {currentScore} score</div>
+              <div className="avatar-choice-grid" aria-label="Escolher avatar simbólico">
+                {avatarSymbols.map((symbol) => (
+                  <button key={symbol.id} type="button" className={state.profile?.avatarSymbol === symbol.id ? 'avatar-choice active' : 'avatar-choice'} onClick={() => handleAvatarChoice(symbol.id)} aria-pressed={state.profile?.avatarSymbol === symbol.id}>
+                    <span>{symbol.glyph}</span><strong>{symbol.label}</strong><small>{symbol.meaning}</small>
+                  </button>
+                ))}
+              </div>
+              <label className="avatar-theme-picker" htmlFor="avatar-theme">Aura simbólica
+                <select id="avatar-theme" value={state.profile?.avatarTheme ?? 'aurora'} onChange={(event) => handleAvatarChoice(state.profile?.avatarSymbol ?? 'd7', event.target.value)}>
+                  {avatarThemes.map((theme) => <option key={theme.id} value={theme.id}>{theme.label}</option>)}
+                </select>
+              </label>
               <button type="button" className="ghost-action" onClick={resetMvp}>Resetar meu progresso</button>
             </div>
             <div className="inventory-card">

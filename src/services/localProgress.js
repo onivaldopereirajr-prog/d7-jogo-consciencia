@@ -116,6 +116,11 @@ export function userProgressSummary(user, state) {
     lastLibraryModuleId: current.libraryProgress?.lastModuleId ?? null,
     lastLibraryPhaseId: current.libraryProgress?.lastPhaseId ?? null,
     libraryStudyLog: current.libraryProgress?.studyLog ?? [],
+    avatarSymbol: current.profile?.avatarSymbol ?? 'd7',
+    avatarTheme: current.profile?.avatarTheme ?? 'aurora',
+    avatarColor: current.profile?.avatarColor ?? null,
+    avatarTitle: current.profile?.avatarTitle ?? current.profile?.title ?? 'Iniciado do Nada',
+    profileName: current.profile?.name ?? user.name,
   }
 }
 
@@ -146,6 +151,9 @@ export function localRanking(currentUserId) {
     libraryPhasesCompleted: summary.libraryPhasesCompleted ?? 0,
     libraryTitle: summary.libraryTitle ?? 'Iniciado do Silêncio',
     current: summary.user.id === currentUserId,
+    avatarSymbol: summary.avatarSymbol,
+    avatarColor: summary.avatarColor,
+    avatarTitle: summary.avatarTitle,
   }))
   return [...mockPlayers.map((item) => ({ ...item, seals: item.portals, tokens: 0, stage: 'D7', score: item.xp + item.streak * 50 + item.cards * 25 + item.portals * 200 + item.codes * 150 })), ...localPlayers].sort((a, b) => b.score - a.score)
 }

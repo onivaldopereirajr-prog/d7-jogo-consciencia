@@ -14,6 +14,8 @@ const rewards = [
   { type: 'mission', label: 'Missão especial: respire por 1 minuto', apply: (state) => ({ ...state, codex: [{ id: `wheel-mission-${Date.now()}`, title: 'Missão especial', text: 'Respire por 1 minuto antes da próxima prática.', date: new Date().toLocaleDateString('pt-BR') }, ...state.codex] }) },
   { type: 'library_tip', label: 'Dica da Biblioteca', apply: (state) => ({ ...state, lastUnlocks: unique(['Dica: revise o próximo card da Biblioteca', ...(state.lastUnlocks ?? [])]).slice(0, 5) }) },
   { type: 'study_bonus', label: '+5 XP de estudo', apply: (state) => ({ ...state, xp: state.xp + 5 }) },
+  { type: 'oracle_phrase', label: 'Frase simbólica: avance com leveza', apply: (state) => ({ ...state, codex: [{ id: `wheel-oracle-${Date.now()}`, title: 'Frase-oráculo simbólica', text: 'Avance com leveza: presença primeiro, resultado depois.', date: new Date().toLocaleDateString('pt-BR') }, ...state.codex] }) },
+  { type: 'micro_mission', label: 'Missão curta: organizar um espaço', apply: (state) => ({ ...state, lastUnlocks: unique(['Missão curta: organize um espaço pequeno', ...(state.lastUnlocks ?? [])]).slice(0, 5) }) },
   { type: 'visual_seal', label: 'Selo cosmético: Presença Clara', apply: (state) => ({ ...state, codex: [{ id: `wheel-seal-${Date.now()}`, title: 'Selo cosmético: Presença Clara', text: 'Selo visual simbólico sem valor financeiro.', date: new Date().toLocaleDateString('pt-BR') }, ...state.codex] }) },
 ]
 

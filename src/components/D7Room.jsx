@@ -6,8 +6,8 @@ function statusText(value) {
   return { none: 'ouvinte', requested: 'aguardando aprovação', approved: 'autorizado', revoked: 'revogado' }[value] ?? value
 }
 
-export default function D7Room({ user, t = (path) => path, onEvent }) {
-  const [room, setRoom] = useState(() => ensureParticipantPermission(user))
+export default function D7Room({ user, progress, t = (path) => path, onEvent }) {
+  const [room, setRoom] = useState(() => ensureParticipantPermission(user, progress))
   const [message, setMessage] = useState('')
   const [cameraPreview, setCameraPreview] = useState(false)
   const isAdmin = hasAdminSession()
@@ -20,13 +20,13 @@ export default function D7Room({ user, t = (path) => path, onEvent }) {
 
   function submit(event) {
     event.preventDefault()
-    const next = sendRoomMessage(user, message)
+    const next = sendRoomMessage(user, message, progress)
     setRoom(next)
     setMessage('')
   }
 
   function request(kind) {
-    const next = updateRoomPermission(user, { [kind]: 'requested' })
+    const next = updateRoomPermission(user, { [kind]: 'requested' }, progress)
     setRoom(next)
     onEvent?.(kind === 'speech' ? 'room_speech_requested' : 'room_camera_requested')
   }
@@ -46,9 +46,10 @@ export default function D7Room({ user, t = (path) => path, onEvent }) {
 
       <div className="room-grid">
         <section className="room-stage" aria-label="Palco principal">
-          <span className="overline">Sala local MVP</span>
+          <span className="overline">Sala local MVP · encontro guiado</span>
           <h3>Palco principal</h3>
-          <p>Apresentador D7: foco, presença e diálogo com transparência. Nenhuma câmera ou microfone é ativado automaticamente.</p>
+          <p><strong>Tema:</strong> presença, estudo simbólico e conversa consciente. Nenhuma câmera ou microfone é ativado automaticamente.</p>
+          <div className="room-status-strip"><span>Moderação: {observer ? 'ativa' : 'transparente quando habilitada'}</span><span>Seu estado: fala {statusText(current.speech)} · câmera {statusText(current.camera)}</span></div>
           <div className="camera-placeholder">
             {cameraPreview ? <strong>Preview local preparado</strong> : <strong>Câmera desativada</strong>}
             <span>{cameraPreview ? 'Placeholder local. Integração real exige clique, permissão e WebRTC futuro.' : 'Clique somente se quiser preparar um preview local.'}</span>
@@ -63,10 +64,9 @@ export default function D7Room({ user, t = (path) => path, onEvent }) {
         <aside className="room-participants" aria-label="Participantes">
           <h3>Participantes</h3>
           {Object.values(room.permissions).map((participant) => (
-            <article key={participant.userId}>
-              <strong>{participant.name}</strong>
-              <span>{participant.role}</span>
-              <small>Fala: {statusText(participant.speech)} · Câmera: {statusText(participant.camera)}</small>
+            <article key={participant.userId} className="room-participant-card">
+              <span className="d7-avatar sm" style={{ '--avatar-color': participant.avatarColor ?? '#20d3ee' }} aria-hidden="true"><strong>{participant.avatarGlyph ?? 'D7'}</strong></span>
+              <div><strong>{participant.nickname ?? participant.name}</strong><span>{participant.role}</span><small>Fala: {statusText(participant.speech)} · Câmera: {statusText(participant.camera)}</small></div>
             </article>
           ))}
         </aside>
@@ -80,7 +80,15 @@ export default function D7Room({ user, t = (path) => path, onEvent }) {
           </form>
           <div className="room-messages">
             {room.messages.length === 0 && <p>Nenhuma mensagem local ainda.</p>}
-            {room.messages.map((item) => <article key={item.id}><strong>{item.author}</strong><p>{item.text}</p><small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small></article>)}
+            {room.messages.map((item) => (
+              <article key={item.id} className="d7-message" aria-label={`Mensagem de ${item.nickname ?? item.author}`}>
+                <span className="d7-avatar sm" style={{ '--avatar-color': item.avatarColor ?? '#20d3ee' }} aria-hidden="true"><strong>{item.avatarGlyph ?? 'D7'}</strong></span>
+                <div>
+                  <header><strong>{item.nickname ?? item.author}</strong><small>{item.role ? `${item.role} · ` : ''}{new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></header>
+                  <p>{item.text}</p>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 
@@ -89,7 +97,7 @@ export default function D7Room({ user, t = (path) => path, onEvent }) {
             <h3 id="room-moderation-title">Moderação local</h3>
             {Object.values(room.permissions).map((participant) => (
               <article key={participant.userId}>
-                <strong>{participant.name}</strong>
+                <strong>{participant.nickname ?? participant.name}</strong>
                 <div>
                   <button type="button" className="mini-action" onClick={() => moderate(participant.userId, 'speech', 'approved')}>Aprovar fala</button>
                   <button type="button" className="mini-action" onClick={() => moderate(participant.userId, 'speech', 'revoked')}>Revogar fala</button>

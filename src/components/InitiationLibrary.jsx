@@ -12,6 +12,18 @@ const TRADITION_FILTERS = [
   { id: 'ponte-d7', label: 'Ponte D7' },
 ]
 
+const CATEGORY_FILTERS = [
+  { id: 'all', label: 'Todas as divisões' },
+  { id: 'Comece aqui', label: 'Comece aqui' },
+  { id: 'Letra', label: 'Letras Hebraicas' },
+  { id: 'Palavras e Gematria', label: 'Palavras e Gematria' },
+  { id: 'Sefirot', label: 'Sefirot' },
+  { id: 'Sânscrito e Sons', label: 'Sânscrito e Sons' },
+  { id: 'Mantras simbólicos', label: 'Mantras simbólicos' },
+  { id: 'Ponte D7', label: 'Ponte D7' },
+  { id: 'Desafios de estudo', label: 'Desafios de estudo' },
+]
+
 function progressLabel(current, total) {
   return `${current}/${total}`
 }
@@ -42,6 +54,7 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
   const safeProgress = progress ?? {}
   const stats = getLibraryStudyStats(safeProgress)
   const [selectedTradition, setSelectedTradition] = useState('all')
+  const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedModuleId, setSelectedModuleId] = useState(() => stats.completedModules[0] ?? initiationModules[0]?.id ?? 'codex-introduction')
   const [glossaryQuery, setGlossaryQuery] = useState('')
 
@@ -55,8 +68,8 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
 
   const visibleCards = useMemo(() => {
     const cards = Array.isArray(studyableLibraryCards) ? studyableLibraryCards : []
-    return cards.filter((card) => selectedTradition === 'all' || card.tradition === selectedTradition)
-  }, [selectedTradition])
+    return cards.filter((card) => (selectedTradition === 'all' || card.tradition === selectedTradition) && (selectedCategory === 'all' || card.kind === selectedCategory))
+  }, [selectedTradition, selectedCategory])
 
   const visibleGlossary = useMemo(() => {
     const glossary = Array.isArray(libraryGlossary) ? libraryGlossary : []
@@ -117,7 +130,7 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
         })}
       </div>
 
-      <div className="library-filters">
+      <div className="library-filters library-filters--stacked">
         <div className="library-filter-group" role="tablist" aria-label="Filtrar tradição">
           {TRADITION_FILTERS.map((filter) => (
             <button
@@ -126,6 +139,19 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
               className={selectedTradition === filter.id ? 'filter-chip active' : 'filter-chip'}
               aria-pressed={selectedTradition === filter.id}
               onClick={() => setSelectedTradition(filter.id)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <div className="library-filter-group library-filter-group--categories" role="tablist" aria-label="Filtrar divisão da Biblioteca">
+          {CATEGORY_FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              className={selectedCategory === filter.id ? 'filter-chip active' : 'filter-chip'}
+              aria-pressed={selectedCategory === filter.id}
+              onClick={() => setSelectedCategory(filter.id)}
             >
               {filter.label}
             </button>
@@ -232,9 +258,9 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
           <div>
             <span className="overline">Cartas da biblioteca</span>
             <h3 id="library-cards-title">Camadas desbloqueadas e seladas</h3>
-            <p>O estado mostra o que já pode ser estudado e o que ainda depende de prática, selos, mapa ou sequência.</p>
+            <p>Use tradição e divisão para estudar em blocos curtos. Cards bloqueados mostram o requisito; cards disponíveis podem ser marcados sem duplicar recompensa.</p>
           </div>
-          <small>{visibleCards.length} cards na tradição filtrada</small>
+          <small>{visibleCards.length} cards na seleção atual</small>
         </div>
         <div className="library-card-grid">
           {visibleCards.map((card) => {

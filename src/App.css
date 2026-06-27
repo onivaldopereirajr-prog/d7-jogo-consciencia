@@ -4458,7 +4458,15 @@ button:not(:disabled):active {
   width: 100%;
   overflow: hidden;
   padding: calc(56px + env(safe-area-inset-top)) clamp(18px, 4vw, 56px) calc(34px + env(safe-area-inset-bottom));
-  background: #05070d;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(32, 211, 238, 0.18), transparent 24%),
+    radial-gradient(circle at 50% 54%, rgba(212, 175, 55, 0.14), transparent 31%),
+    radial-gradient(circle at 50% 48%, rgba(120, 82, 255, 0.1), transparent 39%),
+    linear-gradient(135deg, #04060b 0%, #0a1020 42%, #05070d 100%),
+    url('/assets/d7/entrance/d7-bg-poster.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   color: #f8f3df;
 }
 
@@ -4485,7 +4493,23 @@ button:not(:disabled):active {
     radial-gradient(circle at 50% 42%, rgba(32, 211, 238, 0.18), transparent 24%),
     radial-gradient(circle at 50% 54%, rgba(212, 175, 55, 0.14), transparent 31%),
     radial-gradient(circle at 50% 48%, rgba(120, 82, 255, 0.1), transparent 39%),
-    linear-gradient(135deg, #04060b 0%, #0a1020 42%, #05070d 100%);
+    linear-gradient(135deg, #04060b 0%, #0a1020 42%, #05070d 100%),
+    url('/assets/d7/entrance/d7-bg-poster.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.d7-entrance--video-failed .d7-entrance-video {
+  display: none;
+}
+
+.d7-entrance--video-loading .d7-entrance-video {
+  opacity: 0;
+}
+
+.d7-entrance--video-ready .d7-entrance-video {
+  opacity: 0.42;
 }
 
 .d7-entrance-overlay {

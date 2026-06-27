@@ -13,7 +13,7 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
   const [callVisible, setCallVisible] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [soundMessage, setSoundMessage] = useState('')
-  const [mediaFailed, setMediaFailed] = useState(false)
+  const [videoStatus, setVideoStatus] = useState('loading')
 
   function completeEntrance(delay = 950) {
     window.setTimeout(() => onComplete?.(), delay)
@@ -53,7 +53,7 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
   }
 
   return (
-    <main className="d7-entrance" aria-label="Entrada cinematográfica do D7">
+    <main className={`d7-entrance d7-entrance--video-${videoStatus}`} aria-label="Entrada cinematográfica do D7">
       <video
         ref={videoRef}
         className="d7-entrance-video"
@@ -61,10 +61,16 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
         muted
         loop
         playsInline
-        preload="auto"
+        preload="metadata"
         poster={entranceAssets.poster}
         aria-hidden="true"
-        onError={() => setMediaFailed(true)}
+        onLoadedData={() => setVideoStatus('ready')}
+        onCanPlay={() => setVideoStatus('ready')}
+        onError={() => {
+          setVideoStatus('failed')
+          setSoundEnabled(false)
+          setSoundMessage('')
+        }}
       >
         <source src={entranceAssets.video} type="video/mp4" />
       </video>
@@ -73,14 +79,16 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
       <div className="d7-entrance-overlay" aria-hidden="true" />
       <div className="d7-entrance-particles" aria-hidden="true" />
 
-      <button
-        type="button"
-        className="d7-entrance-sound"
-        onClick={handleSoundToggle}
-        aria-label={soundEnabled ? 'Silenciar vídeo de entrada' : 'Ativar som do vídeo de entrada'}
-      >
-        {soundEnabled ? 'Silenciar' : 'Ativar som'}
-      </button>
+      {videoStatus === 'ready' && (
+        <button
+          type="button"
+          className="d7-entrance-sound"
+          onClick={handleSoundToggle}
+          aria-label={soundEnabled ? 'Silenciar vídeo de entrada' : 'Ativar som do vídeo de entrada'}
+        >
+          {soundEnabled ? 'Silenciar' : 'Ativar som'}
+        </button>
+      )}
 
       <div className="d7-entrance-symbols" aria-hidden="true">
         {entranceSymbols.map((symbol) => <span key={symbol} className={`d7-entrance-symbol symbol-${symbol.toLowerCase()}`}>{symbol}</span>)}
@@ -100,7 +108,7 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
           <button type="button" className="d7-entrance-secondary" onClick={handleSkip}>Entrar no D7</button>
         </div>
 
-        {(mediaFailed || soundMessage) && (
+        {(videoStatus === 'failed' || soundMessage) && (
           <p className="d7-entrance-note" role="status">
             {soundMessage || 'Vídeo indisponível agora. A entrada continua com fundo visual seguro.'}
           </p>

@@ -59,8 +59,9 @@ A entrada cinematográfica foi integrada ao app principal a partir do projeto lo
 - O componente React fica em `src/components/D7CinematicEntrance.jsx`.
 - Os assets da entrada ficam em `public/assets/d7/entrance/`.
 - O vídeo de fundo, quando existir, deve se chamar `d7-bg-loop.mp4`.
-- O poster/fallback, quando existir, deve se chamar `d7-bg-poster.jpg`.
-- Por regra dos navegadores, autoplay funciona mudo; o usuário pode ativar som manualmente pelo botão `Ativar som`.
+- Para melhor compatibilidade Android/iPhone, use MP4 com codec H.264 e áudio AAC opcional.
+- O poster/fallback, quando existir, deve ser JPG ou PNG exportado como `d7-bg-poster.jpg`.
+- Por regra dos navegadores, autoplay funciona mudo; o usuário pode ativar som manualmente pelo botão `Ativar som` quando o vídeo carregar.
 - Se vídeo ou poster falharem, a entrada continua com fallback visual em CSS.
 - A entrada aparece antes do login para quem ainda não a viu, salva `d7_entrance_seen` no LocalStorage e pode ser revista pela Home.
 

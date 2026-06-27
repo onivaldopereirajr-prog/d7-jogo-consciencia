@@ -39,7 +39,7 @@ import { getStoredLanguage, saveLanguage } from './services/languageService.js'
 import { recordLocalEvent, summarizeLocalEvents } from './services/analyticsLocal.js'
 import { createSecurityAlert, trackAdminEvent } from './services/adminAnalyticsService.js'
 import { markPresenceInactive, updatePresence } from './services/presenceService.js'
-import { spinD7Wheel } from './services/wheelService.js'
+import { getWheelEvents, spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
 import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarService.js'
 import './App.css'
@@ -495,6 +495,7 @@ function UserProfileBar({ user, progress, t, language, onLanguageChange, onLogou
 function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadReport }) {
   const summaries = getAllLocalSummaries()
   const currentSummary = summaries.find((summary) => summary.user.id === currentUserId) ?? summaries[0] ?? null
+  const wheelEvents = getWheelEvents(currentUserId).slice(0, 5)
   return (
     <section className="content-section local-panel">
       <SectionTitle eyebrow="Acompanhamento Local" title="Relatório visual D7">Este painel mostra apenas contas e progresso salvos neste navegador/dispositivo. Não é banco de dados remoto.</SectionTitle>
@@ -512,6 +513,17 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
         <button type="button" className="primary-action" onClick={onCopyReport}>Copiar relatório</button>
         <button type="button" className="ghost-action" onClick={onDownloadReport}>Exportar JSON</button>
       </div>
+      <section className="wheel-report-panel" aria-labelledby="wheel-report-title">
+        <h3 id="wheel-report-title">Últimos giros da Roda D7</h3>
+        {wheelEvents.length === 0 && <p>Nenhum giro registrado para este usuário local.</p>}
+        {wheelEvents.map((event) => (
+          <article key={event.id}>
+            <strong>{event.rewardLabel}</strong>
+            <span>{event.costD7T > 0 ? `${event.costD7T} D7T gastos` : 'Giro gratuito'}</span>
+            <small>{event.welcomeSpin ? 'Boas-vindas · ' : ''}{new Date(event.createdAt).toLocaleString('pt-BR')}</small>
+          </article>
+        ))}
+      </section>
       {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
       <div className="local-user-grid">
         {summaries.map((summary) => (
@@ -977,14 +989,15 @@ function App() {
     if (currentUser?.id) { recordLocalEvent(currentUser.id, 'language_changed', { language: saved }); trackAdminEvent(currentUser, 'language_changed', { language: saved }, activeView) }
   }
 
-  function handleWheelSpin() {
-    const result = spinD7Wheel(state, currentUser.id)
+  function handleWheelSpin(options = {}) {
+    const result = spinD7Wheel(state, currentUser.id, options)
     setWheelResult({ ok: result.ok, message: result.message })
     if (!result.ok) return
     setState(result.state)
-    recordLocalEvent(currentUser.id, 'wheel_spin', { rewardType: result.event.rewardType, costD7T: result.event.costD7T })
-    trackAdminEvent(currentUser, 'wheel_spin', { rewardType: result.event.rewardType, costD7T: result.event.costD7T }, activeView)
-    trackAdminEvent(currentUser, 'd7t_spent', { amount: result.event.costD7T, costD7T: result.event.costD7T }, activeView)
+    const metadata = { rewardType: result.event.rewardType, rewardLabel: result.event.rewardLabel, costD7T: result.event.costD7T, welcomeSpin: result.event.welcomeSpin }
+    recordLocalEvent(currentUser.id, 'wheel_spin', metadata)
+    trackAdminEvent(currentUser, 'wheel_spin', metadata, activeView)
+    if (result.event.costD7T > 0) trackAdminEvent(currentUser, 'd7t_spent', { amount: result.event.costD7T, costD7T: result.event.costD7T, rewardLabel: result.event.rewardLabel }, activeView)
   }
 
   function handleAvatarChoice(symbolId, themeId = state.profile?.avatarTheme ?? 'aurora') {
@@ -1262,7 +1275,7 @@ function App() {
         )}
 
         {activeView === 'roda' && (
-          <D7Wheel state={state} userId={currentUser.id} result={wheelResult} t={t} onSpin={handleWheelSpin} />
+          <D7Wheel state={state} userId={currentUser.id} result={wheelResult} t={t} onSpin={handleWheelSpin} onNavigate={navigate} />
         )}
 
         {activeView === 'admin' && (

@@ -2,6 +2,7 @@ import { safeGetStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { todayKey, unique } from '../utils/gameState.js'
 
 export const WHEEL_EVENTS_KEY = 'd7_wheel_events_by_user'
+export const WELCOME_SPIN_KEY = 'd7_welcome_spin_granted'
 export const WHEEL_COST_D7T = 3
 export const WHEEL_DAILY_LIMIT = 3
 
@@ -38,32 +39,97 @@ export function getTodayWheelCount(userId) {
   return getWheelEvents(userId).filter((event) => event.createdAt?.slice(0, 10) === today).length
 }
 
-export function spinD7Wheel(state, userId) {
-  if (!userId) return { ok: false, message: 'Usuário local ausente.', state }
-  if ((state.tokenBalance ?? 0) < WHEEL_COST_D7T) return { ok: false, message: 'D7T insuficiente para girar a Roda D7.', state }
+export function getWelcomeSpinGranted() {
+  const data = safeGetStorage(WELCOME_SPIN_KEY, {})
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {}
+}
+
+export function hasWelcomeSpinAvailable(userId) {
+  if (!userId) return false
+  return !getWelcomeSpinGranted()[userId]
+}
+
+function markWelcomeSpinGranted(userId, eventId) {
+  const data = getWelcomeSpinGranted()
+  safeSetStorage(WELCOME_SPIN_KEY, {
+    ...data,
+    [userId]: { grantedAt: new Date().toISOString(), eventId },
+  })
+}
+
+export function getWheelAvailability(state, userId) {
+  const balance = Math.max(0, state?.tokenBalance ?? 0)
   const todayCount = getTodayWheelCount(userId)
-  if (todayCount >= WHEEL_DAILY_LIMIT) return { ok: false, message: 'Limite diário de 3 giros atingido.', state }
+  const welcomeAvailable = hasWelcomeSpinAvailable(userId)
+  const missingD7T = Math.max(0, WHEEL_COST_D7T - balance)
+
+  if (!welcomeAvailable && balance < WHEEL_COST_D7T) {
+    return {
+      canSpin: false,
+      reason: 'insufficient_balance',
+      message: `Você precisa de ${WHEEL_COST_D7T} D7T para girar. Saldo atual: ${balance} D7T. Faltam ${missingD7T} D7T.`,
+      balance,
+      missingD7T,
+      todayCount,
+      welcomeAvailable,
+    }
+  }
+
+  if (todayCount >= WHEEL_DAILY_LIMIT) {
+    return {
+      canSpin: false,
+      reason: 'daily_limit',
+      message: `Você já usou os ${WHEEL_DAILY_LIMIT} giros de hoje. Volte amanhã para girar novamente.`,
+      balance,
+      missingD7T,
+      todayCount,
+      welcomeAvailable,
+    }
+  }
+
+  return {
+    canSpin: true,
+    reason: welcomeAvailable ? 'welcome_spin' : 'ready',
+    message: welcomeAvailable ? 'Você possui 1 giro de boas-vindas para conhecer a Roda D7.' : 'Você pode girar a Roda D7.',
+    balance,
+    missingD7T,
+    todayCount,
+    welcomeAvailable,
+  }
+}
+
+export function spinD7Wheel(state, userId, options = {}) {
+  if (!userId) return { ok: false, message: 'Usuário local ausente.', state }
+  const availability = getWheelAvailability(state, userId)
+  if (!availability.canSpin) return { ok: false, message: availability.message, state }
+
+  const useWelcomeSpin = Boolean(options.useWelcomeSpin && availability.welcomeAvailable)
+  const costD7T = useWelcomeSpin ? 0 : WHEEL_COST_D7T
+  if (!useWelcomeSpin && (state.tokenBalance ?? 0) < WHEEL_COST_D7T) return { ok: false, message: availability.message, state }
+
   const seed = `${Date.now()}-${Math.random().toString(36).slice(2)}`
   const reward = rewards[Math.floor(Math.random() * rewards.length)]
-  const charged = { ...state, tokenBalance: Math.max(0, (state.tokenBalance ?? 0) - WHEEL_COST_D7T) }
+  const charged = { ...state, tokenBalance: Math.max(0, (state.tokenBalance ?? 0) - costD7T) }
   const rewarded = reward.apply(charged)
   const event = {
     id: makeId('wheel'),
     userId,
-    costD7T: WHEEL_COST_D7T,
+    costD7T,
     rewardType: reward.type,
     rewardLabel: reward.label,
     createdAt: new Date().toISOString(),
     seed,
     claimed: true,
+    welcomeSpin: useWelcomeSpin,
   }
   const all = getWheelEventsByUser()
   const userEvents = Array.isArray(all[userId]) ? all[userId] : []
   safeSetStorage(WHEEL_EVENTS_KEY, { ...all, [userId]: [event, ...userEvents].slice(0, 80) })
+  if (useWelcomeSpin) markWelcomeSpinGranted(userId, event.id)
   return {
     ok: true,
     event,
-    message: `Roda D7: ${reward.label}`,
+    message: `${useWelcomeSpin ? 'Giro de boas-vindas' : 'Roda D7'}: ${reward.label}`,
     state: {
       ...rewarded,
       lastUnlocks: unique([reward.label, ...(rewarded.lastUnlocks ?? [])]).slice(0, 5),

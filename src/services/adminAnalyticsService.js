@@ -134,7 +134,7 @@ export function summarizeAdminAnalytics(summaries = [], presence = [], roomState
   const todayEvents = events.filter((event) => event.createdAt?.startsWith(today))
   const activeNow = presence.filter((item) => item.status === 'online')
   const d7tEarned = events.filter((event) => event.eventType === 'd7t_earned').reduce((sum, event) => sum + Number(event.metadata.amount ?? 0), 0)
-  const d7tSpent = events.filter((event) => event.eventType === 'd7t_spent' || event.eventType === 'wheel_spin').reduce((sum, event) => sum + Number(event.metadata.costD7T ?? 0), 0)
+  const d7tSpent = events.filter((event) => event.eventType === 'd7t_spent').reduce((sum, event) => sum + Number(event.metadata.amount ?? event.metadata.costD7T ?? 0), 0)
   const sessionSeconds = presence.reduce((sum, item) => sum + Number(item.estimatedSessionSeconds ?? 0), 0)
   return {
     usersCount: summaries.length,

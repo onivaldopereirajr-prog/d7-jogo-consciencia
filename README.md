@@ -52,6 +52,18 @@ O jogo transforma essas inspirações em resumos curtos, missões, cartas e inte
 
 
 
+## Entrada Cinematográfica D7
+
+A entrada cinematográfica foi integrada ao app principal a partir do projeto local `/home/flow/d7-entrada-site`.
+
+- O componente React fica em `src/components/D7CinematicEntrance.jsx`.
+- Os assets da entrada ficam em `public/assets/d7/entrance/`.
+- O vídeo de fundo, quando existir, deve se chamar `d7-bg-loop.mp4`.
+- O poster/fallback, quando existir, deve se chamar `d7-bg-poster.jpg`.
+- Por regra dos navegadores, autoplay funciona mudo; o usuário pode ativar som manualmente pelo botão `Ativar som`.
+- Se vídeo ou poster falharem, a entrada continua com fallback visual em CSS.
+- A entrada aparece antes do login para quem ainda não a viu, salva `d7_entrance_seen` no LocalStorage e pode ser revista pela Home.
+
 ## Rádio D7
 
 A tela de login possui a Rádio D7, um player local em HTML5 para criar atmosfera de foco, presença e símbolos vivos antes da entrada no app.

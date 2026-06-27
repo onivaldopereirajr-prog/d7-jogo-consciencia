@@ -31,6 +31,7 @@ import D7Wheel from './components/D7Wheel.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
 import D7RadioPlayer from './components/D7RadioPlayer.jsx'
 import D7MantraPlayer from './components/D7MantraPlayer.jsx'
+import D7CinematicEntrance from './components/D7CinematicEntrance.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import { translate } from './i18n/translations.js'
@@ -67,6 +68,24 @@ const codexFeaturedCards = [
 ]
 
 const appNavItems = [...navItems, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
+const D7_ENTRANCE_SEEN_KEY = 'd7_entrance_seen'
+
+function shouldShowInitialEntrance(initialUser) {
+  if (initialUser) return false
+  try {
+    return window.localStorage.getItem(D7_ENTRANCE_SEEN_KEY) !== 'true'
+  } catch {
+    return true
+  }
+}
+
+function markEntranceSeen() {
+  try {
+    window.localStorage.setItem(D7_ENTRANCE_SEEN_KEY, 'true')
+  } catch {
+    // LocalStorage can be unavailable in restricted browser modes.
+  }
+}
 
 function Sigil({ label = 'D7', tone = 'cyan' }) {
   return (
@@ -529,6 +548,7 @@ function App() {
   const initialState = initialUser ? getUserState(initialUser) : ensureToday(getUserState(null))
   const initialPracticeMinutes = normalizePracticeMinutes(initialState.lastPracticeDurationMinutes ?? 7)
   const [currentUser, setCurrentUser] = useState(() => initialUser)
+  const [showEntrance, setShowEntrance] = useState(() => shouldShowInitialEntrance(initialUser))
   const [language, setLanguage] = useState(() => getStoredLanguage())
   const [wheelResult, setWheelResult] = useState(null)
   const [adminRefresh, setAdminRefresh] = useState(0)
@@ -973,6 +993,15 @@ function App() {
     recordLocalEvent(currentUser.id, 'avatar_changed', { symbolId, themeId })
   }
 
+  function completeEntrance() {
+    markEntranceSeen()
+    setShowEntrance(false)
+  }
+
+  if (showEntrance) {
+    return <D7CinematicEntrance onComplete={completeEntrance} onSkip={completeEntrance} />
+  }
+
   if (!currentUser) {
     return <AuthScreen mode={authMode} message={authMessage} t={t} language={language} onLanguageChange={handleLanguageChange} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} onResetPassword={handleResetPassword} onDeleteAccount={handleDeleteAccount} />
   }
@@ -1028,6 +1057,7 @@ function App() {
                 <button type="button" className="primary-action" onClick={() => navigate('pratica')}>{t('home.practice')}</button>
                 <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>{t('home.library')}</button>
                 <button type="button" className="ghost-action" onClick={() => navigate('sala')}>Sala D7</button>
+                <button type="button" className="ghost-action" onClick={() => setShowEntrance(true)}>Ver entrada</button>
               </div>
               <div className="home-next-action">
                 <UserAvatar user={currentUser} progress={state} showMeta />

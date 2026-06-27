@@ -23,8 +23,17 @@ import D7SymbolicMap from './components/D7SymbolicMap.jsx'
 import D7PulseTimer from './components/D7PulseTimer.jsx'
 import D7DurationSelector from './components/D7DurationSelector.jsx'
 import InitiationLibrary from './components/InitiationLibrary.jsx'
+import LanguageToggle from './components/LanguageToggle.jsx'
+import D7Footer from './components/D7Footer.jsx'
+import AdminPanel from './components/AdminPanel.jsx'
+import D7Room from './components/D7Room.jsx'
+import D7Wheel from './components/D7Wheel.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
+import { translate } from './i18n/translations.js'
+import { getStoredLanguage, saveLanguage } from './services/languageService.js'
+import { recordLocalEvent, summarizeLocalEvents } from './services/analyticsLocal.js'
+import { spinD7Wheel } from './services/wheelService.js'
 import './App.css'
 
 const visualAssets = {
@@ -50,7 +59,7 @@ const codexFeaturedCards = [
   { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
 ]
 
-const appNavItems = [...navItems, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }]
+const appNavItems = [...navItems, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
 
 function Sigil({ label = 'D7', tone = 'cyan' }) {
   return (
@@ -278,7 +287,7 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
   )
 }
 
-function AuthScreen({ mode, message, onModeChange, onLogin, onRegister, onResetPassword, onDeleteAccount }) {
+function AuthScreen({ mode, message, t, language, onLanguageChange, onModeChange, onLogin, onRegister, onResetPassword, onDeleteAccount }) {
   const [loginData, setLoginData] = useState({ login: '', password: '' })
   const [registerData, setRegisterData] = useState({ name: '', login: '', password: '', confirmPassword: '' })
   const [recoveryData, setRecoveryData] = useState({ userId: '', password: '', confirmPassword: '', deleteConfirm: '' })
@@ -322,6 +331,7 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister, onResetP
 
   return (
     <main className="auth-shell">
+      <div className="auth-language-row"><LanguageToggle language={language} onChange={onLanguageChange} /></div>
       <section className="auth-layout" aria-label="Acesso local do D7">
         <figure className="auth-visual">
           <img
@@ -339,47 +349,47 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister, onResetP
           <div className="auth-brand">
             <Sigil label="D7" />
             <div>
-              <span className="overline">Acesso local MVP</span>
-              <h1 id="auth-title">D7: O Jogo da Consciência</h1>
+              <span className="overline">{t('auth.access')}</span>
+              <h1 id="auth-title">{t('auth.title')}</h1>
             </div>
           </div>
-          <p className="auth-lead">Uma jornada gamer de foco, presença e símbolos vivos.</p>
-          <p className="auth-sublead">Desperte o código interior. Atravesse portais, conquiste presença e transforme consciência em poder.</p>
-          <p className="auth-warning">Login local apenas para demonstração neste navegador. Não use senhas pessoais reais; para vários dispositivos será necessário backend futuro.</p>
+          <p className="auth-lead">{t('auth.lead')}</p>
+          <p className="auth-sublead">{t('auth.sublead')}</p>
+          <p className="auth-warning">{t('auth.warning')}</p>
           {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
 
           {!isRegister && !isForgot ? (
             <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onLogin(loginData) }}>
-              <label htmlFor="login-id">Apelido ou e-mail local</label>
+              <label htmlFor="login-id">{t('auth.loginLabel')}</label>
               <input id="login-id" value={loginData.login} onChange={(event) => updateLogin('login', event.target.value)} autoComplete="username" />
-              <label htmlFor="login-password">Senha</label>
+              <label htmlFor="login-password">{t('auth.passwordLabel')}</label>
               <input id="login-password" type="password" value={loginData.password} onChange={(event) => updateLogin('password', event.target.value)} autoComplete="current-password" />
-              <button type="submit" className="primary-action">Entrar</button>
-              <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
-              <button type="button" className="ghost-action" onClick={() => onModeChange('forgot')}>Esqueci minha senha</button>
+              <button type="submit" className="primary-action">{t('auth.enter')}</button>
+              <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>{t('auth.createAccount')}</button>
+              <button type="button" className="ghost-action" onClick={() => onModeChange('forgot')}>{t('auth.forgotPassword')}</button>
             </form>
           ) : isRegister ? (
             <form className="auth-form" onSubmit={(event) => { event.preventDefault(); onRegister(registerData) }}>
-              <label htmlFor="register-name">Nome do usuário</label>
+              <label htmlFor="register-name">{t('auth.nameLabel')}</label>
               <input id="register-name" value={registerData.name} onChange={(event) => updateRegister('name', event.target.value)} autoComplete="name" />
-              <label htmlFor="register-login">Apelido ou e-mail local</label>
+              <label htmlFor="register-login">{t('auth.loginLabel')}</label>
               <input id="register-login" value={registerData.login} onChange={(event) => updateRegister('login', event.target.value)} autoComplete="username" />
-              <label htmlFor="register-password">Senha</label>
+              <label htmlFor="register-password">{t('auth.passwordLabel')}</label>
               <input id="register-password" type="password" value={registerData.password} onChange={(event) => updateRegister('password', event.target.value)} autoComplete="new-password" />
-              <label htmlFor="register-confirm">Confirmar senha</label>
+              <label htmlFor="register-confirm">{t('auth.confirmPassword')}</label>
               <input id="register-confirm" type="password" value={registerData.confirmPassword} onChange={(event) => updateRegister('confirmPassword', event.target.value)} autoComplete="new-password" />
-              <button type="submit" className="primary-action">Criar conta</button>
-              <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+              <button type="submit" className="primary-action">{t('auth.create')}</button>
+              <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>{t('auth.backLogin')}</button>
             </form>
           ) : (
             <div className="auth-recovery">
               <div className="auth-recovery-head">
                 <div>
-                  <span className="overline">Recuperação local</span>
-                  <h3>Esqueci minha senha</h3>
+                  <span className="overline">{t('auth.recovery')}</span>
+                  <h3>{t('auth.recoveryTitle')}</h3>
                   <p>Esta recuperação funciona apenas neste navegador. O D7 atual usa login local MVP. Para login real em vários dispositivos será necessário backend futuro.</p>
                 </div>
-                <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>Criar nova conta local</button>
+                <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>{t('auth.createAccount')}</button>
               </div>
 
               <div className="auth-warning">{localUsers.length > 0 ? 'Selecione um usuário local para redefinir a senha. O progresso permanece intacto porque o `userId` não muda.' : 'Nenhum usuário local encontrado neste navegador. Crie uma nova conta local.'}</div>
@@ -410,12 +420,12 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister, onResetP
                   </div>
 
                   <form className="auth-form" onSubmit={handleRecoverySubmit}>
-                    <label htmlFor="recovery-password">Nova senha</label>
+                    <label htmlFor="recovery-password">{t('auth.newPassword')}</label>
                     <input id="recovery-password" type="password" value={recoveryData.password} onChange={(event) => updateRecovery('password', event.target.value)} autoComplete="new-password" />
                     <label htmlFor="recovery-confirm">Confirmar nova senha</label>
                     <input id="recovery-confirm" type="password" value={recoveryData.confirmPassword} onChange={(event) => updateRecovery('confirmPassword', event.target.value)} autoComplete="new-password" />
-                    <button type="submit" className="primary-action" disabled={!effectiveRecoveryUserId}>Redefinir senha local</button>
-                    <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+                    <button type="submit" className="primary-action" disabled={!effectiveRecoveryUserId}>{t('auth.resetPassword')}</button>
+                    <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>{t('auth.backLogin')}</button>
                   </form>
 
                   <div className="recovery-delete">
@@ -431,19 +441,19 @@ function AuthScreen({ mode, message, onModeChange, onLogin, onRegister, onResetP
                 <div className="recovery-empty">
                   <p>Nenhum usuário local encontrado neste navegador.</p>
                   <button type="button" className="primary-action" onClick={() => onModeChange('register')}>Criar uma nova conta local</button>
-                  <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>Voltar ao login</button>
+                  <button type="button" className="ghost-action" onClick={() => onModeChange('login')}>{t('auth.backLogin')}</button>
                 </div>
               )}
             </div>
           )}
         </section>
       </section>
-      <ClosingMantra />
+      <D7Footer copy={t('footer.copy')} tagline={t('footer.tagline')} />
     </main>
   )
 }
 
-function UserProfileBar({ user, onLogout }) {
+function UserProfileBar({ user, t, language, onLanguageChange, onLogout }) {
   return (
     <div className="user-profile-bar" aria-label="Sessão local atual">
       <div>
@@ -451,7 +461,10 @@ function UserProfileBar({ user, onLogout }) {
         <strong>{user.name}</strong>
         <small>{user.login}</small>
       </div>
-      <button type="button" className="ghost-action" onClick={onLogout}>Sair</button>
+      <div className="user-profile-actions">
+        <LanguageToggle language={language} onChange={onLanguageChange} />
+        <button type="button" className="ghost-action" onClick={onLogout}>{t('common.logout')}</button>
+      </div>
     </div>
   )
 }
@@ -500,23 +513,14 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
   )
 }
 
-function ClosingMantra() {
-  return (
-    <footer className="closing-mantra" aria-label="Epígrafe final do D7">
-      <p>Indu declara a Kyara</p>
-      <p>Além do Véu da Madrugada</p>
-      <p>A Luz permanece acesa.</p>
-      <p>Além do nome e da distância.</p>
-      <p>As almas recordam a sua origem.</p>
-    </footer>
-  )
-}
-
 function App() {
   const initialUser = getCurrentUser()
   const initialState = initialUser ? getUserState(initialUser) : ensureToday(getUserState(null))
   const initialPracticeMinutes = normalizePracticeMinutes(initialState.lastPracticeDurationMinutes ?? 7)
   const [currentUser, setCurrentUser] = useState(() => initialUser)
+  const [language, setLanguage] = useState(() => getStoredLanguage())
+  const [wheelResult, setWheelResult] = useState(null)
+  const [adminRefresh, setAdminRefresh] = useState(0)
   const [authMode, setAuthMode] = useState('login')
   const [authMessage, setAuthMessage] = useState(null)
   const [panelMessage, setPanelMessage] = useState(null)
@@ -555,6 +559,10 @@ function App() {
   const rank = localRanking(currentUser?.id)
   const practiceHasPrimaryReward = !state.daily.practice
   const practicePreview = practiceRewardPreview(practiceDurationMinutes, practiceHasPrimaryReward)
+  const t = (path) => translate(language, path)
+  const localSummaries = getAllLocalSummaries()
+  const analyticsSummary = summarizeLocalEvents(localSummaries)
+
 
   useEffect(() => {
     if (currentUser) saveUserProgress(currentUser.id, state)
@@ -643,6 +651,7 @@ function App() {
     setPracticeDurationError('')
     setTimer({ journeyCode: getJourneyCode(loaded.progress), startedAt: null, expectedEndAt: null, remaining: loadedPracticeMinutes * 60, status: 'idle' })
     setActiveView('home')
+    recordLocalEvent(user.id, 'login', { migrated: migration.migrated })
     setAuthMessage({ type: 'success', text: migration.migrated ? `${successMessage} Progresso anônimo antigo migrado com segurança.` : successMessage })
   }
 
@@ -679,6 +688,7 @@ function App() {
   }
 
   function handleLogout() {
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'logout')
     logout()
     setCurrentUser(null)
     setAuthMode('login')
@@ -744,6 +754,7 @@ function App() {
   }
 
   function handleStartPractice() {
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes })
     const normalizedMinutes = normalizePracticeMinutes(practiceDurationMinutes)
     const total = normalizedMinutes * 60
     const startedAt = Date.now()
@@ -781,6 +792,7 @@ function App() {
   }
 
   function handleStartSeal(sealId) {
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'seal_started', { sealId })
     setState((current) => startSealAttempt(current, sealId))
     setChallengeValue('')
     setSealMessage({ type: 'success', text: 'Selo iniciado. Mantenha presença ativa até o fim do timer.' })
@@ -792,6 +804,7 @@ function App() {
   }
 
   async function handleCompleteSeal(sealId) {
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'seal_completed', { sealId })
     const result = await completeSealChallenge(state, currentUser.id, sealId, challengeValue)
     if (!result.ok) {
       setSealMessage({ type: 'error', text: result.message })
@@ -810,12 +823,14 @@ function App() {
 
   function navigate(view) {
     setActiveView(view)
+    if (currentUser?.id) recordLocalEvent(currentUser.id, `view_${view}`)
     setState((current) => recordVisit(current, view))
   }
 
   function finishPractice() {
     if (timerStatus !== 'complete') return
     const rewardMode = state.daily.practice ? 'free' : 'primary'
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode })
     setState((current) => recordVisit(completePractice(current, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada'))
     setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
     setActiveView('jornada')
@@ -842,11 +857,26 @@ function App() {
   }
 
   function study(cardId) {
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'study_card_completed', { cardId })
     setState((current) => studyCard(current, cardId))
   }
 
+  function handleLanguageChange(nextLanguage) {
+    const saved = saveLanguage(nextLanguage)
+    setLanguage(saved)
+    if (currentUser?.id) recordLocalEvent(currentUser.id, 'language_changed', { language: saved })
+  }
+
+  function handleWheelSpin() {
+    const result = spinD7Wheel(state, currentUser.id)
+    setWheelResult({ ok: result.ok, message: result.message })
+    if (!result.ok) return
+    setState(result.state)
+    recordLocalEvent(currentUser.id, 'wheel_spin', { rewardType: result.event.rewardType, costD7T: result.event.costD7T })
+  }
+
   if (!currentUser) {
-    return <AuthScreen mode={authMode} message={authMessage} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} onResetPassword={handleResetPassword} onDeleteAccount={handleDeleteAccount} />
+    return <AuthScreen mode={authMode} message={authMessage} t={t} language={language} onLanguageChange={handleLanguageChange} onModeChange={setAuthMode} onLogin={handleLogin} onRegister={handleRegister} onResetPassword={handleResetPassword} onDeleteAccount={handleDeleteAccount} />
   }
 
   return (
@@ -863,14 +893,14 @@ function App() {
           {appNavItems.map((item) => (
             <button key={item.id} className={activeView === item.id ? 'active' : ''} type="button" aria-current={activeView === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
               <span>{item.icon}</span>
-              {item.label}
+              {t(`nav.${item.id}`)}
             </button>
           ))}
         </nav>
       </aside>
 
       <main className="main-panel">
-        <UserProfileBar user={currentUser} onLogout={handleLogout} />
+        <UserProfileBar user={currentUser} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
 
         <header className="topbar">
           <div>
@@ -893,13 +923,13 @@ function App() {
                 <Sigil label="א" tone="gold" />
                 <Sigil label="ॐ" tone="violet" />
               </div>
-              <span className="overline">Códice Dual D7</span>
-              <h2>Uma jornada gamer de foco, presença e símbolos vivos.</h2>
-              <p>O Códice Dual é uma criação simbólica do jogo: hebraico funciona como trilha de letras, números e códigos; sânscrito funciona como trilha de sons, mantras e estados. Não é uma afirmação histórica, é uma arquitetura lúdica de contemplação.</p>
+              <span className="overline">{t('home.eyebrow')}</span>
+              <h2>{t('home.title')}</h2>
+              <p>{t('home.body')}</p>
               <div className="hero-actions">
-                <button type="button" className="primary-action" onClick={() => navigate('pratica')}>Entrar no Nada</button>
-                <button type="button" className="ghost-action" onClick={() => navigate('codice')}>Abrir Códice</button>
-                <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Biblioteca Iniciática</button>
+                <button type="button" className="primary-action" onClick={() => navigate('pratica')}>{t('home.practice')}</button>
+                <button type="button" className="ghost-action" onClick={() => navigate('codice')}>{t('home.codex')}</button>
+                <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>{t('home.library')}</button>
               </div>
             </div>
             <div className="dashboard-stack">
@@ -1080,6 +1110,18 @@ function App() {
           <InitiationLibrary progress={state} onStudyCard={study} onNavigate={navigate} />
         )}
 
+        {activeView === 'sala' && (
+          <D7Room user={currentUser} t={t} onEvent={(eventType) => recordLocalEvent(currentUser.id, eventType)} />
+        )}
+
+        {activeView === 'roda' && (
+          <D7Wheel state={state} userId={currentUser.id} result={wheelResult} t={t} onSpin={handleWheelSpin} />
+        )}
+
+        {activeView === 'admin' && (
+          <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh })} />
+        )}
+
         {activeView === 'ranking' && (
           <section className="content-section">
             <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência + cartas + portais + códigos + D7T + minutos rituais + marcos 21/108.</SectionTitle>
@@ -1166,7 +1208,7 @@ function App() {
           </section>
         )}
 
-        <ClosingMantra />
+        <D7Footer copy={t('footer.copy')} tagline={t('footer.tagline')} />
       </main>
     </div>
   )

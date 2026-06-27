@@ -50,6 +50,37 @@ A biblioteca usa inspirações gerais de estudo, sem copiar capítulos ou págin
 
 O jogo transforma essas inspirações em resumos curtos, missões, cartas e interpretações próprias do universo D7.
 
+
+## Camada profissional local
+
+A versão atual adiciona uma camada profissional ainda baseada em LocalStorage:
+
+- Rodapé curto com copyright KATHBOT.
+- Alternância inicial de idioma `pt-BR` / `en-US`, salva em `d7_language`.
+- Painel Admin Local com PIN/senha local em hash/salt, sem expor senha, hash ou salt na interface.
+- Métricas locais em `d7_local_events_by_user`.
+- Sala D7 local com chat de demonstração, solicitações de fala/câmera e moderação transparente.
+- Roda D7 com D7T simbólico, custo local, limite diário e ledger em `d7_wheel_events_by_user`.
+
+A internacionalização cobre menus principais, login/cadastro/recuperação, rodapé e novas áreas. Conteúdo profundo da Biblioteca, Códice e textos narrativos longos permanecem majoritariamente em português nesta etapa, com estrutura preparada para tradução incremental.
+
+## Privacidade, Admin e Sala D7
+
+O Painel Admin Local não é administração remota real. Ele mostra apenas dados disponíveis neste navegador/dispositivo, incluindo usuários locais, progresso, métricas agregadas e eventos recentes. Ele não mostra senha, hash, salt nem tokens técnicos.
+
+A Sala D7 é um MVP local. Ela não cria chat multiusuário real entre dispositivos, não grava áudio/vídeo, não ativa câmera ou microfone automaticamente e não coleta dados sensíveis. O Modo Observador é transparente: quando ativo, a sala mostra aviso de moderação. Recursos reais de sala ao vivo exigirão backend, realtime, sinalização WebRTC, permissões claras e consentimento dos usuários.
+
+## Roda D7 e D7T
+
+D7T continua sendo token simbólico interno do jogo. Não é criptomoeda, não possui valor financeiro, não pode ser comprado, vendido, sacado, convertido ou transferido. A Roda D7 usa D7T apenas como recurso lúdico educativo, sem aposta real e sem promessa de prêmio financeiro.
+
+Regras locais atuais:
+
+- 1 giro custa 3 D7T.
+- Limite de 3 giros por dia por usuário local.
+- Recompensas são simbólicas: XP, centelhas, cartas cosméticas, títulos, temas, missões, dicas e selos visuais.
+- Cada giro é registrado em ledger local para evitar duplicação automática ao recarregar.
+
 ## Tecnologias utilizadas
 
 - React
@@ -157,6 +188,38 @@ O D7 usa referências culturais de forma simbólica, respeitosa e não definitiv
 - Cabala é citada como tradição mística judaica associada a letras, símbolos e sefirot, sem substituir estudo religioso ou orientação de autoridades da tradição.
 - Sânscrito e Devanagari aparecem como referências linguísticas e sonoras para a trilha simbólica do Códice.
 - A transliteração do nome é uma aproximação lúdica, não uma tradução perfeita nem análise linguística profissional.
+
+
+## Plano de Backend Real
+
+Para transformar o MVP local em uma plataforma real com administração, métricas entre dispositivos, chat, áudio/vídeo e moderação operacional, será necessário implementar backend com privacidade e consentimento desde a arquitetura.
+
+Arquitetura futura sugerida:
+
+- Vercel para o front-end estático React/Vite.
+- Supabase Auth ou alternativa equivalente para login real.
+- Postgres para progresso, perfis, eventos e permissões.
+- Row Level Security para restringir cada usuário aos próprios dados.
+- Painel admin com papéis explícitos e trilha de auditoria.
+- Logs consentidos e minimizados.
+- Realtime/chat para salas.
+- WebRTC com servidor de sinalização para áudio/vídeo.
+- Permissões claras de câmera e microfone, sempre após ação explícita do usuário.
+- Política de privacidade e termos de uso.
+
+Tabelas planejadas:
+
+- `profiles`
+- `user_progress`
+- `admin_roles`
+- `events`
+- `chat_rooms`
+- `chat_messages`
+- `room_permissions`
+- `token_ledger`
+- `wheel_events`
+
+O backend real deve validar recompensas, limites diários, permissões de sala e ledger de tokens no servidor. Nenhuma chave privilegiada deve ser exposta no front-end.
 
 ## Plano de Backend Seguro
 

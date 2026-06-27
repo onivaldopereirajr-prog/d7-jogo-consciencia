@@ -1,0 +1,169 @@
+export const supportedLanguages = ['pt-BR', 'en-US']
+export const defaultLanguage = 'pt-BR'
+
+export const translations = {
+  'pt-BR': {
+    languageName: 'Português',
+    nav: {
+      home: 'Home',
+      jornada: 'Jornada',
+      pratica: 'Prática',
+      codice: 'Códice',
+      circulos: 'Círculos',
+      ranking: 'Ranking',
+      perfil: 'Perfil',
+      biblioteca: 'Biblioteca',
+      acompanhamento: 'Acompanhamento',
+      sala: 'Sala D7',
+      roda: 'Roda D7',
+      admin: 'Painel Admin',
+    },
+    auth: {
+      access: 'Acesso local MVP',
+      title: 'D7: O Jogo da Consciência',
+      lead: 'Uma jornada gamer de foco, presença e símbolos vivos.',
+      sublead: 'Desperte o código interior. Atravesse portais, conquiste presença e transforme consciência em poder.',
+      warning: 'Login local apenas para demonstração neste navegador. Não use senhas pessoais reais; para vários dispositivos será necessário backend futuro.',
+      loginLabel: 'Apelido ou e-mail local',
+      passwordLabel: 'Senha',
+      enter: 'Entrar',
+      createAccount: 'Criar nova conta local',
+      forgotPassword: 'Esqueci minha senha',
+      nameLabel: 'Nome do usuário',
+      confirmPassword: 'Confirmar senha',
+      create: 'Criar conta',
+      backLogin: 'Voltar ao login',
+      recovery: 'Recuperação local',
+      recoveryTitle: 'Esqueci minha senha',
+      newPassword: 'Nova senha',
+      resetPassword: 'Redefinir senha local',
+    },
+    common: {
+      localMvp: 'MVP local',
+      open: 'Abrir',
+      send: 'Enviar',
+      close: 'Fechar',
+      save: 'Salvar',
+      logout: 'Sair',
+    },
+    footer: {
+      copy: '© 2026 KATHBOT. Todos os direitos reservados.',
+      tagline: 'D7: foco, presença e símbolos vivos.',
+    },
+    home: {
+      eyebrow: 'Códice Dual D7',
+      title: 'Uma jornada gamer de foco, presença e símbolos vivos.',
+      body: 'O Códice Dual é uma criação simbólica do jogo: hebraico funciona como trilha de letras, números e códigos; sânscrito funciona como trilha de sons, mantras e estados. Não é uma afirmação histórica, é uma arquitetura lúdica de contemplação.',
+      practice: 'Entrar no Nada',
+      codex: 'Abrir Códice',
+      library: 'Biblioteca Iniciática',
+    },
+    labels: {
+      localRanking: 'Ranking local',
+      playerProfile: 'Perfil do jogador',
+      localReports: 'Acompanhamento local',
+      library: 'Biblioteca Iniciática',
+    },
+    admin: {
+      title: 'Painel Admin Local',
+      privacy: 'Este painel mostra apenas dados locais deste navegador. Monitoramento real entre dispositivos exigirá backend futuro, autenticação real e consentimento dos usuários.',
+      localMvp: 'MVP local transparente',
+    },
+    room: {
+      title: 'Sala D7',
+      notice: 'Esta é uma sala MVP local. Chat, áudio e vídeo reais entre usuários exigirão backend/realtime e sinalização WebRTC futura.',
+      moderation: 'Esta sala pode ser acompanhada por um moderador para organização, segurança e qualidade da experiência.',
+    },
+    wheel: {
+      title: 'Roda D7',
+      disclaimer: 'D7T é token simbólico interno do jogo. Não é criptomoeda, não possui valor financeiro, não pode ser comprado, vendido, sacado ou transferido.',
+      spin: 'Girar Roda D7',
+    },
+  },
+  'en-US': {
+    languageName: 'English',
+    nav: {
+      home: 'Home',
+      jornada: 'Journey',
+      pratica: 'Practice',
+      codice: 'Codex',
+      circulos: 'Circles',
+      ranking: 'Ranking',
+      perfil: 'Profile',
+      biblioteca: 'Library',
+      acompanhamento: 'Reports',
+      sala: 'D7 Room',
+      roda: 'D7 Wheel',
+      admin: 'Admin Panel',
+    },
+    auth: {
+      access: 'Local MVP access',
+      title: 'D7: The Game of Consciousness',
+      lead: 'A game journey of focus, presence and living symbols.',
+      sublead: 'Awaken the inner code. Cross portals, build presence and turn consciousness into power.',
+      warning: 'Local login is only for demonstration in this browser. Do not use real personal passwords; multiple-device access will require a future backend.',
+      loginLabel: 'Local nickname or email',
+      passwordLabel: 'Password',
+      enter: 'Enter',
+      createAccount: 'Create local account',
+      forgotPassword: 'Forgot my password',
+      nameLabel: 'User name',
+      confirmPassword: 'Confirm password',
+      create: 'Create account',
+      backLogin: 'Back to login',
+      recovery: 'Local recovery',
+      recoveryTitle: 'Forgot my password',
+      newPassword: 'New password',
+      resetPassword: 'Reset local password',
+    },
+    common: {
+      localMvp: 'Local MVP',
+      open: 'Open',
+      send: 'Send',
+      close: 'Close',
+      save: 'Save',
+      logout: 'Logout',
+    },
+    footer: {
+      copy: '© 2026 KATHBOT. All rights reserved.',
+      tagline: 'D7: focus, presence and living symbols.',
+    },
+    home: {
+      eyebrow: 'D7 Dual Codex',
+      title: 'A game journey of focus, presence and living symbols.',
+      body: 'The Dual Codex is a symbolic creation of the game: Hebrew works as a path of letters, numbers and codes; Sanskrit works as a path of sounds, mantras and states. It is not a historical claim, but a playful architecture of contemplation.',
+      practice: 'Enter Nothingness',
+      codex: 'Open Codex',
+      library: 'Initiation Library',
+    },
+    labels: {
+      localRanking: 'Local ranking',
+      playerProfile: 'Player profile',
+      localReports: 'Local reports',
+      library: 'Initiation Library',
+    },
+    admin: {
+      title: 'Local Admin Panel',
+      privacy: 'This panel shows only local data from this browser. Real monitoring across devices will require a future backend, real authentication and user consent.',
+      localMvp: 'Transparent local MVP',
+    },
+    room: {
+      title: 'D7 Room',
+      notice: 'This is a local MVP room. Real chat, audio and video between users will require a future backend/realtime layer and WebRTC signaling.',
+      moderation: 'This room may be followed by a moderator for organization, safety and quality of experience.',
+    },
+    wheel: {
+      title: 'D7 Wheel',
+      disclaimer: 'D7T is an internal symbolic game token. It is not cryptocurrency, has no financial value, and cannot be bought, sold, withdrawn or transferred.',
+      spin: 'Spin D7 Wheel',
+    },
+  },
+}
+
+export function translate(language, path) {
+  const table = translations[language] ?? translations[defaultLanguage]
+  const fallback = translations[defaultLanguage]
+  const keys = path.split('.')
+  const read = (source) => keys.reduce((value, key) => (value && typeof value === 'object' ? value[key] : undefined), source)
+  return read(table) ?? read(fallback) ?? path
+}

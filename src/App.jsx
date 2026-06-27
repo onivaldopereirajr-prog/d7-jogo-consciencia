@@ -29,6 +29,7 @@ import AdminPanel from './components/AdminPanel.jsx'
 import D7Room from './components/D7Room.jsx'
 import D7Wheel from './components/D7Wheel.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
+import D7RadioPlayer from './components/D7RadioPlayer.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import { translate } from './i18n/translations.js'
@@ -451,6 +452,7 @@ function AuthScreen({ mode, message, t, language, onLanguageChange, onModeChange
           )}
         </section>
       </section>
+      <D7RadioPlayer t={t} />
       <D7Footer copy={t('footer.copy')} tagline={t('footer.tagline')} />
     </main>
   )

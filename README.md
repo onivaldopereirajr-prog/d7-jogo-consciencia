@@ -51,6 +51,19 @@ A biblioteca usa inspirações gerais de estudo, sem copiar capítulos ou págin
 O jogo transforma essas inspirações em resumos curtos, missões, cartas e interpretações próprias do universo D7.
 
 
+
+## Rádio D7
+
+A tela de login possui a Rádio D7, um player local em HTML5 para criar atmosfera de foco, presença e símbolos vivos antes da entrada no app.
+
+- As músicas devem ser arquivos próprios ou autorizados.
+- Coloque os MP3 em `public/audio/d7/radio/`.
+- A playlist local fica em `src/data/d7RadioTracks.js`.
+- A versão atual não usa streaming externo, API externa ou download automático.
+- O navegador exige interação do usuário: o áudio só começa depois de clicar em `Tocar Rádio D7`.
+- Configurações simples de volume, mute, repetir, aleatório e última faixa ficam em `d7_radio_settings` no LocalStorage.
+- Se uma faixa não existir ou falhar, o app não quebra e exibe uma mensagem amigável para adicionar arquivos MP3.
+
 ## Camada profissional local
 
 A versão atual adiciona uma camada profissional ainda baseada em LocalStorage:

@@ -3881,3 +3881,224 @@ button:not(:disabled):active {
     display: grid;
   }
 }
+
+
+/* Rádio D7 */
+.d7-radio {
+  width: min(100%, 1240px);
+  margin: 0 auto;
+}
+
+.d7-radio-card {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 3vw, 22px);
+  border: 1px solid rgba(32, 211, 238, 0.18);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(32, 211, 238, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.026));
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.d7-radio-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.d7-radio-title,
+.d7-radio-head p,
+.d7-radio-track p,
+.d7-radio-status p {
+  margin: 0;
+}
+
+.d7-radio-title {
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+
+.d7-radio-badges,
+.d7-radio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.d7-radio-badges span {
+  padding: 6px 9px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 999px;
+  color: var(--text-strong);
+  background: rgba(212, 175, 55, 0.06);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.d7-radio-wave {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cyan);
+}
+
+.d7-radio-wave span {
+  display: block;
+  width: 22%;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.34;
+  transform-origin: center;
+}
+
+.d7-radio.is-playing .d7-radio-wave span,
+.d7-radio.is-playing .d7-radio-equalizer span {
+  animation: d7-radio-pulse 1.2s ease-in-out infinite;
+}
+
+.d7-radio.is-playing .d7-radio-wave span:nth-child(2),
+.d7-radio.is-playing .d7-radio-equalizer span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.d7-radio.is-playing .d7-radio-wave span:nth-child(3),
+.d7-radio.is-playing .d7-radio-equalizer span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.d7-radio-track {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.d7-radio-track span,
+.d7-radio-track small {
+  color: var(--muted);
+}
+
+.d7-radio-track span {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.d7-radio-track strong {
+  color: var(--text-strong);
+  font-size: 1.05rem;
+}
+
+.d7-radio-controls {
+  align-items: center;
+}
+
+.d7-radio-controls .primary-action {
+  min-width: 150px;
+}
+
+.d7-radio-controls .mini-action.active {
+  border-color: rgba(32, 211, 238, 0.45);
+  background: rgba(32, 211, 238, 0.12);
+}
+
+.d7-radio-volume {
+  display: grid;
+  grid-template-columns: auto minmax(140px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-strong);
+  font-weight: 800;
+}
+
+.d7-radio-volume input {
+  width: 100%;
+  accent-color: var(--cyan);
+}
+
+.d7-radio-status {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.d7-radio-equalizer {
+  display: inline-flex;
+  align-items: end;
+  gap: 3px;
+  height: 18px;
+}
+
+.d7-radio-equalizer span {
+  width: 4px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--cyan);
+  opacity: 0.7;
+}
+
+@keyframes d7-radio-pulse {
+  0%, 100% { transform: scaleY(0.72); opacity: 0.36; }
+  50% { transform: scaleY(1.8); opacity: 0.95; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .d7-radio.is-playing .d7-radio-wave span,
+  .d7-radio.is-playing .d7-radio-equalizer span {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .d7-radio {
+    width: min(100%, 560px);
+  }
+
+  .d7-radio-card {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .d7-radio-head {
+    display: grid;
+  }
+
+  .d7-radio-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .d7-radio-controls .primary-action,
+  .d7-radio-controls .mini-action,
+  .d7-radio-controls .ghost-action {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .d7-radio-volume {
+    grid-template-columns: 1fr auto;
+  }
+
+  .d7-radio-volume input {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 420px) {
+  .d7-radio-card {
+    padding: 12px;
+  }
+
+  .d7-radio-badges span {
+    font-size: 0.68rem;
+  }
+}

@@ -358,20 +358,9 @@ function AuthScreen({ mode, message, t, language, onLanguageChange, onModeChange
   return (
     <main className="auth-shell">
       <div className="auth-language-row"><LanguageToggle language={language} onChange={onLanguageChange} /></div>
-      <section className="auth-layout" aria-label="Acesso local do D7">
-        <figure className="auth-visual">
-          <img
-            src="/images/d7/login/login-hexagrama-d7.png"
-            alt="D7: Jornada gamer de foco, presença e símbolos vivos"
-          />
-          <figcaption>
-            <span className="overline">Portal visual do D7</span>
-            <h2>Uma jornada gamer de foco, presença e símbolos vivos.</h2>
-            <p>Desperte o código interior. Atravesse portais, conquiste presença e transforme consciência em poder.</p>
-          </figcaption>
-        </figure>
-
-        <section className="auth-panel" aria-labelledby="auth-title">
+      <section className="auth-layout auth-layout--cinematic" aria-label="Acesso local do D7">
+        <div className="auth-cinematic-symbols" aria-hidden="true"><span>A1</span><span>B7</span><span>D7</span></div>
+        <section className="auth-panel auth-panel--cinematic" aria-labelledby="auth-title">
           <div className="auth-brand">
             <Sigil label="D7" />
             <div>

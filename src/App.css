@@ -1,76 +1,120 @@
 
 .auth-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
   align-content: center;
   gap: 22px;
-  padding: clamp(16px, 4vw, 42px);
-  padding-bottom: calc(clamp(16px, 4vw, 42px) + env(safe-area-inset-bottom));
+  overflow: hidden;
+  padding: calc(56px + env(safe-area-inset-top)) clamp(16px, 4vw, 42px) calc(32px + env(safe-area-inset-bottom));
   background:
-    radial-gradient(circle at 20% 10%, rgba(32, 211, 238, 0.18), transparent 30%),
-    radial-gradient(circle at 82% 0%, rgba(212, 175, 55, 0.16), transparent 28%),
-    var(--bg);
+    radial-gradient(circle at 50% 42%, rgba(32, 211, 238, 0.18), transparent 24%),
+    radial-gradient(circle at 50% 54%, rgba(212, 175, 55, 0.14), transparent 31%),
+    radial-gradient(circle at 50% 48%, rgba(120, 82, 255, 0.1), transparent 39%),
+    linear-gradient(135deg, #04060b 0%, #0a1020 42%, #05070d 100%),
+    url('/assets/d7/entrance/d7-bg-poster.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.auth-shell::before,
+.auth-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.auth-shell::before {
+  z-index: -2;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.76), transparent 32%, rgba(0, 0, 0, 0.84)),
+    radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.34) 62%, rgba(0, 0, 0, 0.86) 100%);
+}
+
+.auth-shell::after {
+  z-index: -1;
+  opacity: 0.32;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(32, 211, 238, 0.24) 0 1px, transparent 1.5px);
+  background-position: 0 0, 28px 44px;
+  background-size: 96px 96px, 142px 142px;
+  animation: d7-entrance-drift 38s linear infinite;
 }
 
 .auth-layout {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(18px, 3vw, 34px);
-  align-items: stretch;
-  width: min(100%, 1240px);
+  align-items: center;
+  width: min(100%, 560px);
   margin: 0 auto;
 }
 
+.auth-layout--cinematic::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: min(620px, 88vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 55px rgba(32, 211, 238, 0.08),
+    0 0 112px rgba(212, 175, 55, 0.13);
+  animation: d7-entrance-orbit 7s ease-in-out infinite;
+}
+
+.auth-cinematic-symbols {
+  position: absolute;
+  inset: -20px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.auth-cinematic-symbols span {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  color: rgba(248, 243, 223, 0.72);
+  background: rgba(255, 255, 255, 0.035);
+  font-weight: 800;
+  animation: d7-entrance-float 12s ease-in-out infinite;
+}
+
+.auth-cinematic-symbols span:nth-child(1) { top: 6%; left: -8%; }
+.auth-cinematic-symbols span:nth-child(2) { top: 38%; right: -10%; animation-duration: 15s; }
+.auth-cinematic-symbols span:nth-child(3) { left: 47%; bottom: -7%; animation-duration: 18s; }
+
 .auth-visual {
-  display: grid;
-  gap: 14px;
-  align-content: center;
-  margin: 0;
-  padding: clamp(18px, 3vw, 28px);
-  border: 1px solid rgba(32, 211, 238, 0.18);
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, rgba(6, 18, 31, 0.9), rgba(8, 12, 18, 0.88));
-  box-shadow: var(--shadow);
-}
-
-.auth-visual img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.auth-visual figcaption {
-  display: grid;
-  gap: 10px;
-  padding: 4px 2px 0;
-}
-
-.auth-visual h2 {
-  margin: 0;
-  font-size: clamp(1.5rem, 3.2vw, 2.6rem);
-  line-height: 1.05;
-}
-
-.auth-visual p {
-  margin: 0;
-  color: var(--muted);
-  max-width: 34ch;
+  display: none;
 }
 
 .auth-panel {
   width: 100%;
   margin: 0 auto;
   padding: clamp(22px, 5vw, 42px);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035));
   box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.auth-panel--cinematic {
+  border-color: rgba(32, 211, 238, 0.18);
 }
 
 .auth-brand {

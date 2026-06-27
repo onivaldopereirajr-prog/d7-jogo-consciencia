@@ -4297,6 +4297,110 @@ button:not(:disabled):active {
   opacity: 0.62;
 }
 
+.admin-user-management {
+  border-color: rgba(212, 175, 55, 0.22);
+}
+
+.admin-management-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.admin-management-card,
+.admin-dev-tools {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  box-shadow: var(--shadow);
+}
+
+.admin-management-card header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-mini-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(32, 211, 238, 0.34);
+  border-radius: 50%;
+  color: var(--text-strong);
+  background: radial-gradient(circle at 35% 25%, rgba(212, 175, 55, 0.28), rgba(32, 211, 238, 0.12) 52%, rgba(255, 255, 255, 0.04));
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.admin-management-card small,
+.admin-management-stats span {
+  color: var(--muted);
+}
+
+.admin-management-stats,
+.admin-inline-form {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-management-actions > *,
+.admin-inline-form button {
+  min-width: fit-content;
+}
+
+.admin-inline-form {
+  padding: 12px;
+  border: 1px solid rgba(32, 211, 238, 0.14);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.admin-inline-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.admin-inline-form input {
+  width: 100%;
+}
+
+.admin-inline-form.danger-zone {
+  border-color: rgba(255, 95, 109, 0.28);
+  background: rgba(255, 95, 109, 0.055);
+}
+
+.admin-user-summary {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+}
+
+.admin-dev-tools {
+  margin-top: 4px;
+  border-color: rgba(255, 95, 109, 0.22);
+}
+
 @media (max-width: 760px) {
   .admin-actions-row,
   .control-panel-head,
@@ -4311,8 +4415,15 @@ button:not(:disabled):active {
 
   .presence-grid,
   .control-user-grid,
-  .room-admin-grid {
+  .room-admin-grid,
+  .admin-management-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-management-actions,
+  .admin-management-actions > *,
+  .admin-inline-form button {
+    width: 100%;
   }
 }
 

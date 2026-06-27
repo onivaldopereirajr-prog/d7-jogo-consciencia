@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import AdminPresencePanel from './AdminPresencePanel.jsx'
 import AdminUserActivityCard from './AdminUserActivityCard.jsx'
 import AdminEventTimeline from './AdminEventTimeline.jsx'
+import AdminUserManagement from './AdminUserManagement.jsx'
 import { buildAdminReport, resolveSecurityAlert, summarizeAdminAnalytics } from '../services/adminAnalyticsService.js'
 import { getEventsByUser } from '../services/analyticsLocal.js'
 import { getPresenceList } from '../services/presenceService.js'
@@ -191,6 +192,8 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
           ))}
         </div>
       </section>
+
+      <AdminUserManagement summaries={summaries} presence={presence} onChanged={onResolvedAlert} />
 
       <AdminEventTimeline events={analytics.events} filter={filter} onFilterChange={setFilter} summaries={summaries} />
 

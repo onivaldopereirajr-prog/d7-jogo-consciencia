@@ -4,7 +4,7 @@ import AdminControlCenter from './AdminControlCenter.jsx'
 import { createSecurityAlert, trackAdminEvent } from '../services/adminAnalyticsService.js'
 
 function AdminAccessForm({ hasAdmin, onDone }) {
-  const [form, setForm] = useState({ name: '', alias: '', password: '', confirmPassword: '' })
+  const [form, setForm] = useState({ name: '', alias: '', password: '', confirmPassword: '', rememberDevice: false })
   const [message, setMessage] = useState(null)
   const update = (field, value) => setForm((current) => ({ ...current, [field]: value }))
 
@@ -41,6 +41,11 @@ function AdminAccessForm({ hasAdmin, onDone }) {
           <input id="admin-confirm" type="password" value={form.confirmPassword} onChange={(event) => update('confirmPassword', event.target.value)} autoComplete="new-password" />
         </>
       )}
+      <label className="switch-row" htmlFor="admin-remember-device">
+        <input id="admin-remember-device" type="checkbox" checked={form.rememberDevice} onChange={(event) => update('rememberDevice', event.target.checked)} />
+        <span>Lembrar este dispositivo por 7 dias</span>
+      </label>
+      <small>Sem esta opção, a sessão admin local expira em 8 horas neste navegador.</small>
       <button type="submit" className="primary-action">{hasAdmin ? 'Entrar como admin pleno' : 'Criar administrador pleno'}</button>
       {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
     </form>

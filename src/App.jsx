@@ -69,8 +69,36 @@ const codexFeaturedCards = [
 
 const appNavItems = [...navItems, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
 const D7_ENTRANCE_SEEN_KEY = 'd7_entrance_seen'
+const ADMIN_LOCAL_HASH = 'admin-local'
+const DEFAULT_VIEW = 'home'
+const VALID_APP_VIEWS = new Set(appNavItems.map((item) => item.id))
 
-function shouldShowInitialEntrance(initialUser) {
+function readHashRoute() {
+  if (typeof window === 'undefined') return { view: DEFAULT_VIEW, adminLocal: false }
+  const path = window.location.pathname.endsWith('/') ? window.location.pathname.slice(0, -1) : window.location.pathname
+  if (path.endsWith('/' + ADMIN_LOCAL_HASH)) return { view: 'admin', adminLocal: true }
+  const raw = window.location.hash.replace(/^#\/?/, '').trim()
+  if (raw === ADMIN_LOCAL_HASH) return { view: 'admin', adminLocal: true }
+  if (VALID_APP_VIEWS.has(raw)) return { view: raw, adminLocal: false }
+  return { view: DEFAULT_VIEW, adminLocal: false }
+}
+
+function writeHashRoute(view, { replace = false, adminLocal = false } = {}) {
+  if (typeof window === 'undefined') return
+  const target = adminLocal ? ADMIN_LOCAL_HASH : VALID_APP_VIEWS.has(view) ? view : DEFAULT_VIEW
+  const nextHash = '#/' + target
+  if (window.location.hash === nextHash) return
+  const adminPath = '/' + ADMIN_LOCAL_HASH
+  const currentPath = window.location.pathname.endsWith(adminPath) && !adminLocal ? (window.location.pathname.slice(0, -adminPath.length) || '/') : window.location.pathname
+  const nextUrl = currentPath + window.location.search + nextHash
+  const state = { d7View: adminLocal ? 'admin' : target, adminLocal }
+  if (replace) window.history.replaceState(state, '', nextUrl)
+  else window.history.pushState(state, '', nextUrl)
+}
+
+
+function shouldShowInitialEntrance(initialUser, directAdmin = false) {
+  if (directAdmin) return false
   if (initialUser) return false
   try {
     return window.localStorage.getItem(D7_ENTRANCE_SEEN_KEY) !== 'true'
@@ -569,17 +597,19 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
 
 function App() {
   const initialUser = getCurrentUser()
+  const initialRoute = readHashRoute()
   const initialState = initialUser ? getUserState(initialUser) : ensureToday(getUserState(null))
   const initialPracticeMinutes = normalizePracticeMinutes(initialState.lastPracticeDurationMinutes ?? 7)
   const [currentUser, setCurrentUser] = useState(() => initialUser)
-  const [showEntrance, setShowEntrance] = useState(() => shouldShowInitialEntrance(initialUser))
+  const [showEntrance, setShowEntrance] = useState(() => shouldShowInitialEntrance(initialUser, initialRoute.adminLocal))
   const [language, setLanguage] = useState(() => getStoredLanguage())
   const [wheelResult, setWheelResult] = useState(null)
   const [adminRefresh, setAdminRefresh] = useState(0)
   const [authMode, setAuthMode] = useState('login')
   const [authMessage, setAuthMessage] = useState(null)
   const [panelMessage, setPanelMessage] = useState(null)
-  const [activeView, setActiveView] = useState('home')
+  const [activeView, setActiveView] = useState(() => (initialUser || initialRoute.adminLocal) ? initialRoute.view : DEFAULT_VIEW)
+  const [directAdminAccess, setDirectAdminAccess] = useState(() => initialRoute.adminLocal)
   const [state, setState] = useState(() => initialState)
   const [practiceDurationMinutes, setPracticeDurationMinutes] = useState(() => initialPracticeMinutes)
   const [practiceDurationInput, setPracticeDurationInput] = useState(() => String(initialPracticeMinutes))
@@ -623,6 +653,29 @@ function App() {
   const localSummaries = getAllLocalSummaries()
   const analyticsSummary = summarizeLocalEvents(localSummaries)
 
+
+  useEffect(() => {
+    const route = readHashRoute()
+    if (currentUser || route.adminLocal) writeHashRoute(route.view, { replace: true, adminLocal: route.adminLocal })
+
+    function syncFromHistory() {
+      const nextRoute = readHashRoute()
+      setDirectAdminAccess(nextRoute.adminLocal)
+      if (nextRoute.adminLocal) {
+        setShowEntrance(false)
+        setActiveView('admin')
+        return
+      }
+      if (currentUser) setActiveView(nextRoute.view)
+    }
+
+    window.addEventListener('popstate', syncFromHistory)
+    window.addEventListener('hashchange', syncFromHistory)
+    return () => {
+      window.removeEventListener('popstate', syncFromHistory)
+      window.removeEventListener('hashchange', syncFromHistory)
+    }
+  }, [currentUser])
 
   useEffect(() => {
     if (currentUser) saveUserProgress(currentUser.id, state)
@@ -749,6 +802,8 @@ function App() {
     setPracticeDurationInput(String(loadedPracticeMinutes))
     setPracticeDurationError('')
     setTimer({ journeyCode: getJourneyCode(loaded.progress), startedAt: null, expectedEndAt: null, remaining: loadedPracticeMinutes * 60, status: 'idle' })
+    setDirectAdminAccess(false)
+    writeHashRoute('home', { replace: true })
     setActiveView('home')
     recordLocalEvent(user.id, 'login', { migrated: migration.migrated })
     updatePresence(user, loaded, 'home', 'session_started')
@@ -803,6 +858,8 @@ function App() {
     }
     logout()
     setCurrentUser(null)
+    setDirectAdminAccess(false)
+    writeHashRoute('home', { replace: true })
     setAuthMode('login')
     setAuthMessage({ type: 'success', text: 'Sessão local encerrada. O progresso não foi apagado.' })
   }
@@ -949,7 +1006,12 @@ function App() {
     return saved
   }
 
-  function navigate(view) {
+  function navigate(view, options = {}) {
+    if (!VALID_APP_VIEWS.has(view)) return
+    const adminLocal = view === 'admin' && options.adminLocal === true
+    if (view === activeView && directAdminAccess === adminLocal) return
+    writeHashRoute(view, { replace: options.replace === true, adminLocal })
+    setDirectAdminAccess(adminLocal)
     setActiveView(view)
     if (currentUser?.id) {
       recordLocalEvent(currentUser.id, `view_${view}`)
@@ -972,6 +1034,8 @@ function App() {
     setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
     setPracticeCelebration(true)
     window.setTimeout(() => setPracticeCelebration(false), 1600)
+    writeHashRoute('jornada')
+    setDirectAdminAccess(false)
     setActiveView('jornada')
   }
 
@@ -991,6 +1055,8 @@ function App() {
     setPracticeDurationMinutes(freshPracticeMinutes)
     setPracticeDurationInput(String(freshPracticeMinutes))
     setPracticeDurationError('')
+    writeHashRoute('home', { replace: true })
+    setDirectAdminAccess(false)
     setActiveView('home')
     setTimer({ journeyCode: getJourneyCode(fresh.progress), startedAt: null, expectedEndAt: null, remaining: freshPracticeMinutes * 60, status: 'idle' })
   }
@@ -1030,6 +1096,19 @@ function App() {
 
   if (showEntrance) {
     return <D7CinematicEntrance onComplete={completeEntrance} onSkip={completeEntrance} />
+  }
+
+  if (!currentUser && directAdminAccess) {
+    return (
+      <main className="auth-screen admin-direct-screen">
+        <div className="auth-topbar">
+          <LanguageToggle language={language} onChange={handleLanguageChange} />
+          <button type="button" className="ghost-action" onClick={() => { setDirectAdminAccess(false); writeHashRoute('home', { replace: true }) }}>Voltar ao login</button>
+        </div>
+        <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => trackAdminEvent('local-admin', 'admin_opened', { refresh: adminRefresh, direct: true }, 'admin')} />
+        <D7Footer copy={t('footer.copy')} tagline={t('footer.tagline')} />
+      </main>
+    )
   }
 
   if (!currentUser) {

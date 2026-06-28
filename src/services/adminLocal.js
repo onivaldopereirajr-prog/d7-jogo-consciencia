@@ -35,10 +35,21 @@ export function getPublicAdminLocal() {
   return { id: admin.id, name: admin.name, alias: admin.alias, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
 }
 
+function adminSessionPayload(adminId, rememberDevice = false) {
+  const now = Date.now()
+  const ttlMs = rememberDevice ? 7 * 24 * 60 * 60 * 1000 : 8 * 60 * 60 * 1000
+  return { adminId, loginAt: new Date(now).toISOString(), rememberDevice: Boolean(rememberDevice), expiresAt: new Date(now + ttlMs).toISOString() }
+}
+
 export function hasAdminSession() {
   const session = safeGetStorage(ADMIN_SESSION_KEY, null) ?? safeGetStorage(LEGACY_ADMIN_SESSION_KEY, null)
   const admin = getAdminLocal()
-  return Boolean(session?.adminId && admin?.id === session.adminId)
+  if (!session?.adminId || admin?.id !== session.adminId) return false
+  if (session.expiresAt && new Date(session.expiresAt).getTime() < Date.now()) {
+    endAdminSession()
+    return false
+  }
+  return true
 }
 
 export function endAdminSession() {
@@ -47,7 +58,7 @@ export function endAdminSession() {
 }
 
 
-export async function createAdminLocal({ name, alias, password, confirmPassword }) {
+export async function createAdminLocal({ name, alias, password, confirmPassword, rememberDevice = false }) {
   const cleanName = String(name ?? '').trim()
   const cleanAlias = String(alias ?? '').trim().toLowerCase()
   if (getAdminLocal()) return { ok: false, message: 'Já existe acesso administrativo local neste navegador.' }
@@ -67,11 +78,11 @@ export async function createAdminLocal({ name, alias, password, confirmPassword 
     lastLoginAt: new Date().toISOString(),
   }
   safeSetStorage(ADMIN_KEY, admin)
-  safeSetStorage(ADMIN_SESSION_KEY, { adminId: admin.id, loginAt: new Date().toISOString() })
+  safeSetStorage(ADMIN_SESSION_KEY, adminSessionPayload(admin.id, rememberDevice))
   return { ok: true, admin: getPublicAdminLocal(), message: 'Acesso administrativo local criado.' }
 }
 
-export async function loginAdminLocal({ alias, password }) {
+export async function loginAdminLocal({ alias, password, rememberDevice = false }) {
   const admin = getAdminLocal()
   const cleanAlias = String(alias ?? '').trim().toLowerCase()
   if (!admin) return { ok: false, message: 'Crie o acesso administrativo local primeiro.' }
@@ -82,7 +93,7 @@ export async function loginAdminLocal({ alias, password }) {
   if (passwordHash !== admin.passwordHash) return { ok: false, message: 'PIN/senha admin inválido.' }
   const updated = { ...admin, lastLoginAt: new Date().toISOString() }
   safeSetStorage(ADMIN_KEY, updated)
-  safeSetStorage(ADMIN_SESSION_KEY, { adminId: admin.id, loginAt: new Date().toISOString() })
+  safeSetStorage(ADMIN_SESSION_KEY, adminSessionPayload(admin.id, rememberDevice))
   return { ok: true, admin: getPublicAdminLocal(), message: 'Admin local autenticado.' }
 }
 

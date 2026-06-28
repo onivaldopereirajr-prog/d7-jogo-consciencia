@@ -124,8 +124,31 @@ function ProgressLine({ value, max, label = 'Progresso' }) {
   const width = max ? Math.min(100, Math.round((value / max) * 100)) : 0
   return (
     <span className="progress-line" role="progressbar" aria-label={label} aria-valuemin="0" aria-valuemax={max} aria-valuenow={value}>
-      <i style={{ width: `${width}%` }} aria-hidden="true" />
+      <i style={{ width: String(width) + "%" }} aria-hidden="true" />
     </span>
+  )
+}
+
+function getStreakFire(progressState) {
+  const streak = Number(progressState?.progress?.streak ?? 0)
+  const protectedBySymbol = Boolean(progressState?.ritualMilestonesUnlocked?.length || progressState?.sealProgress?.unlockedSeals?.length)
+  const status = progressState?.daily?.practice || streak >= 7 ? 'hot' : streak > 0 ? 'warm' : protectedBySymbol ? 'ember' : 'cold'
+  const label = status === 'hot' ? 'Fogo vivo' : status === 'warm' ? 'Fogo morno' : status === 'ember' ? 'Brasa protegida' : 'Fogo frio'
+  const detail = protectedBySymbol && status !== 'hot' ? 'Símbolos de proteção mantêm uma brasa simbólica para o retorno.' : 'Sequência de presença diária.'
+  return { streak, status, label, detail, protectedBySymbol }
+}
+
+function StreakFire({ state }) {
+  const fire = getStreakFire(state)
+  return (
+    <article className={["streak-fire", fire.status].filter(Boolean).join(" ")} aria-label={"Streak de Fogo: " + fire.streak + " dias"}>
+      <div className="streak-fire-orb" aria-hidden="true">◉</div>
+      <div>
+        <span className="overline">Streak de Fogo</span>
+        <strong>{fire.streak} dia{fire.streak === 1 ? '' : 's'}</strong>
+        <small>{fire.label} · {fire.detail}</small>
+      </div>
+    </article>
   )
 }
 
@@ -561,6 +584,7 @@ function App() {
   const [practiceDurationMinutes, setPracticeDurationMinutes] = useState(() => initialPracticeMinutes)
   const [practiceDurationInput, setPracticeDurationInput] = useState(() => String(initialPracticeMinutes))
   const [practiceDurationError, setPracticeDurationError] = useState('')
+  const [practiceCelebration, setPracticeCelebration] = useState(false)
   const [timer, setTimer] = useState(() => ({
     journeyCode: getJourneyCode(initialState.progress),
     startedAt: null,
@@ -946,6 +970,8 @@ function App() {
     }
     setState((current) => recordVisit(completePractice(current, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada'))
     setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
+    setPracticeCelebration(true)
+    window.setTimeout(() => setPracticeCelebration(false), 1600)
     setActiveView('jornada')
   }
 
@@ -1032,6 +1058,7 @@ function App() {
 
       <main className="main-panel">
         <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
+        <D7RadioPlayer t={t} compact />
 
         <header className="topbar">
           <div>
@@ -1070,6 +1097,7 @@ function App() {
             </div>
             <div className="dashboard-stack">
               <StatCard label="Meta atual" value={`${stage.minutes} min`} detail={`${journeyCode} · ${phrase}`} />
+              <StreakFire state={state} />
               <StatCard label="Trilha Hebraica" value={`${hebrewUnlocked}/${hebrewLetters.length + hebrewWords.length}`} detail="letras e palavras" />
               <StatCard label="Trilha Sânscrita" value={`${sanskritUnlocked}/${sanskritItems.length}`} detail="sons, mantras e estados" />
               <div className="mission-panel compact-panel home-seal-panel">
@@ -1134,7 +1162,7 @@ function App() {
             <div className="timer-panel">
               <img className="practice-bg-art" src={visualAssets.practice} alt="" />
               <SectionTitle eyebrow={`${journeyCode} · modo Nada`} title="Fechar os olhos. Permanecer. Concluir.">{phrase}</SectionTitle>
-              <div className={`practice-banner ${state.daily.practice ? 'complete' : 'idle'}`} role="status">
+              <div className={["practice-banner", state.daily.practice ? "complete" : "idle", practiceCelebration ? "practice-celebration" : ""].filter(Boolean).join(" ")} role="status">
                 <strong>{state.daily.practice ? 'Prática de hoje concluída' : 'Escolha um tempo ritual'}</strong>
                 <span>{state.daily.practice ? 'Você pode repetir em modo livre sem recompensa principal.' : 'Selecione uma duração antes de iniciar.'}</span>
               </div>
@@ -1186,6 +1214,7 @@ function App() {
             </div>
             <aside className="ritual-panel">
               <h3>Meta ritual</h3>
+              <StreakFire state={state} />
               <p>{stage.intent}</p>
               <div className="reward-preview">
                 <span>Recompensa prevista</span>

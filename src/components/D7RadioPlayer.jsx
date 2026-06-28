@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { d7RadioTracks } from '../data/d7RadioTracks.js'
 import { getNextTrackIndex, getPreviousTrackIndex, getRadioSettings, getTrackIndex, saveRadioSettings } from '../services/radioService.js'
 
-export default function D7RadioPlayer({ t = (path) => path }) {
+export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
   const initialSettings = useMemo(() => getRadioSettings(), [])
   const [trackIndex, setTrackIndex] = useState(() => getTrackIndex(initialSettings.lastTrackId))
   const [volume, setVolume] = useState(initialSettings.volume)
@@ -10,6 +10,7 @@ export default function D7RadioPlayer({ t = (path) => path }) {
   const [repeat, setRepeat] = useState(initialSettings.repeat)
   const [shuffle, setShuffle] = useState(initialSettings.shuffle)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState(t('radio.touchNotice'))
   const [trackError, setTrackError] = useState(false)
   const audioRef = useRef(null)
@@ -28,6 +29,7 @@ export default function D7RadioPlayer({ t = (path) => path }) {
     const audio = audioRef.current
     if (!audio || !currentTrack) return
     try {
+      setIsLoading(true)
       setTrackError(false)
       await audio.play()
       setIsPlaying(true)
@@ -35,6 +37,8 @@ export default function D7RadioPlayer({ t = (path) => path }) {
     } catch {
       setIsPlaying(false)
       setStatus(t('radio.playBlocked'))
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -77,9 +81,20 @@ export default function D7RadioPlayer({ t = (path) => path }) {
   }
 
   function handleAudioError() {
+    setIsLoading(false)
     setIsPlaying(false)
     setTrackError(true)
     setStatus(t('radio.noMusic'))
+  }
+
+  function handleWaiting() {
+    setIsLoading(true)
+    setStatus('Carregando áudio local...')
+  }
+
+  function handleCanPlay() {
+    setIsLoading(false)
+    if (!trackError && !isPlaying) setStatus(t('radio.touchNotice'))
   }
 
   function handleVolumeChange(value) {
@@ -101,7 +116,7 @@ export default function D7RadioPlayer({ t = (path) => path }) {
   }
 
   return (
-    <section className={`d7-radio ${isPlaying ? 'is-playing' : ''}`} aria-labelledby="d7-radio-title">
+    <section className={["d7-radio", compact ? "d7-radio--compact" : "", isPlaying ? "is-playing" : "", isLoading ? "is-loading" : ""].filter(Boolean).join(" ")} aria-labelledby="d7-radio-title">
       <div className="d7-radio-card">
         <div className="d7-radio-head">
           <div>
@@ -133,6 +148,8 @@ export default function D7RadioPlayer({ t = (path) => path }) {
           preload="none"
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
+          onWaiting={handleWaiting}
+          onCanPlay={handleCanPlay}
           onEnded={handleEnded}
           onError={handleAudioError}
         />
@@ -156,7 +173,7 @@ export default function D7RadioPlayer({ t = (path) => path }) {
 
         <div className="d7-radio-status" role="status" aria-live="polite">
           <div className="d7-radio-equalizer" aria-hidden="true"><span /><span /><span /></div>
-          <p>{trackError ? t('radio.noMusic') : status}</p>
+          <p>{trackError ? 'Arquivo de áudio não encontrado em public/assets/audio. Adicione MP3 autorizado para ativar a Rádio D7.' : status}</p>
         </div>
       </div>
     </section>

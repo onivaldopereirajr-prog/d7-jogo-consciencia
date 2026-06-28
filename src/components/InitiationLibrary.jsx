@@ -50,6 +50,23 @@ function formatPhaseReward(phase) {
   return [`+${reward.xp ?? 0} XP`, `+${reward.sparks ?? 0} Centelhas`, `+${reward.d7t ?? 0} D7T`].join(' · ')
 }
 
+function practiceCountOf(progress) {
+  return Array.isArray(progress?.sessions) ? progress.sessions.length : 0
+}
+
+function lockedModuleHint(module, progress) {
+  const requirement = module?.requirement ?? {}
+  const sessions = practiceCountOf(progress)
+  if (requirement.practiceMinutes) return "Bloqueado por enquanto. Some " + requirement.practiceMinutes + " minuto(s) de prática ritual para abrir esta camada."
+  if (requirement.studyCount) return "Bloqueado por enquanto. Estude " + requirement.studyCount + " card(s) anteriores para liberar este módulo."
+  return "Bloqueado por enquanto. Continue os Rituais de Presença; você já tem " + sessions + " prática(s) registradas."
+}
+
+function lockedCardHint(progress) {
+  const sessions = practiceCountOf(progress)
+  return "Camada selada. Continue praticando e estudando; " + sessions + " prática(s) válidas já contam para os próximos desbloqueios."
+}
+
 export default function InitiationLibrary({ progress, onStudyCard, onNavigate }) {
   const safeProgress = progress ?? {}
   const stats = getLibraryStudyStats(safeProgress)
@@ -176,7 +193,7 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
               meta={`${progressLabel(selectedModuleStatus?.progress ?? 0, selectedModuleStatus?.total ?? selectedModule.cardIds.length)} · ${selectedModule.level}`}
               reward={selectedModule.reward}
               challenge={selectedModule.mission}
-              note={selectedModule.ethicalNote}
+              note={selectedModuleStatus?.unlocked ? selectedModule.ethicalNote : lockedModuleHint(selectedModule, safeProgress)}
               actionLabel={selectedModuleStatus?.completed ? 'Módulo concluído' : selectedModuleStatus?.unlocked ? 'Ver cards' : 'Bloqueado'}
               onAction={selectedModuleStatus?.unlocked ? () => setSelectedModuleId(selectedModule.id) : null}
               disabled={!selectedModuleStatus?.unlocked}
@@ -237,7 +254,7 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
                 meta={`${progressLabel(moduleStatus.progress, moduleStatus.total)} · ${module.level}`}
                 reward={module.reward}
                 challenge={module.mission}
-                note={module.ethicalNote}
+                note={moduleStatus.unlocked ? module.ethicalNote : lockedModuleHint(module, safeProgress)}
                 actionLabel={selected ? 'Selecionado' : moduleStatus.unlocked ? 'Abrir módulo' : 'Bloqueado'}
                 onAction={moduleStatus.unlocked ? () => setSelectedModuleId(module.id) : null}
                 disabled={!moduleStatus.unlocked || selected}
@@ -279,7 +296,7 @@ export default function InitiationLibrary({ progress, onStudyCard, onNavigate })
                 meta={`${card.kind ?? 'Carta'} · ${card.level}`}
                 reward={card.reward}
                 challenge={card.challengePrompt}
-                note={card.ethicalNote}
+                note={unlocked ? card.ethicalNote : lockedCardHint(safeProgress)}
                 actionLabel={studied ? 'Revisar carta' : unlocked ? 'Estudar carta' : 'Bloqueado'}
                 onAction={unlocked ? () => onStudyCard(card.id) : null}
                 disabled={!unlocked}

@@ -70,7 +70,7 @@ A entrada cinematográfica foi integrada ao app principal a partir do projeto lo
 A tela de login possui a Rádio D7, um player local em HTML5 para criar atmosfera de foco, presença e símbolos vivos antes da entrada no app.
 
 - As músicas devem ser arquivos próprios ou autorizados.
-- Coloque os MP3 em `public/audio/d7/radio/`.
+- Coloque os MP3 em `public/assets/audio/radio/`.
 - A playlist local fica em `src/data/d7RadioTracks.js`.
 - A versão atual não usa streaming externo, API externa ou download automático.
 - O navegador exige interação do usuário: o áudio só começa depois de clicar em `Tocar Rádio D7`.
@@ -82,7 +82,7 @@ A tela de login possui a Rádio D7, um player local em HTML5 para criar atmosfer
 O Timer Ritual D7 possui áudio ritual opcional para foco e presença durante a prática.
 
 - Os mantras devem ser arquivos próprios ou autorizados.
-- Coloque os MP3 em `public/audio/d7/mantras/`.
+- Coloque os MP3 em `public/assets/audio/mantras/`.
 - A playlist local fica em `src/data/d7MantraTracks.js`.
 - O áudio só começa após ação explícita do usuário, ao iniciar a prática ou tocar áudio.
 - O usuário pode desativar, pausar, silenciar e ajustar o volume.

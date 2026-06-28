@@ -789,6 +789,62 @@ button:not(:disabled):active {
   font-size: 2rem;
 }
 
+.streak-fire {
+  min-height: 136px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 10px;
+  background: radial-gradient(circle at 18% 20%, rgba(212, 175, 55, 0.18), transparent 34%), rgba(255, 255, 255, 0.035);
+  box-shadow: var(--shadow);
+}
+
+.streak-fire-orb {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: var(--gold);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.48), rgba(255, 95, 109, 0.16) 45%, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 0 22px rgba(212, 175, 55, 0.18);
+}
+
+.streak-fire.hot .streak-fire-orb,
+.practice-banner.practice-celebration {
+  animation: d7-presence-pulse 1.2s ease-in-out 1;
+}
+
+.streak-fire.warm .streak-fire-orb {
+  color: #f0c866;
+}
+
+.streak-fire.ember .streak-fire-orb {
+  color: var(--cyan);
+  box-shadow: 0 0 18px rgba(32, 211, 238, 0.16);
+}
+
+.streak-fire.cold {
+  opacity: 0.8;
+}
+
+.streak-fire strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 1.35rem;
+}
+
+.streak-fire small {
+  color: var(--muted);
+}
+
+@keyframes d7-presence-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.015); filter: brightness(1.15); }
+}
+
 .stat-card small,
 .week-card p,
 .portal-card p,
@@ -3933,6 +3989,30 @@ button:not(:disabled):active {
   margin: 0 auto;
 }
 
+.d7-radio--compact {
+  width: min(100%, 980px);
+  margin-bottom: 14px;
+}
+
+.d7-radio--compact .d7-radio-card {
+  gap: 10px;
+  padding: 12px;
+}
+
+.d7-radio--compact .d7-radio-head p,
+.d7-radio--compact .d7-radio-badges,
+.d7-radio--compact .d7-radio-wave {
+  display: none;
+}
+
+.d7-radio--compact .d7-radio-track {
+  padding: 10px;
+}
+
+.d7-radio--compact .d7-radio-controls .primary-action {
+  min-width: 120px;
+}
+
 .d7-radio-card {
   display: grid;
   gap: 14px;
@@ -4001,6 +4081,7 @@ button:not(:disabled):active {
   transform-origin: center;
 }
 
+.d7-radio.is-loading .d7-radio-wave span,
 .d7-radio.is-playing .d7-radio-wave span,
 .d7-radio.is-playing .d7-radio-equalizer span {
   animation: d7-radio-pulse 1.2s ease-in-out infinite;
@@ -4096,6 +4177,9 @@ button:not(:disabled):active {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .streak-fire.hot .streak-fire-orb,
+  .practice-banner.practice-celebration,
+  .d7-radio.is-loading .d7-radio-wave span,
   .d7-radio.is-playing .d7-radio-wave span,
   .d7-radio.is-playing .d7-radio-equalizer span {
     animation: none;

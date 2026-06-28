@@ -1,9 +1,9 @@
 export const d7RadioTracks = [
   {
     id: 'd7-radio-01',
-    title: 'Portal de Presença',
-    subtitle: 'Foco, respiração e início da jornada',
-    src: '/assets/audio/radio/musica-01.mp3',
+    title: 'Mantra da Prosperidade',
+    subtitle: 'Foco, presença e prosperidade simbólica D7',
+    src: '/assets/audio/mantras/mantra-da-prosperidade.mp3',
     mood: 'presença',
     durationLabel: 'faixa local',
   },

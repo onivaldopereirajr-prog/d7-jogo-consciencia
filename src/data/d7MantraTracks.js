@@ -1,9 +1,9 @@
 export const d7MantraTracks = [
   {
     id: 'mantra-presenca-01',
-    title: 'Mantra da Presença',
-    subtitle: 'Som de foco para iniciar a prática',
-    src: '/assets/audio/mantras/mantra-presenca-01.mp3',
+    title: 'Mantra da Prosperidade',
+    subtitle: 'Som ritual para foco, presença e prosperidade simbólica',
+    src: '/assets/audio/mantras/mantra-da-prosperidade.mp3',
     recommendedFor: [1, 3, 7, 10],
     mood: 'presença',
   },

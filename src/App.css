@@ -4458,7 +4458,8 @@ button:not(:disabled):active {
   font-size: 0.88rem;
 }
 
-.admin-inline-form input {
+.admin-inline-form input,
+.admin-inline-form select {
   width: 100%;
 }
 
@@ -5266,4 +5267,101 @@ button:not(:disabled):active {
   .player-room-chat .primary-action {
     width: 100%;
   }
+}
+
+.d7-plans-section,
+.d7-plan-grid,
+.d7-plan-card,
+.current-plan-banner,
+.premium-gate {
+  display: grid;
+  gap: 14px;
+}
+
+.current-plan-banner,
+.d7-plan-card,
+.premium-gate {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.024));
+  box-shadow: var(--shadow);
+}
+
+.current-plan-banner {
+  padding: 16px;
+  border-color: rgba(32, 211, 238, 0.22);
+}
+
+.current-plan-banner strong {
+  color: var(--text-strong);
+  font-size: 1.35rem;
+}
+
+.current-plan-banner small,
+.d7-plan-card small,
+.premium-gate small {
+  color: var(--muted);
+}
+
+.d7-plan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.d7-plan-card {
+  align-content: start;
+  padding: 18px;
+}
+
+.d7-plan-card.active {
+  border-color: rgba(72, 211, 136, 0.42);
+  background: linear-gradient(180deg, rgba(72, 211, 136, 0.1), rgba(255, 255, 255, 0.024));
+}
+
+.d7-plan-head {
+  display: grid;
+  gap: 8px;
+}
+
+.d7-plan-head strong {
+  color: var(--text-strong);
+  font-size: 1.25rem;
+}
+
+.plan-badge {
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 999px;
+  color: var(--gold);
+  background: rgba(212, 175, 55, 0.08);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.d7-plan-card p,
+.premium-gate p {
+  margin: 0;
+  color: var(--text);
+}
+
+.d7-plan-card ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+}
+
+.premium-gate {
+  padding: clamp(16px, 3vw, 24px);
+  border-color: rgba(212, 175, 55, 0.28);
+}
+
+.premium-gate.compact {
+  padding: 14px;
+}
+
+.premium-gate h3 {
+  margin: 0;
+  color: var(--text-strong);
 }

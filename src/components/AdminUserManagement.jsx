@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   buildFullLocalBackup,
+  changeLocalUserPlanFromAdmin,
   buildUserBackup,
   clearStalePresence,
   deleteLocalUserFromAdmin,
@@ -9,6 +10,7 @@ import {
   resetLocalD7Environment,
   resetUserPasswordFromAdmin,
 } from '../services/adminUserManagement.js'
+import { getLocalPlan, getPlanDefinition, listPlanDefinitions } from '../services/subscriptionLocal.js'
 
 function formatDate(value) {
   if (!value) return 'sem registro'
@@ -28,6 +30,7 @@ function summarizeUser(summary) {
     role: summary.user.role ?? 'player',
     createdAt: summary.user.createdAt,
     lastLoginAt: summary.user.lastLoginAt,
+    plan: getPlanDefinition(getLocalPlan(summary.user.id)).publicName,
     level: summary.level,
     xp: summary.xp,
     sparks: summary.sparks,
@@ -51,10 +54,15 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
   const [message, setMessage] = useState(null)
 
   const presenceByUser = useMemo(() => Object.fromEntries(presence.map((item) => [item.userId, item])), [presence])
+  const planOptions = useMemo(() => listPlanDefinitions(), [])
 
   function notify(result) {
     setMessage({ type: result.ok ? 'success' : 'error', text: result.message })
     if (result.ok) onChanged?.()
+  }
+
+  function submitPlanChange(userId, planId) {
+    notify(changeLocalUserPlanFromAdmin({ userId, planId }))
   }
 
   async function submitReset(userId) {
@@ -127,6 +135,7 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
           const protectedUser = isProtectedLocalUser(summary.user)
           const requiredDeleteText = protectedUser ? 'EXCLUIR ADMIN' : 'EXCLUIR'
           const userSummary = summarizeUser(summary)
+          const currentPlan = getPlanDefinition(getLocalPlan(summary.user.id))
 
           return (
             <article key={summary.user.id} className="admin-management-card">
@@ -140,6 +149,7 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
 
               <div className="admin-management-stats">
                 <span>Role: {summary.user.role ?? 'player'}</span>
+                <span>Plano: {currentPlan.publicName}</span>
                 <span>Criado em: {formatDate(summary.user.createdAt)}</span>
                 <span>Último acesso: {formatDate(summary.user.lastLoginAt)}</span>
                 <span>D7T: {summary.tokenBalance ?? 0}</span>
@@ -152,6 +162,16 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
                 <button type="button" className="ghost-action" onClick={() => exportUser(summary)}>Exportar dados deste usuário</button>
                 <button type="button" className="ghost-action" onClick={() => { setActiveResetId(activeResetId === summary.user.id ? null : summary.user.id); setResetForm({ password: '', confirmPassword: '' }) }}>Redefinir PIN/Senha</button>
                 <button type="button" className="danger-action" onClick={() => { setActiveDeleteId(activeDeleteId === summary.user.id ? null : summary.user.id); setDeleteConfirm('') }}>Excluir usuário local</button>
+              </div>
+
+              <div className="admin-inline-form">
+                <label>
+                  Alterar plano local
+                  <select value={currentPlan.id} onChange={(event) => submitPlanChange(summary.user.id, event.target.value)}>
+                    {planOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.publicName}</option>)}
+                  </select>
+                </label>
+                <p className="control-note">Mudança de plano é local neste navegador.</p>
               </div>
 
               {expandedSummaryId === summary.user.id && (

@@ -6,6 +6,7 @@ export const translations = {
     languageName: 'Português',
     nav: {
       home: 'Home',
+      planos: 'Planos',
       jornada: 'Jornada',
       pratica: 'Prática',
       codice: 'Códice',
@@ -145,6 +146,7 @@ export const translations = {
     languageName: 'English',
     nav: {
       home: 'Home',
+      planos: 'Plans',
       jornada: 'Journey',
       pratica: 'Practice',
       codice: 'Codex',

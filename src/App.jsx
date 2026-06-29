@@ -32,6 +32,8 @@ import UserAvatar from './components/UserAvatar.jsx'
 import D7RadioPlayer from './components/D7RadioPlayer.jsx'
 import D7MantraPlayer from './components/D7MantraPlayer.jsx'
 import D7CinematicEntrance from './components/D7CinematicEntrance.jsx'
+import D7Plans from './components/D7Plans.jsx'
+import PremiumGate from './components/PremiumGate.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
 import { saveSymbolicMap, tokenTotalsByOrigin } from './services/d7MapStorage.js'
 import { translate } from './i18n/translations.js'
@@ -69,7 +71,7 @@ const codexFeaturedCards = [
   { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
 ]
 
-const appNavItems = [...navItems, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
+const appNavItems = [...navItems, { id: 'planos', label: 'Planos', icon: '◈' }, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
 const D7_ENTRANCE_SEEN_KEY = 'd7_entrance_seen'
 const ADMIN_LOCAL_HASH = 'admin-local'
 const DEFAULT_VIEW = 'home'
@@ -607,6 +609,7 @@ function App() {
   const [language, setLanguage] = useState(() => getStoredLanguage())
   const [wheelResult, setWheelResult] = useState(null)
   const [adminRefresh, setAdminRefresh] = useState(0)
+  const [subscriptionRefresh, setSubscriptionRefresh] = useState(0)
   const [authMode, setAuthMode] = useState('login')
   const [authMessage, setAuthMessage] = useState(null)
   const [panelMessage, setPanelMessage] = useState(null)
@@ -1203,6 +1206,10 @@ function App() {
           </section>
         )}
 
+        {activeView === 'planos' && (
+          <D7Plans userId={currentUser.id} onPlanChanged={() => setSubscriptionRefresh((value) => value + 1)} />
+        )}
+
         {activeView === 'jornada' && (
           <section className="content-section">
             <SectionTitle eyebrow="Mapa A1-D7" title="Jornada transcendental">A duração sobe por semana. Se um dia for esquecido, a jornada retorna para A1 e registra o Selo do Retorno.</SectionTitle>
@@ -1407,8 +1414,9 @@ function App() {
           <section className="content-section">
             <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência + cartas + portais + códigos + D7T + minutos rituais + marcos 21/108.</SectionTitle>
             <img className="ranking-seal-art" src={visualAssets.ranking} alt="Selo visual do ranking D7" />
-            <div className="ranking-list">
-              {rank.map((player, index) => (
+            <PremiumGate key={subscriptionRefresh} userId={currentUser.id} featureKey="ranking_premium">
+              <div className="ranking-list">
+                {rank.map((player, index) => (
                 <article key={player.name} className={player.current ? 'rank-row current-player' : 'rank-row'}>
                   <strong>#{index + 1}</strong>
                   <div className="rank-player"><span className="d7-avatar sm" style={{ '--avatar-color': player.avatarColor ?? '#20d3ee' }} aria-hidden="true"><strong>{player.avatarSymbol ? getUserAvatarProfile({ name: player.name }, { profile: { avatarSymbol: player.avatarSymbol } }).glyph : 'D7'}</strong></span><div><span>{player.name}</span><small>{player.avatarTitle ?? player.title}</small></div></div>
@@ -1416,7 +1424,8 @@ function App() {
                   <small>{player.stage ?? 'A1'} · {player.xp} XP · {player.sparks ?? 0} centelhas · {player.cards} cartas · {player.seals ?? player.portals} selos · {player.tokens ?? 0} D7T · {player.ritualMinutesTotal ?? 0} min · Biblioteca {player.libraryCardsStudied ?? 0} · {player.libraryTitle ?? 'Iniciado do Silêncio'} · {Array.isArray(player.ritualMilestonesUnlocked) && player.ritualMilestonesUnlocked.length ? player.ritualMilestonesUnlocked.join(' / ') : '21/108 pendente'}</small>
                 </article>
               ))}
-            </div>
+              </div>
+            </PremiumGate>
           </section>
         )}
 
@@ -1481,7 +1490,8 @@ function App() {
         {activeView === 'circulos' && (
           <section className="content-section">
             <SectionTitle eyebrow="Círculos" title="Salas rituais locais">Protótipo visual sem backend para grupos, biblioteca simbólica e preparação de portais sociais futuros.</SectionTitle>
-            <div className="circle-grid">
+            <PremiumGate key={subscriptionRefresh} userId={currentUser.id} featureKey="salas_tematicas">
+              <div className="circle-grid">
               {state.circles.map((circle) => (
                 <article key={circle.id} className="circle-card">
                   <div className="circle-seal">{circle.seal}</div>
@@ -1498,7 +1508,8 @@ function App() {
                 <p>Espaço reservado para círculos reais quando houver backend.</p>
                 <button type="button" className="ghost-action">Preparar convite</button>
               </article>
-            </div>
+              </div>
+            </PremiumGate>
           </section>
         )}
 

@@ -14,6 +14,7 @@ import { LEGACY_KEY, STORAGE_KEY } from '../utils/gameState.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { AUDIT_LOG_KEY, createAuditEvent } from './auditLogLocal.js'
 import { SCREEN_TIME_KEY } from './adminUserMonitoring.js'
+import { PLAN_IDS, USER_PLANS_KEY, getLocalPlan, getPlanDefinition, setLocalPlan } from './subscriptionLocal.js'
 
 const MIN_PASSWORD_LENGTH = 6
 const ENTRANCE_KEY = 'd7_entrance_seen'
@@ -42,6 +43,7 @@ export const D7_LOCAL_STORAGE_KEYS = [
   ADMIN_LOCK_UNTIL_KEY,
   AUDIT_LOG_KEY,
   SCREEN_TIME_KEY,
+  USER_PLANS_KEY,
   LEGACY_ADMIN_KEY,
   LEGACY_ADMIN_SESSION_KEY,
   OBSERVER_KEY,
@@ -153,10 +155,12 @@ export function buildUserBackup(userId, type = 'user_admin_backup') {
     permission: roomState.permissions?.[userId] ? sanitizeAdminData(roomState.permissions[userId]) : null,
   }
   const alerts = safeGetStorage(SECURITY_ALERTS_KEY, []).filter((alert) => alert.userId === userId || alert.metadata?.userId === userId)
+  const planId = getLocalPlan(userId)
 
   return makeBackupBase(type, {
     userId,
     user: sanitizeAdminData(user ?? null),
+    plan: sanitizeAdminData(getPlanDefinition(planId)),
     progress: sanitizeAdminData(progress),
     presence: sanitizeAdminData(presence),
     events: {
@@ -186,6 +190,31 @@ export function downloadJsonBackup(backup, filenamePrefix = 'd7-backup-local') {
   link.download = `${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.json`
   link.click()
   URL.revokeObjectURL(url)
+}
+
+export function changeLocalUserPlanFromAdmin({ userId, planId }) {
+  const users = getUsers()
+  const user = users.find((item) => item.id === userId)
+  if (!user) return { ok: false, message: 'Usuário local não encontrado.' }
+  if (planId === PLAN_IDS.FOUNDER && !getAdminLocal()) return { ok: false, message: 'Founder/Admin local exige admin/owner autenticado.' }
+
+  const beforePlanId = getLocalPlan(userId)
+  const result = setLocalPlan(userId, planId)
+  if (!result.ok) return result
+
+  createAuditEvent('user_plan_changed', {
+    actorRole: 'owner-local-admin',
+    actorSafeId: 'local-admin',
+    targetSafeId: user.id,
+    status: 'success',
+    metadata: {
+      beforePlanId,
+      afterPlanId: result.planId,
+      targetRole: user.role ?? 'player',
+    },
+  })
+  trackAdminEvent('local-admin', 'admin_user_plan_changed', { targetUserId: userId, beforePlanId, afterPlanId: result.planId })
+  return { ok: true, planId: result.planId, message: "Plano local de " + user.name + " alterado para " + result.plan.publicName + ". Mudança de plano é local neste navegador." }
 }
 
 export function isProtectedLocalUser(user) {
@@ -242,6 +271,7 @@ export function deleteLocalUserFromAdmin({ userId, confirmation }) {
     wheelEvents: setObjectWithoutUser(WHEEL_EVENTS_KEY, userId),
     welcomeSpin: setObjectWithoutUser(WELCOME_SPIN_KEY, userId),
     sealEvents: setObjectWithoutUser(SEAL_EVENTS_KEY, userId),
+    plans: setObjectWithoutUser(USER_PLANS_KEY, userId),
     auditEvents: filterArrayStorage(ADMIN_AUDIT_KEY, (event) => event.userId !== userId && event.metadata?.targetUserId !== userId),
     alerts: filterArrayStorage(SECURITY_ALERTS_KEY, (alert) => alert.userId !== userId && alert.metadata?.userId !== userId && alert.metadata?.targetUserId !== userId),
   }

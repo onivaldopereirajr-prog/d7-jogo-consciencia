@@ -38,6 +38,7 @@ import { translate } from './i18n/translations.js'
 import { getStoredLanguage, saveLanguage } from './services/languageService.js'
 import { recordLocalEvent, summarizeLocalEvents } from './services/analyticsLocal.js'
 import { createSecurityAlert, trackAdminEvent } from './services/adminAnalyticsService.js'
+import { hasAdminSession } from './services/adminLocal.js'
 import { markPresenceInactive, updatePresence } from './services/presenceService.js'
 import { getWheelEvents, spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
@@ -1378,7 +1379,17 @@ function App() {
         )}
 
         {activeView === 'admin' && (
-          <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => { recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh }); trackAdminEvent(currentUser, 'admin_opened', { refresh: adminRefresh }, 'admin') }} />
+          hasAdminSession() ? (
+            <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => { recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh }); trackAdminEvent(currentUser, 'admin_opened', { refresh: adminRefresh }, 'admin') }} />
+          ) : (
+            <section className="content-section" aria-labelledby="admin-restricted-title">
+              <div className="professional-notice">
+                <span className="overline">Administrador Pleno D7</span>
+                <h2 id="admin-restricted-title">Acesso restrito</h2>
+                <p>Acesso restrito ao Administrador Local D7.</p>
+              </div>
+            </section>
+          )
         )}
 
         {activeView === 'ranking' && (

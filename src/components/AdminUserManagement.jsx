@@ -23,9 +23,9 @@ function statusLabel(status) {
 
 function summarizeUser(summary) {
   return {
-    id: summary.user.id,
     nickname: summary.user.name,
-    login: summary.user.login,
+    alias: summary.user.login,
+    role: summary.user.role ?? 'player',
     createdAt: summary.user.createdAt,
     lastLoginAt: summary.user.lastLoginAt,
     level: summary.level,
@@ -139,6 +139,8 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
               </header>
 
               <div className="admin-management-stats">
+                <span>Role: {summary.user.role ?? 'player'}</span>
+                <span>Criado em: {formatDate(summary.user.createdAt)}</span>
                 <span>Último acesso: {formatDate(summary.user.lastLoginAt)}</span>
                 <span>D7T: {summary.tokenBalance ?? 0}</span>
                 <span>Etapa: {summary.currentStage}</span>
@@ -148,7 +150,7 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
               <div className="admin-management-actions" aria-label={`Ações administrativas para ${summary.user.name}`}>
                 <button type="button" className="mini-action" onClick={() => setExpandedSummaryId(expandedSummaryId === summary.user.id ? null : summary.user.id)}>Ver resumo local</button>
                 <button type="button" className="ghost-action" onClick={() => exportUser(summary)}>Exportar dados deste usuário</button>
-                <button type="button" className="ghost-action" onClick={() => { setActiveResetId(activeResetId === summary.user.id ? null : summary.user.id); setResetForm({ password: '', confirmPassword: '' }) }}>Redefinir senha/PIN</button>
+                <button type="button" className="ghost-action" onClick={() => { setActiveResetId(activeResetId === summary.user.id ? null : summary.user.id); setResetForm({ password: '', confirmPassword: '' }) }}>Redefinir PIN/Senha</button>
                 <button type="button" className="danger-action" onClick={() => { setActiveDeleteId(activeDeleteId === summary.user.id ? null : summary.user.id); setDeleteConfirm('') }}>Excluir usuário local</button>
               </div>
 
@@ -166,7 +168,7 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
                     Confirmar novo PIN/senha
                     <input type="password" value={resetForm.confirmPassword} onChange={(event) => setResetForm((current) => ({ ...current, confirmPassword: event.target.value }))} autoComplete="new-password" />
                   </label>
-                  <button type="button" className="primary-action" onClick={() => submitReset(summary.user.id)}>Salvar nova senha/PIN</button>
+                  <button type="button" className="primary-action" onClick={() => submitReset(summary.user.id)}>Salvar novo PIN/Senha</button>
                 </div>
               )}
 
@@ -202,7 +204,7 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
             Digite RESETAR D7 LOCAL para apagar os dados D7 deste navegador
             <input type="text" value={resetConfirm} onChange={(event) => setResetConfirm(event.target.value)} />
           </label>
-          <button type="button" className="danger-action" onClick={submitResetEnvironment}>Resetar ambiente local D7</button>
+          <button type="button" className="danger-action" onClick={submitResetEnvironment}>Resetar D7 Local</button>
         </div>
       </div>
     </section>

@@ -15,7 +15,7 @@ import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/stor
 
 const MIN_PASSWORD_LENGTH = 6
 const ENTRANCE_KEY = 'd7_entrance_seen'
-const SENSITIVE_KEYS = new Set(['password', 'passwordHash', 'salt', 'hash', 'confirmPassword', 'recoverySecret', 'secret'])
+const SENSITIVE_FIELD_TOKENS = ['password', 'pin', 'hash', 'salt', 'secret', 'recovery']
 
 export const D7_LOCAL_STORAGE_KEYS = [
   USERS_KEY,
@@ -60,12 +60,32 @@ function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
 }
 
+function isSensitiveField(key) {
+  const normalized = String(key).toLowerCase()
+  return SENSITIVE_FIELD_TOKENS.some((token) => normalized.includes(token))
+}
+
+function isD7StorageKey(key) {
+  return typeof key === 'string' && (key.startsWith('d7_') || key.startsWith('d7-'))
+}
+
+function getD7LocalStorageKeys() {
+  const keys = new Set(D7_LOCAL_STORAGE_KEYS.filter(isD7StorageKey))
+  if (typeof window !== 'undefined' && window.localStorage) {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (isD7StorageKey(key)) keys.add(key)
+    }
+  }
+  return [...keys]
+}
+
 export function sanitizeAdminData(value) {
   if (Array.isArray(value)) return value.map(sanitizeAdminData)
   if (!isPlainObject(value)) return value
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => !SENSITIVE_KEYS.has(key))
+      .filter(([key]) => !isSensitiveField(key))
       .map(([key, item]) => [key, sanitizeAdminData(item)]),
   )
 }
@@ -103,7 +123,7 @@ function makeBackupBase(type, extra = {}) {
 
 export function buildFullLocalBackup(type = 'manual_admin_backup') {
   const storage = {}
-  D7_LOCAL_STORAGE_KEYS.forEach((key) => {
+  getD7LocalStorageKeys().forEach((key) => {
     const value = safeGetStorage(key, null)
     if (value !== null) storage[key] = sanitizeAdminData(value)
   })
@@ -160,7 +180,9 @@ export function isProtectedLocalUser(user) {
   const admin = getAdminLocal()
   const session = getCurrentSession()
   const loginMatchesAdmin = Boolean(admin?.alias && user?.login && admin.alias === user.login)
-  return Boolean(user?.id && session?.userId === user.id) || loginMatchesAdmin
+  const role = String(user?.role ?? '').toLowerCase()
+  const hasAdminRole = role.includes('admin') || role.includes('owner')
+  return Boolean(user?.id && session?.userId === user.id) || loginMatchesAdmin || hasAdminRole
 }
 
 export async function resetUserPasswordFromAdmin({ userId, password, confirmPassword }) {
@@ -241,6 +263,6 @@ export function clearStalePresence(minutes = 10) {
 
 export function resetLocalD7Environment() {
   const backup = buildFullLocalBackup('before_reset_local_d7')
-  D7_LOCAL_STORAGE_KEYS.forEach((key) => safeRemoveStorage(key))
+  getD7LocalStorageKeys().forEach((key) => safeRemoveStorage(key))
   return { ok: true, backup, message: 'Ambiente local D7 resetado neste navegador.' }
 }

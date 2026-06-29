@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getObserverMode, hasAdminSession } from '../services/adminLocal.js'
-import { ensureParticipantPermission, moderateRoomPermission, sendRoomMessage, updateRoomPermission } from '../services/roomLocal.js'
+import { createPlayerRoom, ensureParticipantPermission, getPlayerRoomsState, moderateRoomPermission, sendPlayerRoomMessage, sendRoomMessage, setActivePlayerRoom, updateRoomPermission } from '../services/roomLocal.js'
 
 function statusText(value) {
   return { none: 'ouvinte', requested: 'aguardando aprovação', approved: 'autorizado', revoked: 'revogado' }[value] ?? value
@@ -8,11 +8,15 @@ function statusText(value) {
 
 export default function D7Room({ user, progress, t = (path) => path, onEvent }) {
   const [room, setRoom] = useState(() => ensureParticipantPermission(user, progress))
+  const [playerRoomsState, setPlayerRoomsState] = useState(() => getPlayerRoomsState())
   const [message, setMessage] = useState('')
+  const [localRoomMessage, setLocalRoomMessage] = useState('')
   const [cameraPreview, setCameraPreview] = useState(false)
+  const [roomForm, setRoomForm] = useState({ name: '', description: '', theme: '', icon: 'D7', playerName: user?.name ?? '', playerAvatar: progress?.avatarGlyph ?? 'D7' })
   const isAdmin = hasAdminSession()
   const observer = getObserverMode()
   const current = room.permissions[user.id] ?? { speech: 'none', camera: 'none', role: 'ouvinte' }
+  const activePlayerRoom = useMemo(() => playerRoomsState.rooms.find((item) => item.id === playerRoomsState.activeRoomId) ?? null, [playerRoomsState])
 
   useEffect(() => {
     onEvent?.('view_room')
@@ -22,8 +26,25 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
     event.preventDefault()
     const next = sendRoomMessage(user, message, progress)
     setRoom(next)
-    onEvent?.('room_message_sent', { length: message.trim().length })
+    onEvent?.('room_message_sent', { length: message.trim().length, roomType: 'main' })
     setMessage('')
+  }
+
+  function submitCreateRoom(event) {
+    event.preventDefault()
+    const next = createPlayerRoom(user, roomForm, progress)
+    setPlayerRoomsState(next)
+    onEvent?.('room_created_local', { name: roomForm.name, theme: roomForm.theme })
+    setRoomForm((currentForm) => ({ ...currentForm, name: '', description: '', theme: '', icon: 'D7' }))
+  }
+
+  function submitLocalRoomMessage(event) {
+    event.preventDefault()
+    if (!activePlayerRoom) return
+    const next = sendPlayerRoomMessage(activePlayerRoom.id, user, localRoomMessage, roomForm, progress)
+    setPlayerRoomsState(next)
+    onEvent?.('room_message_sent', { length: localRoomMessage.trim().length, roomType: 'player', roomId: activePlayerRoom.id })
+    setLocalRoomMessage('')
   }
 
   function request(kind) {
@@ -44,12 +65,17 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
     })
   }
 
+  function selectPlayerRoom(roomId) {
+    setPlayerRoomsState(setActivePlayerRoom(roomId))
+  }
+
   return (
     <section className="room-shell content-section" aria-labelledby="room-title">
       <div className="professional-notice">
         <span className="overline">Sala local MVP</span>
         <h2 id="room-title">{t('room.title')}</h2>
         <p>{t('room.notice')}</p>
+        <p>Protótipo local: salas e mensagens ficam salvas apenas neste navegador até existir backend.</p>
         {observer && <p><strong>Moderação ativa.</strong> {t('room.moderation')}</p>}
       </div>
 
@@ -99,6 +125,57 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="room-player-rooms" aria-labelledby="player-rooms-title">
+          <div className="control-panel-head">
+            <div>
+              <span className="overline">Salas D7</span>
+              <h3 id="player-rooms-title">Salas criadas por jogadores</h3>
+            </div>
+          </div>
+          <p className="control-note">Protótipo local: nomes, avatares, salas e mensagens são sanitizados e salvos apenas neste navegador.</p>
+
+          <form className="room-create-form" onSubmit={submitCreateRoom}>
+            <label>Nome da sala<input value={roomForm.name} onChange={(event) => setRoomForm((value) => ({ ...value, name: event.target.value }))} maxLength="60" /></label>
+            <label>Descrição curta<input value={roomForm.description} onChange={(event) => setRoomForm((value) => ({ ...value, description: event.target.value }))} maxLength="160" /></label>
+            <label>Tema simbólico<input value={roomForm.theme} onChange={(event) => setRoomForm((value) => ({ ...value, theme: event.target.value }))} maxLength="48" /></label>
+            <label>Ícone da sala<input value={roomForm.icon} onChange={(event) => setRoomForm((value) => ({ ...value, icon: event.target.value }))} maxLength="8" /></label>
+            <label>Nome personalizado<input value={roomForm.playerName} onChange={(event) => setRoomForm((value) => ({ ...value, playerName: event.target.value }))} maxLength="60" /></label>
+            <label>Avatar local<input value={roomForm.playerAvatar} onChange={(event) => setRoomForm((value) => ({ ...value, playerAvatar: event.target.value }))} maxLength="8" /></label>
+            <button type="submit" className="primary-action">Criar sala local</button>
+          </form>
+
+          <div className="player-room-list">
+            {playerRoomsState.rooms.map((item) => (
+              <button key={item.id} type="button" className={item.id === playerRoomsState.activeRoomId ? 'player-room-card active' : 'player-room-card'} onClick={() => selectPlayerRoom(item.id)}>
+                <strong>{item.icon} {item.name}</strong>
+                <span>{item.theme} · {item.messages?.length ?? 0} mensagem(ns)</span>
+              </button>
+            ))}
+            {playerRoomsState.rooms.length === 0 && <p className="d7-empty-state">Nenhuma sala local criada ainda.</p>}
+          </div>
+
+          {activePlayerRoom && (
+            <div className="player-room-chat">
+              <h4>{activePlayerRoom.icon} {activePlayerRoom.name}</h4>
+              <p>{activePlayerRoom.description}</p>
+              <form onSubmit={submitLocalRoomMessage}>
+                <label htmlFor="player-room-message">Mensagem na sala local</label>
+                <textarea id="player-room-message" value={localRoomMessage} onChange={(event) => setLocalRoomMessage(event.target.value)} rows="3" maxLength="500" />
+                <button type="submit" className="primary-action">Enviar na sala</button>
+              </form>
+              <div className="room-messages">
+                {(activePlayerRoom.messages ?? []).length === 0 && <p>Nenhuma mensagem nesta sala.</p>}
+                {(activePlayerRoom.messages ?? []).map((item) => (
+                  <article key={item.id} className="d7-message" aria-label={`Mensagem de ${item.nickname}`}>
+                    <span className="d7-avatar sm" aria-hidden="true"><strong>{item.avatarGlyph ?? 'D7'}</strong></span>
+                    <div><header><strong>{item.nickname}</strong><small>{new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></header><p>{item.text}</p></div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {isAdmin && (

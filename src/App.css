@@ -5191,3 +5191,79 @@ button:not(:disabled):active {
     grid-template-columns: 1fr;
   }
 }
+
+.d7-radio-playlist,
+.player-room-list,
+.room-create-form {
+  display: grid;
+  gap: 10px;
+}
+
+.d7-radio-playlist {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.room-player-rooms {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 3vw, 20px);
+  border: 1px solid rgba(32, 211, 238, 0.18);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.024));
+}
+
+.room-create-form {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.room-create-form label,
+.player-room-chat form {
+  display: grid;
+  gap: 6px;
+}
+
+.player-room-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-room-card.active {
+  border-color: rgba(212, 175, 55, 0.45);
+  color: var(--text-strong);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.14), 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+.player-room-card span,
+.player-room-chat > p {
+  color: var(--muted);
+}
+
+.player-room-chat {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+@media (max-width: 520px) {
+  .room-create-form,
+  .d7-radio-playlist {
+    grid-template-columns: 1fr;
+  }
+
+  .d7-radio-playlist .mini-action,
+  .room-create-form .primary-action,
+  .player-room-chat .primary-action {
+    width: 100%;
+  }
+}

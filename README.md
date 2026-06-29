@@ -71,7 +71,7 @@ A tela de login possui a Rádio D7, um player local em HTML5 para criar atmosfer
 
 - As músicas devem ser arquivos próprios ou autorizados.
 - Coloque os MP3 em `public/assets/audio/radio/`.
-- A playlist local fica em `src/data/d7RadioTracks.js`.
+- O catálogo local fica em `src/data/audioCatalog.js` na lista `RADIO_TRACKS`.
 - A versão atual não usa streaming externo, API externa ou download automático.
 - O navegador exige interação do usuário: o áudio só começa depois de clicar em `Tocar Rádio D7`.
 - Configurações simples de volume, mute, repetir, aleatório e última faixa ficam em `d7_radio_settings` no LocalStorage.
@@ -83,7 +83,7 @@ O Timer Ritual D7 possui áudio ritual opcional para foco e presença durante a 
 
 - Os mantras devem ser arquivos próprios ou autorizados.
 - Coloque os MP3 em `public/assets/audio/mantras/`.
-- A playlist local fica em `src/data/d7MantraTracks.js`.
+- O catálogo local fica em `src/data/audioCatalog.js` na lista `MANTRA_TRACKS`.
 - O áudio só começa após ação explícita do usuário, ao iniciar a prática ou tocar áudio.
 - O usuário pode desativar, pausar, silenciar e ajustar o volume.
 - A versão atual não usa streaming externo, API externa, download automático ou áudio subliminar.

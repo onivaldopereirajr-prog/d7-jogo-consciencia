@@ -6,7 +6,10 @@ export const ADMIN_SESSION_KEY = 'd7_owner_admin_session'
 export const LEGACY_ADMIN_KEY = 'd7_admin_local'
 export const LEGACY_ADMIN_SESSION_KEY = 'd7_admin_session'
 export const OBSERVER_KEY = 'd7_room_observer_mode'
+export const ADMIN_RATE_LIMIT_KEY = 'd7_admin_login_rate_limit'
 const MIN_PIN_LENGTH = 6
+const MAX_FAILED_ATTEMPTS = 5
+const LOCK_MS = 5 * 60 * 1000
 
 function randomToken() {
   const bytes = new Uint8Array(16)
@@ -17,12 +20,34 @@ function randomToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function getRateLimit() {
+  const data = safeGetStorage(ADMIN_RATE_LIMIT_KEY, { failedAttempts: 0, lockedUntil: null, updatedAt: null })
+  return data && typeof data === 'object' ? data : { failedAttempts: 0, lockedUntil: null, updatedAt: null }
+}
+
+function isLocked() {
+  const rate = getRateLimit()
+  const lockedUntil = rate.lockedUntil ? new Date(rate.lockedUntil).getTime() : 0
+  return lockedUntil > Date.now() ? rate : null
+}
+
+function clearRateLimit() {
+  safeRemoveStorage(ADMIN_RATE_LIMIT_KEY)
+}
+
+function registerFailedAttempt() {
+  const rate = getRateLimit()
+  const failedAttempts = Number(rate.failedAttempts || 0) + 1
+  const lockedUntil = failedAttempts >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCK_MS).toISOString() : null
+  safeSetStorage(ADMIN_RATE_LIMIT_KEY, { failedAttempts, lockedUntil, updatedAt: new Date().toISOString() })
+}
+
 export function getAdminLocal() {
   const admin = safeGetStorage(ADMIN_KEY, null)
-  if (admin && typeof admin === 'object' && admin.passwordHash && admin.salt) return admin
+  if (admin && typeof admin === 'object' && admin.passwordHash && admin.salt) return { role: 'owner-local-admin', isOwnerLocal: true, ...admin }
   const legacy = safeGetStorage(LEGACY_ADMIN_KEY, null)
   if (legacy && typeof legacy === 'object' && legacy.passwordHash && legacy.salt) {
-    const migrated = { ...legacy, alias: legacy.alias ?? 'admin', migratedFrom: LEGACY_ADMIN_KEY }
+    const migrated = { ...legacy, alias: legacy.alias ?? 'admin', role: 'owner-local-admin', isOwnerLocal: true, migratedFrom: LEGACY_ADMIN_KEY }
     safeSetStorage(ADMIN_KEY, migrated)
     return migrated
   }
@@ -32,7 +57,7 @@ export function getAdminLocal() {
 export function getPublicAdminLocal() {
   const admin = getAdminLocal()
   if (!admin) return null
-  return { id: admin.id, name: admin.name, alias: admin.alias, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
+  return { id: admin.id, name: admin.name, alias: admin.alias, role: admin.role, isOwnerLocal: admin.isOwnerLocal !== false, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
 }
 
 function adminSessionPayload(adminId, rememberDevice = false) {
@@ -57,7 +82,6 @@ export function endAdminSession() {
   safeRemoveStorage(LEGACY_ADMIN_SESSION_KEY)
 }
 
-
 export async function createAdminLocal({ name, alias, password, confirmPassword, rememberDevice = false }) {
   const cleanName = String(name ?? '').trim()
   const cleanAlias = String(alias ?? '').trim().toLowerCase()
@@ -72,6 +96,7 @@ export async function createAdminLocal({ name, alias, password, confirmPassword,
     name: cleanName,
     alias: cleanAlias,
     role: 'owner-local-admin',
+    isOwnerLocal: true,
     passwordHash: await hashPassword(password, salt),
     salt,
     createdAt: new Date().toISOString(),
@@ -79,21 +104,31 @@ export async function createAdminLocal({ name, alias, password, confirmPassword,
   }
   safeSetStorage(ADMIN_KEY, admin)
   safeSetStorage(ADMIN_SESSION_KEY, adminSessionPayload(admin.id, rememberDevice))
+  clearRateLimit()
   return { ok: true, admin: getPublicAdminLocal(), message: 'Acesso administrativo local criado.' }
 }
 
 export async function loginAdminLocal({ alias, password, rememberDevice = false }) {
+  const locked = isLocked()
+  if (locked) return { ok: false, message: `Muitas tentativas incorretas. Tente novamente após ${new Date(locked.lockedUntil).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.` }
   const admin = getAdminLocal()
   const cleanAlias = String(alias ?? '').trim().toLowerCase()
   if (!admin) return { ok: false, message: 'Crie o acesso administrativo local primeiro.' }
   if (!cleanAlias) return { ok: false, message: 'Informe o apelido administrativo.' }
-  if ((admin.alias ?? 'admin') !== cleanAlias) return { ok: false, message: 'Apelido administrativo inválido.' }
+  if ((admin.alias ?? 'admin') !== cleanAlias) {
+    registerFailedAttempt()
+    return { ok: false, message: 'Credenciais administrativas inválidas.' }
+  }
   if (!password) return { ok: false, message: 'Informe o PIN/senha admin.' }
   const passwordHash = await hashPassword(password, admin.salt)
-  if (passwordHash !== admin.passwordHash) return { ok: false, message: 'PIN/senha admin inválido.' }
-  const updated = { ...admin, lastLoginAt: new Date().toISOString() }
+  if (passwordHash !== admin.passwordHash) {
+    registerFailedAttempt()
+    return { ok: false, message: 'Credenciais administrativas inválidas.' }
+  }
+  const updated = { ...admin, role: admin.role ?? 'owner-local-admin', isOwnerLocal: admin.isOwnerLocal !== false, lastLoginAt: new Date().toISOString() }
   safeSetStorage(ADMIN_KEY, updated)
   safeSetStorage(ADMIN_SESSION_KEY, adminSessionPayload(admin.id, rememberDevice))
+  clearRateLimit()
   return { ok: true, admin: getPublicAdminLocal(), message: 'Admin local autenticado.' }
 }
 

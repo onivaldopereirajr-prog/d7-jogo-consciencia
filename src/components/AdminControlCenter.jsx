@@ -6,7 +6,7 @@ import AdminUserManagement from './AdminUserManagement.jsx'
 import { buildAdminReport, resolveSecurityAlert, summarizeAdminAnalytics } from '../services/adminAnalyticsService.js'
 import { getEventsByUser } from '../services/analyticsLocal.js'
 import { getPresenceList } from '../services/presenceService.js'
-import { getRoomState } from '../services/roomLocal.js'
+import { getPlayerRoomsState, getRoomState } from '../services/roomLocal.js'
 import { getWheelEventsByUser } from '../services/wheelService.js'
 
 function formatSeconds(seconds = 0) {
@@ -76,6 +76,7 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
   const [message, setMessage] = useState(null)
   const presence = useMemo(() => getPresenceList(summaries), [summaries])
   const roomState = getRoomState()
+  const playerRoomsState = getPlayerRoomsState()
   const localEventsByUser = getEventsByUser()
   const wheelEventsByUser = getWheelEventsByUser()
   const analytics = summarizeAdminAnalytics(summaries, presence, roomState)
@@ -98,6 +99,7 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
       eventsCount: row.eventsCount,
     })),
     wheel: Object.values(wheelEventsByUser).flatMap((events) => (Array.isArray(events) ? events : [])).slice(0, 80),
+    playerRooms: playerRoomsState.rooms.map((room) => ({ id: room.id, name: room.name, theme: room.theme, ownerId: room.ownerId, createdAt: room.createdAt, messagesCount: room.messages?.length ?? 0 })),
   }
 
   function downloadReport() {
@@ -203,6 +205,7 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
         <div className="room-admin-grid">
           {Object.values(roomState.permissions ?? {}).map((participant) => <article key={participant.userId}><strong>{participant.nickname}</strong><small>Fala: {participant.speech} · Câmera: {participant.camera} · Papel: {participant.role}</small></article>)}
           {(roomState.messages ?? []).slice(0, 5).map((msg) => <article key={msg.id}><strong>{msg.nickname}</strong><small>Mensagem local em {new Date(msg.createdAt).toLocaleString('pt-BR')}</small></article>)}
+          {playerRoomsState.rooms.map((localRoom) => <article key={localRoom.id}><strong>{localRoom.icon} {localRoom.name}</strong><small>Sala local · {localRoom.theme} · {localRoom.messages?.length ?? 0} mensagem(ns)</small></article>)}
         </div>
       </section>
 

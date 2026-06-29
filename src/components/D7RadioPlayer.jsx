@@ -142,6 +142,14 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
           <small>{trackError ? t('radio.noMusic') : currentTrack.durationLabel}</small>
         </div>
 
+        <div className="d7-radio-playlist" aria-label="Músicas disponíveis na Rádio D7">
+          {tracks.map((track, index) => (
+            <button key={track.id} type="button" className={index === trackIndex ? 'mini-action active' : 'mini-action'} onClick={() => changeTrack(index, isPlaying)}>
+              {track.title}
+            </button>
+          ))}
+        </div>
+
         <audio
           ref={audioRef}
           src={currentTrack.src}
@@ -173,7 +181,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
 
         <div className="d7-radio-status" role="status" aria-live="polite">
           <div className="d7-radio-equalizer" aria-hidden="true"><span /><span /><span /></div>
-          <p>{trackError ? 'Arquivo de áudio não encontrado em public/assets/audio. Adicione MP3 autorizado para ativar a Rádio D7.' : status}</p>
+          <p>{trackError ? 'Arquivo de áudio não encontrado. Confira os MP3 autorizados em public/assets/audio/radio/.' : status}</p>
         </div>
       </div>
     </section>

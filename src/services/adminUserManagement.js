@@ -1,12 +1,12 @@
 import { ADMIN_AUDIT_KEY, PAGE_VIEWS_KEY, SECURITY_ALERTS_KEY, SESSION_EVENTS_KEY, trackAdminEvent } from './adminAnalyticsService.js'
 import { LOCAL_EVENTS_KEY } from './analyticsLocal.js'
-import { ADMIN_KEY, ADMIN_SESSION_KEY, LEGACY_ADMIN_KEY, LEGACY_ADMIN_SESSION_KEY, OBSERVER_KEY, getAdminLocal } from './adminLocal.js'
+import { ADMIN_KEY, ADMIN_RATE_LIMIT_KEY, ADMIN_SESSION_KEY, LEGACY_ADMIN_KEY, LEGACY_ADMIN_SESSION_KEY, OBSERVER_KEY, getAdminLocal } from './adminLocal.js'
 import { LANGUAGE_KEY } from './languageService.js'
 import { MANTRA_SETTINGS_KEY } from './mantraAudioService.js'
 import { PRESENCE_KEY, SESSION_ID_KEY } from './presenceService.js'
 import { PROGRESS_BY_USER_KEY } from './localProgress.js'
 import { RADIO_SETTINGS_KEY } from './radioService.js'
-import { ROOM_STATE_KEY, getRoomState, saveRoomState } from './roomLocal.js'
+import { PLAYER_ROOMS_KEY, ROOM_STATE_KEY, getRoomState, saveRoomState } from './roomLocal.js'
 import { SEAL_EVENTS_KEY } from './sealEngine.js'
 import { SESSION_KEY, USERS_KEY, getCurrentSession, getUsers, hashPassword, logout, saveUsers } from './localAuth.js'
 import { WELCOME_SPIN_KEY, WHEEL_EVENTS_KEY } from './wheelService.js'
@@ -29,11 +29,13 @@ export const D7_LOCAL_STORAGE_KEYS = [
   SECURITY_ALERTS_KEY,
   PAGE_VIEWS_KEY,
   ROOM_STATE_KEY,
+  PLAYER_ROOMS_KEY,
   WHEEL_EVENTS_KEY,
   WELCOME_SPIN_KEY,
   SEAL_EVENTS_KEY,
   ADMIN_KEY,
   ADMIN_SESSION_KEY,
+  ADMIN_RATE_LIMIT_KEY,
   LEGACY_ADMIN_KEY,
   LEGACY_ADMIN_SESSION_KEY,
   OBSERVER_KEY,

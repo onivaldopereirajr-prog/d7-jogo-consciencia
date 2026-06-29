@@ -49,7 +49,7 @@ export function saveMantraSettings(settings) {
 export function getRecommendedMantraTrackId(minutes) {
   const exact = d7MantraTracks.find((track) => track.recommendedFor?.includes(Number(minutes)))
   if (exact) return exact.id
-  if (Number(minutes) >= 21) return 'mantra-om-108'
-  if (Number(minutes) >= 7) return 'mantra-silencio-d7'
+  if (Number(minutes) >= 21) return d7MantraTracks.find((track) => track.recommendedFor?.includes(21))?.id ?? d7MantraTracks[0]?.id ?? null
+  if (Number(minutes) >= 7) return d7MantraTracks.find((track) => track.recommendedFor?.includes(7))?.id ?? d7MantraTracks[0]?.id ?? null
   return d7MantraTracks[0]?.id ?? null
 }

@@ -45,28 +45,36 @@ function featuredItems(plan) {
 export default function D7Plans({ userId, onPlanChanged }) {
   const plans = useMemo(() => listPlanDefinitions(), [])
   const [currentPlanId, setCurrentPlanId] = useState(() => getLocalPlan(userId))
+  const [feedback, setFeedback] = useState(null)
   const currentPlan = getPlanDefinition(currentPlanId)
 
   function activatePremiumPreview() {
     const result = setLocalPlan(userId, PLAN_IDS.PREMIUM)
-    if (!result.ok) return
+    if (!result.ok) {
+      setFeedback({ type: 'error', text: result.message })
+      return
+    }
     setCurrentPlanId(result.planId)
+    setFeedback({ type: 'success', text: 'Prévia local Premium ativada neste navegador.' })
     onPlanChanged?.(result.planId)
   }
 
   return (
     <section className="content-section d7-plans-section" aria-labelledby="d7-plans-title">
       <div className="section-title">
-        <span>Freemium local</span>
+        <span>Prévia local Premium</span>
         <h2 id="d7-plans-title">Planos D7</h2>
-        <p>Plano local de teste. Assinaturas reais exigirão backend e pagamento seguro.</p>
+        <p>Plano local de teste para validar a experiência. Assinaturas reais exigirão backend, pagamento seguro e validação server-side.</p>
       </div>
 
       <div className="current-plan-banner">
         <span className="overline">Status atual</span>
         <strong>{currentPlan.publicName}</strong>
         <small>{currentPlan.message}</small>
+        <span className="local-plan-note">Este status vale apenas neste navegador.</span>
       </div>
+
+      {feedback && <div className={`auth-message ${feedback.type}`} role="status">{feedback.text}</div>}
 
       <div className="d7-plan-grid">
         {plans.map((plan) => {
@@ -84,13 +92,13 @@ export default function D7Plans({ userId, onPlanChanged }) {
               <ul>
                 {featuredItems(plan).map((feature) => <li key={feature}>{labelFeature(feature)}</li>)}
               </ul>
-              <small>Status: {active ? 'Plano atual deste usuário' : 'Disponível para prévia local'}</small>
+              <small className="plan-status-line">Status: {active ? 'Plano atual deste usuário' : 'Disponível para prévia local'}</small>
               {isPremium && (
                 <button type="button" className="primary-action" onClick={activatePremiumPreview} disabled={active}>
                   {active ? 'Premium local ativo' : 'Ativar Premium local de teste'}
                 </button>
               )}
-              {isFounder && <small>Founder/Admin só pode ser definido por admin/owner autenticado neste navegador.</small>}
+              {isFounder && <small className="local-plan-note">Opção administrativa local. Não aparece como assinatura pública e só deve ser definida pelo admin/owner autenticado neste navegador.</small>}
             </article>
           )
         })}

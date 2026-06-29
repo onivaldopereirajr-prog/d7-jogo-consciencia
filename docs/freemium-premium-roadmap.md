@@ -57,3 +57,13 @@ Para assinaturas reais, o D7 precisara substituir a confianca em LocalStorage po
 ## Aviso de seguranca
 
 LocalStorage nao e seguranca real de assinatura. Ele serve apenas para prototipagem local, QA e desenho de experiencia. Qualquer liberacao comercial deve validar plano e feature flags no backend.
+
+## Checklist de validacao visual
+
+- Aba Planos: cards Caminhante D7, Guardiao D7 e Administrador Pleno D7 claros em desktop e mobile.
+- PremiumGate: mensagem elegante, sem promessa de assinatura real, cura ou beneficio financeiro.
+- Ranking Premium: usuario Caminhante ve bloqueio local; usuario Premium acessa o ranking.
+- Circulos Premium: usuario Caminhante ve bloqueio local; usuario Premium acessa as salas tematicas.
+- Alteracao de plano pelo Admin: seletor local claro, com Founder/Admin marcado como opcao administrativa.
+- Avisos de plano local: interface informa que a previa vale apenas neste navegador.
+- Limitacoes sem backend: roadmap deixa claro que assinaturas reais exigem backend, pagamento seguro e validacao server-side.

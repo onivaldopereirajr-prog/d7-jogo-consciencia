@@ -92,7 +92,8 @@ export function setLocalPlan(userId, planId) {
   if (!userId) return { ok: false, message: 'Usuário local ausente.' }
   const normalizedPlanId = normalizePlanId(planId)
   const plans = readUserPlans()
-  safeSetStorage(USER_PLANS_KEY, { ...plans, [userId]: normalizedPlanId })
+  const saved = safeSetStorage(USER_PLANS_KEY, { ...plans, [userId]: normalizedPlanId })
+  if (!saved) return { ok: false, message: 'Não foi possível salvar o plano local neste navegador.' }
   return { ok: true, planId: normalizedPlanId, plan: getPlanDefinition(normalizedPlanId) }
 }
 

@@ -10,7 +10,7 @@ import {
   resetLocalD7Environment,
   resetUserPasswordFromAdmin,
 } from '../services/adminUserManagement.js'
-import { getLocalPlan, getPlanDefinition, listPlanDefinitions } from '../services/subscriptionLocal.js'
+import { PLAN_IDS, getLocalPlan, getPlanDefinition, listPlanDefinitions } from '../services/subscriptionLocal.js'
 
 function formatDate(value) {
   if (!value) return 'sem registro'
@@ -168,10 +168,10 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
                 <label>
                   Alterar plano local
                   <select value={currentPlan.id} onChange={(event) => submitPlanChange(summary.user.id, event.target.value)}>
-                    {planOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.publicName}</option>)}
+                    {planOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.publicName}{plan.id === PLAN_IDS.FOUNDER ? ' - opção administrativa' : ''}</option>)}
                   </select>
                 </label>
-                <p className="control-note">Mudança de plano é local neste navegador.</p>
+                <p className="control-note">Mudança de plano é local neste navegador. Assinatura real exigirá backend e pagamento seguro.</p>
               </div>
 
               {expandedSummaryId === summary.user.id && (

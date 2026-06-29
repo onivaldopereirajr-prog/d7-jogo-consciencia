@@ -1,6 +1,6 @@
 import { ADMIN_AUDIT_KEY, PAGE_VIEWS_KEY, SECURITY_ALERTS_KEY, SESSION_EVENTS_KEY, trackAdminEvent } from './adminAnalyticsService.js'
 import { LOCAL_EVENTS_KEY } from './analyticsLocal.js'
-import { ADMIN_KEY, ADMIN_RATE_LIMIT_KEY, ADMIN_SESSION_KEY, LEGACY_ADMIN_KEY, LEGACY_ADMIN_SESSION_KEY, OBSERVER_KEY, getAdminLocal } from './adminLocal.js'
+import { ADMIN_KEY, ADMIN_LOGIN_ATTEMPTS_KEY, ADMIN_LOCK_UNTIL_KEY, ADMIN_RATE_LIMIT_KEY, ADMIN_SESSION_KEY, LEGACY_ADMIN_KEY, LEGACY_ADMIN_SESSION_KEY, OBSERVER_KEY, getAdminLocal } from './adminLocal.js'
 import { LANGUAGE_KEY } from './languageService.js'
 import { MANTRA_SETTINGS_KEY } from './mantraAudioService.js'
 import { PRESENCE_KEY, SESSION_ID_KEY } from './presenceService.js'
@@ -12,6 +12,7 @@ import { SESSION_KEY, USERS_KEY, getCurrentSession, getUsers, hashPassword, logo
 import { WELCOME_SPIN_KEY, WHEEL_EVENTS_KEY } from './wheelService.js'
 import { LEGACY_KEY, STORAGE_KEY } from '../utils/gameState.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
+import { AUDIT_LOG_KEY, createAuditEvent } from './auditLogLocal.js'
 
 const MIN_PASSWORD_LENGTH = 6
 const ENTRANCE_KEY = 'd7_entrance_seen'
@@ -36,6 +37,9 @@ export const D7_LOCAL_STORAGE_KEYS = [
   ADMIN_KEY,
   ADMIN_SESSION_KEY,
   ADMIN_RATE_LIMIT_KEY,
+  ADMIN_LOGIN_ATTEMPTS_KEY,
+  ADMIN_LOCK_UNTIL_KEY,
+  AUDIT_LOG_KEY,
   LEGACY_ADMIN_KEY,
   LEGACY_ADMIN_SESSION_KEY,
   OBSERVER_KEY,
@@ -167,6 +171,12 @@ export function buildUserBackup(userId, type = 'user_admin_backup') {
 }
 
 export function downloadJsonBackup(backup, filenamePrefix = 'd7-backup-local') {
+  createAuditEvent('backup_exported', {
+    actorRole: 'owner-local-admin',
+    actorSafeId: 'local-admin',
+    status: 'success',
+    metadata: { backupType: backup?.type ?? 'local_backup', filenamePrefix },
+  })
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -195,6 +205,13 @@ export async function resetUserPasswordFromAdmin({ userId, password, confirmPass
   const salt = randomToken()
   const passwordHash = await hashPassword(password, salt)
   saveUsers(users.map((item) => item.id === userId ? { ...item, salt, passwordHash, updatedAt: new Date().toISOString(), passwordResetByAdminAt: new Date().toISOString() } : item))
+  createAuditEvent('user_password_reset', {
+    actorRole: 'owner-local-admin',
+    actorSafeId: 'local-admin',
+    targetSafeId: user.id,
+    status: 'success',
+    metadata: { targetRole: user.role ?? 'player' },
+  })
   trackAdminEvent('local-admin', 'admin_user_password_reset', { targetUserId: userId, targetLogin: user.login })
   return { ok: true, message: `Senha/PIN de ${user.name} redefinida localmente.` }
 }
@@ -239,6 +256,13 @@ export function deleteLocalUserFromAdmin({ userId, confirmation }) {
     messages: (roomState.messages ?? []).filter((message) => message.userId !== userId),
   })
 
+  createAuditEvent('user_deleted', {
+    actorRole: 'owner-local-admin',
+    actorSafeId: 'local-admin',
+    targetSafeId: user.id,
+    status: 'success',
+    metadata: { protectedUser, removed },
+  })
   trackAdminEvent('local-admin', 'admin_user_deleted', { targetUserId: userId, targetLogin: user.login, protectedUser })
   return { ok: true, message: `Usuário local ${user.name} excluído deste navegador.`, backup: beforeBackup, removed }
 }
@@ -262,7 +286,14 @@ export function clearStalePresence(minutes = 10) {
 }
 
 export function resetLocalD7Environment() {
+  const keys = getD7LocalStorageKeys()
+  createAuditEvent('local_environment_reset', {
+    actorRole: 'owner-local-admin',
+    actorSafeId: 'local-admin',
+    status: 'success',
+    metadata: { keysCount: keys.length },
+  })
   const backup = buildFullLocalBackup('before_reset_local_d7')
-  getD7LocalStorageKeys().forEach((key) => safeRemoveStorage(key))
+  keys.forEach((key) => safeRemoveStorage(key))
   return { ok: true, backup, message: 'Ambiente local D7 resetado neste navegador.' }
 }

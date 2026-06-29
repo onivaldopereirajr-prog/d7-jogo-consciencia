@@ -1,4 +1,5 @@
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
+import { createAuditEvent } from './auditLogLocal.js'
 
 export const USERS_KEY = 'd7_local_users'
 export const SESSION_KEY = 'd7_current_session'
@@ -135,12 +136,29 @@ export async function resetLocalPassword({ userId, password, confirmPassword }) 
   const passwordHash = await hashPassword(password, salt)
   const updated = { ...user, salt, passwordHash, updatedAt: new Date().toISOString() }
   saveUsers(users.map((item) => (item.id === user.id ? updated : item)))
+  createAuditEvent('user_password_reset', {
+    actorRole: user.role ?? 'player',
+    actorSafeId: user.id,
+    targetSafeId: user.id,
+    status: 'success',
+    metadata: { selfService: true },
+  })
   return { ok: true, user: updated, message: 'Senha local redefinida. Agora você pode entrar novamente.' }
 }
 
 export function deleteUser(userId) {
-  const users = getUsers().filter((user) => user.id !== userId)
+  const user = getUsers().find((item) => item.id === userId)
+  const users = getUsers().filter((item) => item.id !== userId)
   saveUsers(users)
+  if (user) {
+    createAuditEvent('user_deleted', {
+      actorRole: user.role ?? 'player',
+      actorSafeId: user.id,
+      targetSafeId: user.id,
+      status: 'success',
+      metadata: { selfService: true },
+    })
+  }
   const session = getCurrentSession()
   if (session?.userId === userId) logout()
 }

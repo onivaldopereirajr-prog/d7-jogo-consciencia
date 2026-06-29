@@ -8,6 +8,7 @@ import { getEventsByUser } from '../services/analyticsLocal.js'
 import { getPresenceList } from '../services/presenceService.js'
 import { getPlayerRoomsState, getRoomState } from '../services/roomLocal.js'
 import { getWheelEventsByUser } from '../services/wheelService.js'
+import { clearAuditEvents, createAuditEvent, exportAuditEvents, listAuditEvents } from '../services/auditLogLocal.js'
 
 function formatSeconds(seconds = 0) {
   const min = Math.round(Number(seconds || 0) / 60)
@@ -74,6 +75,8 @@ function accessRows(summaries, presence, localEventsByUser, auditEvents) {
 export default function AdminControlCenter({ summaries, onResolvedAlert }) {
   const [filter, setFilter] = useState('todos')
   const [message, setMessage] = useState(null)
+  const [auditEvents, setAuditEvents] = useState(() => listAuditEvents())
+  const [auditClearConfirm, setAuditClearConfirm] = useState('')
   const presence = useMemo(() => getPresenceList(summaries), [summaries])
   const roomState = getRoomState()
   const playerRoomsState = getPlayerRoomsState()
@@ -126,6 +129,40 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
   function resolveAlert(alertId) {
     resolveSecurityAlert(alertId)
     onResolvedAlert?.()
+  }
+
+  function refreshAuditEvents() {
+    setAuditEvents(listAuditEvents())
+  }
+
+  function downloadAuditLogs() {
+    createAuditEvent('backup_exported', {
+      actorRole: 'owner-local-admin',
+      actorSafeId: 'local-admin',
+      status: 'success',
+      metadata: { backupType: 'd7_local_audit_logs' },
+    })
+    const backup = exportAuditEvents()
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `d7-auditoria-local-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    refreshAuditEvents()
+    setMessage({ type: 'success', text: 'Logs locais exportados sem senha, PIN, hash, salt ou segredo.' })
+  }
+
+  function submitClearAuditLogs() {
+    if (auditClearConfirm !== 'LIMPAR LOGS D7') {
+      setMessage({ type: 'error', text: 'Digite LIMPAR LOGS D7 para confirmar.' })
+      return
+    }
+    clearAuditEvents({ actorSafeId: 'local-admin', actorRole: 'owner-local-admin' })
+    setAuditClearConfirm('')
+    refreshAuditEvents()
+    setMessage({ type: 'success', text: 'Logs locais limpos neste navegador.' })
   }
 
   return (
@@ -196,6 +233,33 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
       </section>
 
       <AdminUserManagement summaries={summaries} presence={presence} onChanged={onResolvedAlert} />
+
+      <section className="control-panel" aria-labelledby="audit-local-title">
+        <div className="control-panel-head"><div><span className="overline">Segurança local</span><h3 id="audit-local-title">Auditoria Local</h3></div></div>
+        <p className="control-note">Logs locais ficam apenas neste navegador. Auditoria real multiusuário exigirá backend.</p>
+        <div className="admin-actions-row">
+          <button type="button" className="ghost-action" onClick={downloadAuditLogs}>Exportar logs locais</button>
+        </div>
+        <div className="access-grid">
+          {auditEvents.slice(0, 30).map((event) => (
+            <article key={event.id} className="access-card">
+              <strong>{event.action}</strong>
+              <small>{formatDate(event.timestamp)} · {event.status}</small>
+              <span>Ator: {event.actorSafeId ?? event.actorName ?? 'local-admin'}</span>
+              {event.targetSafeId && <span>Alvo: {event.targetSafeId}</span>}
+              <span>Role: {event.actorRole ?? 'local-admin'}</span>
+            </article>
+          ))}
+          {auditEvents.length === 0 && <p className="d7-empty-state">Nenhum log local registrado neste navegador.</p>}
+        </div>
+        <div className="admin-inline-form danger-zone">
+          <label>
+            Digite LIMPAR LOGS D7 para limpar os logs locais
+            <input type="text" value={auditClearConfirm} onChange={(event) => setAuditClearConfirm(event.target.value)} />
+          </label>
+          <button type="button" className="danger-action" onClick={submitClearAuditLogs}>Limpar logs locais</button>
+        </div>
+      </section>
 
       <AdminEventTimeline events={analytics.events} filter={filter} onFilterChange={setFilter} summaries={summaries} />
 

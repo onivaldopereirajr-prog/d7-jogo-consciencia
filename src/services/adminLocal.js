@@ -1,5 +1,6 @@
 import { hashPassword } from './localAuth.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
+import { createAuditEvent } from './auditLogLocal.js'
 
 export const ADMIN_KEY = 'd7_owner_admin'
 export const ADMIN_SESSION_KEY = 'd7_owner_admin_session'
@@ -7,6 +8,8 @@ export const LEGACY_ADMIN_KEY = 'd7_admin_local'
 export const LEGACY_ADMIN_SESSION_KEY = 'd7_admin_session'
 export const OBSERVER_KEY = 'd7_room_observer_mode'
 export const ADMIN_RATE_LIMIT_KEY = 'd7_admin_login_rate_limit'
+export const ADMIN_LOGIN_ATTEMPTS_KEY = 'd7_admin_login_attempts'
+export const ADMIN_LOCK_UNTIL_KEY = 'd7_admin_lock_until'
 const MIN_PIN_LENGTH = 6
 const MAX_FAILED_ATTEMPTS = 5
 const LOCK_MS = 5 * 60 * 1000
@@ -21,8 +24,10 @@ function randomToken() {
 }
 
 function getRateLimit() {
-  const data = safeGetStorage(ADMIN_RATE_LIMIT_KEY, { failedAttempts: 0, lockedUntil: null, updatedAt: null })
-  return data && typeof data === 'object' ? data : { failedAttempts: 0, lockedUntil: null, updatedAt: null }
+  const legacy = safeGetStorage(ADMIN_RATE_LIMIT_KEY, null)
+  const failedAttempts = Number(safeGetStorage(ADMIN_LOGIN_ATTEMPTS_KEY, legacy?.failedAttempts ?? 0) || 0)
+  const lockedUntil = safeGetStorage(ADMIN_LOCK_UNTIL_KEY, legacy?.lockedUntil ?? null)
+  return { failedAttempts, lockedUntil, updatedAt: legacy?.updatedAt ?? null }
 }
 
 function isLocked() {
@@ -33,13 +38,18 @@ function isLocked() {
 
 function clearRateLimit() {
   safeRemoveStorage(ADMIN_RATE_LIMIT_KEY)
+  safeRemoveStorage(ADMIN_LOGIN_ATTEMPTS_KEY)
+  safeRemoveStorage(ADMIN_LOCK_UNTIL_KEY)
 }
 
 function registerFailedAttempt() {
   const rate = getRateLimit()
   const failedAttempts = Number(rate.failedAttempts || 0) + 1
   const lockedUntil = failedAttempts >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCK_MS).toISOString() : null
-  safeSetStorage(ADMIN_RATE_LIMIT_KEY, { failedAttempts, lockedUntil, updatedAt: new Date().toISOString() })
+  safeSetStorage(ADMIN_LOGIN_ATTEMPTS_KEY, failedAttempts)
+  if (lockedUntil) safeSetStorage(ADMIN_LOCK_UNTIL_KEY, lockedUntil)
+  else safeRemoveStorage(ADMIN_LOCK_UNTIL_KEY)
+  return { failedAttempts, lockedUntil }
 }
 
 export function getAdminLocal() {
@@ -71,13 +81,28 @@ export function hasAdminSession() {
   const admin = getAdminLocal()
   if (!session?.adminId || admin?.id !== session.adminId) return false
   if (session.expiresAt && new Date(session.expiresAt).getTime() < Date.now()) {
-    endAdminSession()
+    createAuditEvent('admin_session_expired', {
+      actorRole: admin.role ?? 'owner-local-admin',
+      actorSafeId: admin.id,
+      status: 'info',
+      metadata: { rememberDevice: Boolean(session.rememberDevice), expiredAt: session.expiresAt },
+    })
+    safeRemoveStorage(ADMIN_SESSION_KEY)
+    safeRemoveStorage(LEGACY_ADMIN_SESSION_KEY)
     return false
   }
   return true
 }
 
 export function endAdminSession() {
+  const admin = getAdminLocal()
+  if (admin) {
+    createAuditEvent('admin_logout', {
+      actorRole: admin.role ?? 'owner-local-admin',
+      actorSafeId: admin.id,
+      status: 'success',
+    })
+  }
   safeRemoveStorage(ADMIN_SESSION_KEY)
   safeRemoveStorage(LEGACY_ADMIN_SESSION_KEY)
 }
@@ -105,30 +130,70 @@ export async function createAdminLocal({ name, alias, password, confirmPassword,
   safeSetStorage(ADMIN_KEY, admin)
   safeSetStorage(ADMIN_SESSION_KEY, adminSessionPayload(admin.id, rememberDevice))
   clearRateLimit()
+  createAuditEvent('admin_login_success', { actorRole: admin.role, actorSafeId: admin.id, status: 'success', metadata: { createdAdmin: true, rememberDevice: Boolean(rememberDevice) } })
   return { ok: true, admin: getPublicAdminLocal(), message: 'Acesso administrativo local criado.' }
 }
 
 export async function loginAdminLocal({ alias, password, rememberDevice = false }) {
   const locked = isLocked()
-  if (locked) return { ok: false, message: `Muitas tentativas incorretas. Tente novamente após ${new Date(locked.lockedUntil).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.` }
-  const admin = getAdminLocal()
   const cleanAlias = String(alias ?? '').trim().toLowerCase()
-  if (!admin) return { ok: false, message: 'Crie o acesso administrativo local primeiro.' }
-  if (!cleanAlias) return { ok: false, message: 'Informe o apelido administrativo.' }
-  if ((admin.alias ?? 'admin') !== cleanAlias) {
-    registerFailedAttempt()
-    return { ok: false, message: 'Credenciais administrativas inválidas.' }
+  if (locked) {
+    createAuditEvent('admin_login_blocked', {
+      actorRole: 'local-admin',
+      actorSafeId: cleanAlias || 'unknown-admin',
+      status: 'blocked',
+      metadata: { lockedUntil: locked.lockedUntil },
+    })
+    return { ok: false, message: 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.' }
   }
-  if (!password) return { ok: false, message: 'Informe o PIN/senha admin.' }
+  const admin = getAdminLocal()
+  if (!admin || !cleanAlias || !password || (admin.alias ?? 'admin') !== cleanAlias) {
+    const rate = registerFailedAttempt()
+    createAuditEvent('admin_login_failed', {
+      actorRole: 'local-admin',
+      actorSafeId: cleanAlias || 'unknown-admin',
+      status: rate.lockedUntil ? 'blocked' : 'failed',
+      metadata: { failedAttempts: rate.failedAttempts, locked: Boolean(rate.lockedUntil) },
+    })
+    if (rate.lockedUntil) {
+      createAuditEvent('admin_login_blocked', {
+        actorRole: 'local-admin',
+        actorSafeId: cleanAlias || 'unknown-admin',
+        status: 'blocked',
+        metadata: { lockedUntil: rate.lockedUntil },
+      })
+    }
+    return { ok: false, message: rate.lockedUntil ? 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.' : 'Credenciais administrativas inválidas.' }
+  }
   const passwordHash = await hashPassword(password, admin.salt)
   if (passwordHash !== admin.passwordHash) {
-    registerFailedAttempt()
-    return { ok: false, message: 'Credenciais administrativas inválidas.' }
+    const rate = registerFailedAttempt()
+    createAuditEvent('admin_login_failed', {
+      actorRole: admin.role ?? 'owner-local-admin',
+      actorSafeId: admin.id,
+      status: rate.lockedUntil ? 'blocked' : 'failed',
+      metadata: { failedAttempts: rate.failedAttempts, locked: Boolean(rate.lockedUntil) },
+    })
+    if (rate.lockedUntil) {
+      createAuditEvent('admin_login_blocked', {
+        actorRole: admin.role ?? 'owner-local-admin',
+        actorSafeId: admin.id,
+        status: 'blocked',
+        metadata: { lockedUntil: rate.lockedUntil },
+      })
+    }
+    return { ok: false, message: rate.lockedUntil ? 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.' : 'Credenciais administrativas inválidas.' }
   }
   const updated = { ...admin, role: admin.role ?? 'owner-local-admin', isOwnerLocal: admin.isOwnerLocal !== false, lastLoginAt: new Date().toISOString() }
   safeSetStorage(ADMIN_KEY, updated)
   safeSetStorage(ADMIN_SESSION_KEY, adminSessionPayload(admin.id, rememberDevice))
   clearRateLimit()
+  createAuditEvent('admin_login_success', {
+    actorRole: updated.role,
+    actorSafeId: updated.id,
+    status: 'success',
+    metadata: { rememberDevice: Boolean(rememberDevice) },
+  })
   return { ok: true, admin: getPublicAdminLocal(), message: 'Admin local autenticado.' }
 }
 

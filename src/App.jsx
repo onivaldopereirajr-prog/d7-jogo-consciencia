@@ -1200,7 +1200,14 @@ function App() {
                   <img src={visualAssets.cycle} alt="" />
                 </div>
                 <h3>Missões diárias</h3>
-                {missions.daily.map((mission) => <MissionRow key={mission.id} mission={mission} done={missionStatus(state, mission)} />)}
+                {missions.daily.map((mission) => (
+                  <MissionRow
+                    key={mission.id}
+                    mission={mission}
+                    done={missionStatus(state, mission)}
+                    onNavigate={() => navigate(missionNavigationTarget(mission))}
+                  />
+                ))}
               </div>
             </div>
           </section>
@@ -1519,13 +1526,25 @@ function App() {
   )
 }
 
-function MissionRow({ mission, done }) {
+function missionNavigationTarget(mission) {
+  if (mission.view) return mission.view
+  if (mission.type === 'study') return 'biblioteca'
+  return 'pratica'
+}
+
+function MissionRow({ mission, done, onNavigate }) {
   return (
-    <div className={`mission-row ${done ? 'done' : ''}`}>
-      <span>{done ? '✓' : '○'}</span>
+    <button
+      type="button"
+      className={`mission-row ${done ? 'done' : ''}`}
+      onClick={onNavigate}
+      aria-label={`Abrir missão: ${mission.title}`}
+    >
+      <span className="mission-state" aria-hidden="true">{done ? '✓' : '○'}</span>
       <p>{mission.title}</p>
       <small>{mission.reward}</small>
-    </div>
+      <span className="mission-action" aria-hidden="true">Abrir →</span>
+    </button>
   )
 }
 

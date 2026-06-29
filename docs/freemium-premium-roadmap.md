@@ -67,3 +67,8 @@ LocalStorage nao e seguranca real de assinatura. Ele serve apenas para prototipa
 - Alteracao de plano pelo Admin: seletor local claro, com Founder/Admin marcado como opcao administrativa.
 - Avisos de plano local: interface informa que a previa vale apenas neste navegador.
 - Limitacoes sem backend: roadmap deixa claro que assinaturas reais exigem backend, pagamento seguro e validacao server-side.
+
+## Nota de UX
+
+Missões diárias agora funcionam como atalhos internos de navegação para orientar o usuário até a ação correspondente.
+

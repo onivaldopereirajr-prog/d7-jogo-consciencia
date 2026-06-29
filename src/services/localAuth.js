@@ -1,5 +1,6 @@
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { createAuditEvent } from './auditLogLocal.js'
+import { sanitizeText, sanitizeUserName, wasSanitized } from '../utils/sanitizeText.js'
 
 export const USERS_KEY = 'd7_local_users'
 export const SESSION_KEY = 'd7_current_session'
@@ -7,7 +8,7 @@ export const SESSION_KEY = 'd7_current_session'
 const MIN_PASSWORD_LENGTH = 6
 
 function normalizeLogin(login) {
-  return login.trim().toLowerCase()
+  return sanitizeText(login, { fallback: '', maxLength: 40 }).toLowerCase()
 }
 
 function randomToken() {
@@ -83,7 +84,7 @@ export function logout() {
 }
 
 export async function registerUser({ name, login, password, confirmPassword }) {
-  const cleanName = name.trim()
+  const cleanName = sanitizeUserName(name)
   const cleanLogin = normalizeLogin(login)
   if (!cleanName) return { ok: false, message: 'Informe o nome do usuário.' }
   if (!cleanLogin) return { ok: false, message: 'Informe um apelido ou e-mail local.' }
@@ -93,6 +94,14 @@ export async function registerUser({ name, login, password, confirmPassword }) {
 
   const users = getUsers()
   if (users.some((user) => user.login === cleanLogin)) return { ok: false, message: 'Já existe um usuário local com esse apelido/e-mail.' }
+  if (wasSanitized(name, cleanName) || wasSanitized(login, cleanLogin)) {
+    createAuditEvent('unsafe_text_sanitized', {
+      actorRole: 'player',
+      actorSafeId: cleanLogin || 'novo-usuario-local',
+      status: 'info',
+      metadata: { field: 'user_registration' },
+    })
+  }
 
   const salt = randomToken()
   const passwordHash = await hashPassword(password, salt)
@@ -168,8 +177,8 @@ export function publicUser(user) {
   if (!user) return null
   return {
     id: user.id,
-    name: user.name,
-    login: user.login,
+    name: sanitizeUserName(user.name),
+    login: sanitizeText(user.login, { fallback: '', maxLength: 40 }),
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
     role: user.role,

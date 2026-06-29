@@ -1,6 +1,7 @@
 import { hashPassword } from './localAuth.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { createAuditEvent } from './auditLogLocal.js'
+import { sanitizeText, sanitizeUserName, wasSanitized } from '../utils/sanitizeText.js'
 
 export const ADMIN_KEY = 'd7_owner_admin'
 export const ADMIN_SESSION_KEY = 'd7_owner_admin_session'
@@ -67,7 +68,7 @@ export function getAdminLocal() {
 export function getPublicAdminLocal() {
   const admin = getAdminLocal()
   if (!admin) return null
-  return { id: admin.id, name: admin.name, alias: admin.alias, role: admin.role, isOwnerLocal: admin.isOwnerLocal !== false, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
+  return { id: admin.id, name: sanitizeUserName(admin.name), alias: sanitizeText(admin.alias, { fallback: 'admin', maxLength: 40 }), role: admin.role, isOwnerLocal: admin.isOwnerLocal !== false, createdAt: admin.createdAt, lastLoginAt: admin.lastLoginAt }
 }
 
 function adminSessionPayload(adminId, rememberDevice = false) {
@@ -108,13 +109,16 @@ export function endAdminSession() {
 }
 
 export async function createAdminLocal({ name, alias, password, confirmPassword, rememberDevice = false }) {
-  const cleanName = String(name ?? '').trim()
-  const cleanAlias = String(alias ?? '').trim().toLowerCase()
+  const cleanName = sanitizeUserName(name)
+  const cleanAlias = sanitizeText(alias, { fallback: '', maxLength: 40 }).toLowerCase()
   if (getAdminLocal()) return { ok: false, message: 'Já existe acesso administrativo local neste navegador.' }
   if (!cleanName) return { ok: false, message: 'Informe o nome do administrador.' }
   if (!cleanAlias) return { ok: false, message: 'Informe o apelido administrativo.' }
   if (!password || password.length < MIN_PIN_LENGTH) return { ok: false, message: `Use pelo menos ${MIN_PIN_LENGTH} caracteres no PIN/senha admin.` }
   if (password !== confirmPassword) return { ok: false, message: 'A confirmação do PIN/senha não confere.' }
+  if (wasSanitized(name, cleanName) || wasSanitized(alias, cleanAlias)) {
+    createAuditEvent('unsafe_text_sanitized', { actorRole: 'owner-local-admin', actorSafeId: cleanAlias || 'admin-local', status: 'info', metadata: { field: 'admin_registration' } })
+  }
   const salt = randomToken()
   const admin = {
     id: `d7_admin_${Date.now()}_${randomToken().slice(0, 8)}`,
@@ -136,7 +140,7 @@ export async function createAdminLocal({ name, alias, password, confirmPassword,
 
 export async function loginAdminLocal({ alias, password, rememberDevice = false }) {
   const locked = isLocked()
-  const cleanAlias = String(alias ?? '').trim().toLowerCase()
+  const cleanAlias = sanitizeText(alias, { fallback: '', maxLength: 40 }).toLowerCase()
   if (locked) {
     createAuditEvent('admin_login_blocked', {
       actorRole: 'local-admin',

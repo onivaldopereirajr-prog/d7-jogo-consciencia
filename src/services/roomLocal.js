@@ -1,5 +1,7 @@
 import { safeGetStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { getUserAvatarProfile } from './avatarService.js'
+import { createAuditEvent } from './auditLogLocal.js'
+import { sanitizeAvatar, sanitizeMessage, sanitizeRoomDescription, sanitizeRoomName, sanitizeText, sanitizeUserName, wasSanitized } from '../utils/sanitizeText.js'
 
 export const ROOM_STATE_KEY = 'd7_room_state_local'
 export const PLAYER_ROOMS_KEY = 'd7_player_rooms_local'
@@ -10,12 +12,38 @@ function makeId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-function sanitizeText(value, maxLength = 500) {
-  return String(value ?? '')
-    .replace(/[<>]/g, '')
-    .replace(/javascript:/gi, '')
-    .trim()
-    .slice(0, maxLength)
+
+
+function sanitizeRoomMessageItem(message = {}) {
+  return {
+    ...message,
+    nickname: sanitizeUserName(message.nickname ?? message.author, { fallback: 'Visitante D7' }),
+    author: sanitizeUserName(message.author ?? message.nickname, { fallback: 'Visitante D7' }),
+    avatarGlyph: sanitizeAvatar(message.avatarGlyph),
+    text: sanitizeMessage(message.text),
+  }
+}
+
+function sanitizePermissionItem(item = {}) {
+  return {
+    ...item,
+    name: sanitizeUserName(item.name ?? item.nickname, { fallback: 'Visitante D7' }),
+    nickname: sanitizeUserName(item.nickname ?? item.name, { fallback: 'Visitante D7' }),
+    avatarGlyph: sanitizeAvatar(item.avatarGlyph),
+  }
+}
+
+function sanitizePlayerRoomItem(room = {}) {
+  return {
+    ...room,
+    name: sanitizeRoomName(room.name, { fallback: 'Sala D7 Local' }),
+    description: sanitizeRoomDescription(room.description),
+    theme: sanitizeText(room.theme, { fallback: 'presença', maxLength: 50 }),
+    icon: sanitizeAvatar(room.icon),
+    ownerName: sanitizeUserName(room.ownerName),
+    ownerAvatar: sanitizeAvatar(room.ownerAvatar),
+    messages: Array.isArray(room.messages) ? room.messages.map(sanitizeRoomMessageItem).filter((message) => message.text) : [],
+  }
 }
 
 function baseState() {
@@ -28,7 +56,10 @@ function baseRoomsState() {
 
 export function getRoomState() {
   const state = safeGetStorage(ROOM_STATE_KEY, baseState())
-  return state && typeof state === 'object' ? { ...baseState(), ...state, messages: Array.isArray(state.messages) ? state.messages : [], permissions: state.permissions && typeof state.permissions === 'object' ? state.permissions : {} } : baseState()
+  if (!state || typeof state !== 'object') return baseState()
+  const permissions = state.permissions && typeof state.permissions === 'object' ? Object.fromEntries(Object.entries(state.permissions).map(([userId, item]) => [userId, sanitizePermissionItem(item)])) : {}
+  const messages = Array.isArray(state.messages) ? state.messages.map(sanitizeRoomMessageItem).filter((message) => message.text) : []
+  return { ...baseState(), ...state, messages, permissions }
 }
 
 export function saveRoomState(state) {
@@ -37,7 +68,7 @@ export function saveRoomState(state) {
 
 export function getPlayerRoomsState() {
   const state = safeGetStorage(PLAYER_ROOMS_KEY, baseRoomsState())
-  const rooms = Array.isArray(state?.rooms) ? state.rooms : []
+  const rooms = Array.isArray(state?.rooms) ? state.rooms.map(sanitizePlayerRoomItem) : []
   return { ...baseRoomsState(), ...state, rooms: rooms.slice(0, MAX_ROOMS) }
 }
 
@@ -48,15 +79,31 @@ export function savePlayerRoomsState(state) {
 export function createPlayerRoom(user, form = {}, progress = {}) {
   if (!user?.id) return getPlayerRoomsState()
   const avatar = getUserAvatarProfile(user, progress)
+  const cleanRoom = {
+    name: sanitizeRoomName(form.name, { fallback: 'Sala D7 Local' }),
+    description: sanitizeRoomDescription(form.description),
+    theme: sanitizeText(form.theme, { fallback: 'presença', maxLength: 50 }),
+    icon: sanitizeAvatar(form.icon || avatar.glyph),
+    ownerName: sanitizeUserName(form.playerName || user.name),
+    ownerAvatar: sanitizeAvatar(form.playerAvatar || avatar.glyph),
+  }
+  if (wasSanitized(form.name, cleanRoom.name) || wasSanitized(form.description, cleanRoom.description) || wasSanitized(form.theme, cleanRoom.theme) || wasSanitized(form.icon, cleanRoom.icon) || wasSanitized(form.playerName || user.name, cleanRoom.ownerName) || wasSanitized(form.playerAvatar || avatar.glyph, cleanRoom.ownerAvatar)) {
+    createAuditEvent('unsafe_text_sanitized', {
+      actorRole: 'player',
+      actorSafeId: user.id,
+      status: 'info',
+      metadata: { field: 'room_form' },
+    })
+  }
   const room = {
     id: makeId('room'),
-    name: sanitizeText(form.name, 60) || 'Sala D7 Local',
-    description: sanitizeText(form.description, 160) || 'Encontro local de presença.',
-    theme: sanitizeText(form.theme, 48) || 'presença',
-    icon: sanitizeText(form.icon, 8) || avatar.glyph || 'D7',
+    name: cleanRoom.name,
+    description: cleanRoom.description,
+    theme: cleanRoom.theme,
+    icon: cleanRoom.icon,
     ownerId: user.id,
-    ownerName: sanitizeText(form.playerName, 60) || user.name || 'Jogador D7',
-    ownerAvatar: sanitizeText(form.playerAvatar, 8) || avatar.glyph || 'D7',
+    ownerName: cleanRoom.ownerName,
+    ownerAvatar: cleanRoom.ownerAvatar,
     messages: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -76,8 +123,14 @@ export function setActivePlayerRoom(roomId) {
 }
 
 export function sendPlayerRoomMessage(roomId, user, text, form = {}, progress = {}) {
-  const clean = sanitizeText(text, 500)
-  if (!user?.id || !clean) return getPlayerRoomsState()
+  const clean = sanitizeMessage(text)
+  if (!user?.id || !clean) {
+    createAuditEvent('unsafe_message_rejected', { actorRole: 'player', actorSafeId: user?.id ?? 'anonymous', status: 'rejected', metadata: { roomType: 'player' } })
+    return getPlayerRoomsState()
+  }
+  if (wasSanitized(text, clean)) {
+    createAuditEvent('unsafe_text_sanitized', { actorRole: 'player', actorSafeId: user.id, status: 'info', metadata: { field: 'player_room_message' } })
+  }
   const state = getPlayerRoomsState()
   const avatar = getUserAvatarProfile(user, progress)
   const nextRooms = state.rooms.map((room) => {
@@ -85,8 +138,8 @@ export function sendPlayerRoomMessage(roomId, user, text, form = {}, progress = 
     const message = {
       id: makeId('msg'),
       userId: user.id,
-      nickname: sanitizeText(form.playerName, 60) || user.name || 'Jogador D7',
-      avatarGlyph: sanitizeText(form.playerAvatar, 8) || avatar.glyph || 'D7',
+      nickname: sanitizeUserName(form.playerName || user.name),
+      avatarGlyph: sanitizeAvatar(form.playerAvatar || avatar.glyph),
       text: clean,
       createdAt: new Date().toISOString(),
     }
@@ -98,11 +151,18 @@ export function sendPlayerRoomMessage(roomId, user, text, form = {}, progress = 
 }
 
 export function sendRoomMessage(user, text, progress = {}) {
-  const clean = sanitizeText(text, 500)
-  if (!user?.id || !clean) return getRoomState()
+  const clean = sanitizeMessage(text)
+  if (!user?.id || !clean) {
+    createAuditEvent('unsafe_message_rejected', { actorRole: 'player', actorSafeId: user?.id ?? 'anonymous', status: 'rejected', metadata: { roomType: 'main' } })
+    return getRoomState()
+  }
+  if (wasSanitized(text, clean)) {
+    createAuditEvent('unsafe_text_sanitized', { actorRole: 'player', actorSafeId: user.id, status: 'info', metadata: { field: 'room_message' } })
+  }
   const state = getRoomState()
   const avatar = getUserAvatarProfile(user, progress)
-  const message = { id: makeId('msg'), userId: user.id, nickname: user.name || 'Visitante D7', author: user.name || 'Visitante D7', avatarSymbol: avatar.symbolId, avatarGlyph: avatar.glyph, avatarColor: avatar.color, role: state.permissions[user.id]?.role ?? 'participante', text: clean, createdAt: new Date().toISOString() }
+  const safeName = sanitizeUserName(user.name, { fallback: 'Visitante D7' })
+  const message = { id: makeId('msg'), userId: user.id, nickname: safeName, author: safeName, avatarSymbol: avatar.symbolId, avatarGlyph: sanitizeAvatar(avatar.glyph), avatarColor: avatar.color, role: state.permissions[user.id]?.role ?? 'participante', text: clean, createdAt: new Date().toISOString() }
   const next = { ...state, messages: [message, ...state.messages].slice(0, MAX_MESSAGES) }
   saveRoomState(next)
   return next
@@ -117,7 +177,7 @@ export function ensureParticipantPermission(user, progress = {}) {
     ...state,
     permissions: {
       ...state.permissions,
-      [user.id]: { userId: user.id, name: user.name || 'Visitante D7', nickname: user.name || 'Visitante D7', avatarSymbol: avatar.symbolId, avatarGlyph: avatar.glyph, avatarColor: avatar.color, role: 'participante', speech: 'none', camera: 'none', updatedAt: new Date().toISOString() },
+      [user.id]: { userId: user.id, name: sanitizeUserName(user.name, { fallback: 'Visitante D7' }), nickname: sanitizeUserName(user.name, { fallback: 'Visitante D7' }), avatarSymbol: avatar.symbolId, avatarGlyph: sanitizeAvatar(avatar.glyph), avatarColor: avatar.color, role: 'participante', speech: 'none', camera: 'none', updatedAt: new Date().toISOString() },
     },
   }
   saveRoomState(next)

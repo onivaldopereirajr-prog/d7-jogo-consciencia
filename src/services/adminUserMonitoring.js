@@ -3,9 +3,9 @@ import { getAdminLocal } from './adminLocal.js'
 import { getUsers, saveUsers } from './localAuth.js'
 import { getAllLocalSummaries } from './localProgress.js'
 import { safeGetStorage, safeSetStorage } from '../utils/storageSafe.js'
+import { sanitizeReason, wasSanitized } from '../utils/sanitizeText.js'
 
 export const SCREEN_TIME_KEY = 'd7_screen_time_by_user'
-const MAX_REASON_LENGTH = 160
 const TOTAL_TRAINING_DAYS = 28
 
 function isPlainObject(value) {
@@ -28,10 +28,6 @@ function normalizeViewName(viewName) {
   const value = String(viewName ?? 'home').trim().toLowerCase()
   const allowed = new Set(['home', 'jornada', 'pratica', 'codice', 'perfil', 'biblioteca', 'sala', 'roda', 'admin', 'ranking', 'acompanhamento'])
   return allowed.has(value) ? value : 'home'
-}
-
-function safeReason(reason) {
-  return String(reason ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_REASON_LENGTH)
 }
 
 function getScreenTimeStore() {
@@ -188,7 +184,16 @@ export function blockLocalUser(userId, reason = '', confirmation = 'BLOQUEAR') {
   const protectedUser = isProtectedUser(user)
   const expected = protectedUser ? 'BLOQUEAR ADMIN' : 'BLOQUEAR'
   if (confirmation !== expected) return { ok: false, message: `Digite ${expected} para confirmar.` }
-  const blockedReason = safeReason(reason)
+  const blockedReason = sanitizeReason(reason)
+  if (wasSanitized(reason, blockedReason)) {
+    createAuditEvent('unsafe_text_sanitized', {
+      actorRole: 'owner-local-admin',
+      actorSafeId: 'local-admin',
+      targetSafeId: user.id,
+      status: 'info',
+      metadata: { field: 'blockedReason' },
+    })
+  }
   const updated = { ...user, status: 'blocked', blockedAt: new Date().toISOString(), blockedReason }
   saveUsers(users.map((item) => item.id === userId ? updated : item))
   createAuditEvent('user_blocked', {

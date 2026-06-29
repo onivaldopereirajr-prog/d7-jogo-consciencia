@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getObserverMode, hasAdminSession } from '../services/adminLocal.js'
 import { createPlayerRoom, ensureParticipantPermission, getPlayerRoomsState, moderateRoomPermission, sendPlayerRoomMessage, sendRoomMessage, setActivePlayerRoom, updateRoomPermission } from '../services/roomLocal.js'
+import { sanitizeMessage } from '../utils/sanitizeText.js'
 
 function statusText(value) {
   return { none: 'ouvinte', requested: 'aguardando aprovação', approved: 'autorizado', revoked: 'revogado' }[value] ?? value
@@ -11,6 +12,7 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
   const [playerRoomsState, setPlayerRoomsState] = useState(() => getPlayerRoomsState())
   const [message, setMessage] = useState('')
   const [localRoomMessage, setLocalRoomMessage] = useState('')
+  const [roomNotice, setRoomNotice] = useState(null)
   const [cameraPreview, setCameraPreview] = useState(false)
   const [roomForm, setRoomForm] = useState({ name: '', description: '', theme: '', icon: 'D7', playerName: user?.name ?? '', playerAvatar: progress?.avatarGlyph ?? 'D7' })
   const isAdmin = hasAdminSession()
@@ -24,9 +26,14 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
 
   function submit(event) {
     event.preventDefault()
+    if (!sanitizeMessage(message)) {
+      setRoomNotice('Mensagem vazia ou inválida.')
+      return
+    }
     const next = sendRoomMessage(user, message, progress)
     setRoom(next)
-    onEvent?.('room_message_sent', { length: message.trim().length, roomType: 'main' })
+    onEvent?.('room_message_sent', { length: sanitizeMessage(message).length, roomType: 'main' })
+    setRoomNotice(null)
     setMessage('')
   }
 
@@ -41,9 +48,14 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
   function submitLocalRoomMessage(event) {
     event.preventDefault()
     if (!activePlayerRoom) return
+    if (!sanitizeMessage(localRoomMessage)) {
+      setRoomNotice('Mensagem vazia ou inválida.')
+      return
+    }
     const next = sendPlayerRoomMessage(activePlayerRoom.id, user, localRoomMessage, roomForm, progress)
     setPlayerRoomsState(next)
-    onEvent?.('room_message_sent', { length: localRoomMessage.trim().length, roomType: 'player', roomId: activePlayerRoom.id })
+    onEvent?.('room_message_sent', { length: sanitizeMessage(localRoomMessage).length, roomType: 'player', roomId: activePlayerRoom.id })
+    setRoomNotice(null)
     setLocalRoomMessage('')
   }
 
@@ -77,6 +89,7 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
         <p>{t('room.notice')}</p>
         <p>Protótipo local: salas e mensagens ficam salvas apenas neste navegador até existir backend.</p>
         {observer && <p><strong>Moderação ativa.</strong> {t('room.moderation')}</p>}
+        {roomNotice && <div className="auth-message error" role="status">{roomNotice}</div>}
       </div>
 
       <div className="room-grid">
@@ -137,11 +150,11 @@ export default function D7Room({ user, progress, t = (path) => path, onEvent }) 
           <p className="control-note">Protótipo local: nomes, avatares, salas e mensagens são sanitizados e salvos apenas neste navegador.</p>
 
           <form className="room-create-form" onSubmit={submitCreateRoom}>
-            <label>Nome da sala<input value={roomForm.name} onChange={(event) => setRoomForm((value) => ({ ...value, name: event.target.value }))} maxLength="60" /></label>
+            <label>Nome da sala<input value={roomForm.name} onChange={(event) => setRoomForm((value) => ({ ...value, name: event.target.value }))} maxLength="50" /></label>
             <label>Descrição curta<input value={roomForm.description} onChange={(event) => setRoomForm((value) => ({ ...value, description: event.target.value }))} maxLength="160" /></label>
-            <label>Tema simbólico<input value={roomForm.theme} onChange={(event) => setRoomForm((value) => ({ ...value, theme: event.target.value }))} maxLength="48" /></label>
+            <label>Tema simbólico<input value={roomForm.theme} onChange={(event) => setRoomForm((value) => ({ ...value, theme: event.target.value }))} maxLength="50" /></label>
             <label>Ícone da sala<input value={roomForm.icon} onChange={(event) => setRoomForm((value) => ({ ...value, icon: event.target.value }))} maxLength="8" /></label>
-            <label>Nome personalizado<input value={roomForm.playerName} onChange={(event) => setRoomForm((value) => ({ ...value, playerName: event.target.value }))} maxLength="60" /></label>
+            <label>Nome personalizado<input value={roomForm.playerName} onChange={(event) => setRoomForm((value) => ({ ...value, playerName: event.target.value }))} maxLength="40" /></label>
             <label>Avatar local<input value={roomForm.playerAvatar} onChange={(event) => setRoomForm((value) => ({ ...value, playerAvatar: event.target.value }))} maxLength="8" /></label>
             <button type="submit" className="primary-action">Criar sala local</button>
           </form>

@@ -22,6 +22,26 @@ export const MANTRA_TRACKS = [
     recommendedFor: [1, 3, 7, 10, 21, 108],
     mood: 'presença',
   },
+  {
+    id: 'd7-mantra-arcanjo-miguel-protecao',
+    title: 'Mantra Arcanjo Miguel — Proteção',
+    subtitle: 'Som ritual para proteção, foco e presença simbólica',
+    artist: 'D7',
+    src: '/assets/audio/mantras/d7-mantra-arcanjo-miguel-protecao.mp3',
+    category: 'proteção',
+    recommendedFor: [3, 7, 21],
+    mood: 'proteção',
+  },
+  {
+    id: 'd7-mantra-ganesha-prosperidade',
+    title: 'Mantra Ganesha — Prosperidade',
+    subtitle: 'Som ritual para prosperidade, abertura de caminhos e presença',
+    artist: 'D7',
+    src: '/assets/audio/mantras/d7-mantra-ganesha-prosperidade.mp3',
+    category: 'prosperidade',
+    recommendedFor: [7, 21, 108],
+    mood: 'prosperidade',
+  },
 ]
 
 export const DEFAULT_MANTRA_TRACK_ID = MANTRA_TRACKS[0]?.id ?? null

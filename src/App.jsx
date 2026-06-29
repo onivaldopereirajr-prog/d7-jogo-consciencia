@@ -43,6 +43,7 @@ import { markPresenceInactive, updatePresence } from './services/presenceService
 import { getWheelEvents, spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
 import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarService.js'
+import { recordScreenTimeTick, startScreenTimeSession } from './services/adminUserMonitoring.js'
 import './App.css'
 
 const visualAssets = {
@@ -716,6 +717,15 @@ function App() {
 
 
   useEffect(() => {
+    if (!currentUser) return undefined
+    const interval = setInterval(() => {
+      if (!document.hidden) recordScreenTimeTick(currentUser.id, presenceViewRef.current, 15)
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [currentUser])
+
+
+  useEffect(() => {
     if (practiceTimerIntervalRef.current) {
       clearInterval(practiceTimerIntervalRef.current)
       practiceTimerIntervalRef.current = null
@@ -806,6 +816,7 @@ function App() {
     setDirectAdminAccess(false)
     writeHashRoute('home', { replace: true })
     setActiveView('home')
+    startScreenTimeSession(user.id)
     recordLocalEvent(user.id, 'login', { migrated: migration.migrated })
     updatePresence(user, loaded, 'home', 'session_started')
     trackAdminEvent(user, 'user_login', { migrated: migration.migrated }, 'home')

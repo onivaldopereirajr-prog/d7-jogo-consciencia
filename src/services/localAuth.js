@@ -117,6 +117,7 @@ export async function loginUser({ login, password }) {
   const users = getUsers()
   const user = users.find((item) => item.login === cleanLogin)
   if (!user) return { ok: false, message: 'Usuário local não encontrado neste navegador. Verifique o apelido digitado ou crie uma nova conta local.' }
+  if (user.status === 'blocked') return { ok: false, message: 'Este acesso local foi bloqueado pelo Administrador D7 neste navegador.' }
   const passwordHash = await hashPassword(password, user.salt)
   if (passwordHash !== user.passwordHash) return { ok: false, message: 'Senha inválida.' }
   const updated = { ...user, lastLoginAt: new Date().toISOString() }
@@ -172,5 +173,7 @@ export function publicUser(user) {
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
     role: user.role,
+    status: user.status ?? 'active',
+    blockedAt: user.blockedAt ?? null,
   }
 }

@@ -3,6 +3,7 @@ import AdminPresencePanel from './AdminPresencePanel.jsx'
 import AdminUserActivityCard from './AdminUserActivityCard.jsx'
 import AdminEventTimeline from './AdminEventTimeline.jsx'
 import AdminUserManagement from './AdminUserManagement.jsx'
+import AdminUserMonitoring from './AdminUserMonitoring.jsx'
 import { buildAdminReport, resolveSecurityAlert, summarizeAdminAnalytics } from '../services/adminAnalyticsService.js'
 import { getEventsByUser } from '../services/analyticsLocal.js'
 import { getPresenceList } from '../services/presenceService.js'
@@ -231,6 +232,8 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
           ))}
         </div>
       </section>
+
+      <AdminUserMonitoring onChanged={onResolvedAlert} />
 
       <AdminUserManagement summaries={summaries} presence={presence} onChanged={onResolvedAlert} />
 

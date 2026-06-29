@@ -13,6 +13,7 @@ import { WELCOME_SPIN_KEY, WHEEL_EVENTS_KEY } from './wheelService.js'
 import { LEGACY_KEY, STORAGE_KEY } from '../utils/gameState.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
 import { AUDIT_LOG_KEY, createAuditEvent } from './auditLogLocal.js'
+import { SCREEN_TIME_KEY } from './adminUserMonitoring.js'
 
 const MIN_PASSWORD_LENGTH = 6
 const ENTRANCE_KEY = 'd7_entrance_seen'
@@ -40,6 +41,7 @@ export const D7_LOCAL_STORAGE_KEYS = [
   ADMIN_LOGIN_ATTEMPTS_KEY,
   ADMIN_LOCK_UNTIL_KEY,
   AUDIT_LOG_KEY,
+  SCREEN_TIME_KEY,
   LEGACY_ADMIN_KEY,
   LEGACY_ADMIN_SESSION_KEY,
   OBSERVER_KEY,

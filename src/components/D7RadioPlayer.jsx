@@ -35,8 +35,10 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
       setIsPlaying(true)
       setStatus(t('radio.nowPlaying'))
     } catch {
+      const hasAudioError = Boolean(audio.error)
       setIsPlaying(false)
-      setStatus(t('radio.playBlocked'))
+      setTrackError(hasAudioError)
+      setStatus(hasAudioError ? t('radio.noMusic') : t('radio.playBlocked'))
     } finally {
       setIsLoading(false)
     }
@@ -181,7 +183,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
 
         <div className="d7-radio-status" role="status" aria-live="polite">
           <div className="d7-radio-equalizer" aria-hidden="true"><span /><span /><span /></div>
-          <p>{trackError ? 'Arquivo de áudio não encontrado. Confira os MP3 autorizados em public/assets/audio/radio/.' : status}</p>
+          <p>{trackError ? t('radio.noMusic') : status}</p>
         </div>
       </div>
     </section>

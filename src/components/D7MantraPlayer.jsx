@@ -60,9 +60,11 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
       setStatus(t('mantra.playing'))
       return { ok: true }
     } catch {
+      const hasAudioError = Boolean(audio.error)
+      setAudioError(hasAudioError)
       setIsAudioPlaying(false)
-      setStatus(t('mantra.blocked'))
-      return { ok: false, reason: 'blocked' }
+      setStatus(hasAudioError ? t('mantra.fileMissing') : t('mantra.blocked'))
+      return { ok: false, reason: hasAudioError ? 'missing-file' : 'blocked' }
     }
   }
 

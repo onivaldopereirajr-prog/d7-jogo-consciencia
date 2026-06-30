@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { d7MantraTracks } from '../data/d7MantraTracks.js'
 import { getMantraSettings, getRecommendedMantraTrackId, saveMantraSettings } from '../services/mantraAudioService.js'
 
-const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, selectedDurationMinutes, isPracticeRunning, isPracticePaused, isPracticeCompleted }, ref) {
+const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, selectedDurationMinutes, isPracticeRunning, isPracticePaused, isPracticeCompleted, onPlaybackStateChange }, ref) {
   const initialSettings = useMemo(() => getMantraSettings(), [])
   const [enabled, setEnabled] = useState(initialSettings.enabled)
   const [volume, setVolume] = useState(initialSettings.volume)
@@ -15,6 +15,7 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
   const audioRef = useRef(null)
   const fadeRef = useRef(null)
   const targetVolumeRef = useRef(volume)
+  const onPlaybackStateChangeRef = useRef(onPlaybackStateChange)
   const selectedTrack = d7MantraTracks.find((track) => track.id === selectedTrackId) ?? d7MantraTracks[0]
 
   function clearFade() {
@@ -78,6 +79,10 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
     setStatus(t('mantra.paused'))
   }
 
+  function toggleMute() {
+    setMuted((value) => !value)
+  }
+
   function stopAudio({ reset = false } = {}) {
     const audio = audioRef.current
     if (!audio) return
@@ -105,8 +110,25 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
     start: playFromUserGesture,
     pause: pauseAudio,
     stop: stopAudio,
+    toggleMute,
     fadeOutAndStop,
   }))
+
+  useEffect(() => {
+    onPlaybackStateChangeRef.current = onPlaybackStateChange
+  }, [onPlaybackStateChange])
+
+  useEffect(() => {
+    onPlaybackStateChangeRef.current?.({
+      enabled,
+      muted,
+      volume,
+      isAudioPlaying,
+      selectedTrackId,
+      status,
+      audioError,
+    })
+  }, [audioError, enabled, isAudioPlaying, muted, selectedTrackId, status, volume])
 
   useEffect(() => {
     targetVolumeRef.current = volume
@@ -170,7 +192,7 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
         <button type="button" className="mini-action" onClick={isAudioPlaying ? pauseAudio : playFromUserGesture} disabled={!enabled} aria-label={isAudioPlaying ? t('mantra.pause') : t('mantra.play')}>
           {isAudioPlaying ? t('mantra.pause') : t('mantra.play')}
         </button>
-        <button type="button" className={muted ? 'mini-action active' : 'mini-action'} onClick={() => setMuted((value) => !value)} disabled={!enabled} aria-pressed={muted} aria-label={t('mantra.mute')}>
+        <button type="button" className={muted ? 'mini-action active' : 'mini-action'} onClick={toggleMute} disabled={!enabled} aria-pressed={muted} aria-label={t('mantra.mute')}>
           {muted ? t('mantra.muted') : t('mantra.sound')}
         </button>
         <label className="mantra-volume" htmlFor="mantra-volume">

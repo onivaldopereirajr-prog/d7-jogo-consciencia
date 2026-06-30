@@ -1523,6 +1523,45 @@ button:not(:disabled):active {
   justify-content: center;
 }
 
+.silence-audio-panel {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(32, 211, 238, 0.14);
+  border-radius: 10px;
+  background: rgba(3, 5, 10, 0.22);
+  text-align: center;
+}
+
+.silence-audio-panel p,
+.silence-audio-panel small {
+  margin: 0;
+}
+
+.silence-audio-panel p {
+  color: var(--text);
+}
+
+.silence-audio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.silence-audio-actions .mini-action.active {
+  border-color: rgba(212, 175, 55, 0.34);
+  color: #fff7d8;
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.silence-audio-notice {
+  color: #fff7d8;
+  font-weight: 800;
+}
+
 @keyframes d7-heartbeat {
   0% { transform: scale(1); }
   12% { transform: scale(1.04); }
@@ -6038,6 +6077,12 @@ button:not(:disabled):active {
   .playable-actions .ghost-action,
   .playable-word-form .primary-action,
   .revealed-card .primary-action {
+    width: 100%;
+  }
+
+
+  .silence-audio-actions,
+  .silence-audio-actions .mini-action {
     width: 100%;
   }
 

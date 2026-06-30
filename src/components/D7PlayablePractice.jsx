@@ -11,6 +11,7 @@ const BREATH_PHASES = [
 ]
 const BREATH_SECONDS = 4
 const BREATH_CYCLES = 3
+const AUDIO_BLOCKED_MESSAGE = 'Toque em Reproduzir áudio para iniciar o mantra.'
 
 function formatTime(totalSeconds) {
   const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0))
@@ -160,12 +161,47 @@ export default function D7PlayablePractice({
   const [word, setWord] = useState('')
   const [wordAttempted, setWordAttempted] = useState(false)
   const [summary, setSummary] = useState(null)
+  const [audioPlayback, setAudioPlayback] = useState({ enabled: true, muted: false, isAudioPlaying: false })
+  const [audioNotice, setAudioNotice] = useState('')
   const isPracticeDone = Boolean(state.daily?.practice)
   const card = useMemo(() => resolveCard(summary, recommendedLibraryCard, fallbackCard), [fallbackCard, recommendedLibraryCard, summary])
 
   useEffect(() => {
     if (timerStatus === 'running' && step !== 'silence') setStep('silence')
   }, [step, timerStatus])
+
+  function updateAudioNotice(result) {
+    if (!result) return
+    if (result.ok) {
+      setAudioNotice('')
+      return
+    }
+    if (result.reason === 'blocked') setAudioNotice(AUDIO_BLOCKED_MESSAGE)
+  }
+
+  async function handleStartSilence() {
+    const result = await onStartPractice?.()
+    updateAudioNotice(result)
+  }
+
+  async function handlePlayMantra() {
+    const result = await mantraAudioRef.current?.start?.()
+    updateAudioNotice(result)
+  }
+
+  function handlePauseMantra() {
+    mantraAudioRef.current?.pause?.()
+    setAudioNotice('')
+  }
+
+  function handleToggleSound() {
+    mantraAudioRef.current?.toggleMute?.()
+  }
+
+  function handlePlaybackStateChange(nextState) {
+    setAudioPlayback(nextState)
+    if (nextState.isAudioPlaying) setAudioNotice('')
+  }
 
   function handleSilenceComplete() {
     const result = onCompletePractice?.()
@@ -245,6 +281,7 @@ export default function D7PlayablePractice({
                 isPracticeRunning={timerStatus === 'running'}
                 isPracticePaused={timerStatus === 'paused'}
                 isPracticeCompleted={timerStatus === 'complete'}
+                onPlaybackStateChange={handlePlaybackStateChange}
               />
             </div>
             <div className={['playable-silence-frame', timerStatus === 'running' ? 'is-running' : '', timerStatus === 'complete' ? 'is-complete' : ''].filter(Boolean).join(' ')}>
@@ -253,7 +290,7 @@ export default function D7PlayablePractice({
               <D7PulseTimer
                 label="Silêncio D7"
                 subtitle="Timer de presença"
-                hint={timerStatus === 'running' ? 'Presença ativa' : timerStatus === 'paused' ? 'Prática pausada. Retome para seguir.' : isPracticeDone ? 'O chamado de hoje já foi respondido. Você pode revisitar o silêncio, mas o ciclo já avançou.' : 'Quando o timer terminar, a palavra final será aberta.'}
+                hint={timerStatus === 'running' ? 'Timer medindo a prática. Você pode permanecer em silêncio ou ativar o mantra de apoio.' : timerStatus === 'paused' ? 'Prática pausada. Retome para seguir.' : isPracticeDone ? 'O timer mede a prática livre. O mantra é opcional.' : 'O timer mede a prática. Você pode permanecer em silêncio ou ativar o mantra de apoio.'}
                 totalSeconds={practiceTotalSeconds}
                 remainingSeconds={remaining}
                 isRunning={timerStatus === 'running'}
@@ -264,7 +301,7 @@ export default function D7PlayablePractice({
                 progressPercent={timerStatus === 'running' ? timerProgress : timerStatus === 'complete' ? 100 : 0}
                 currentCount={state.presenceCounter108 ?? 0}
                 countTarget={108}
-                onStart={onStartPractice}
+                onStart={handleStartSilence}
                 onPause={timerStatus === 'running' ? onPausePractice : null}
                 onCancel={timerStatus === 'running' || timerStatus === 'paused' ? onCancelPractice : null}
                 onReset={timerStatus === 'idle' ? onResetPractice : null}
@@ -277,7 +314,17 @@ export default function D7PlayablePractice({
                 completeLabel="Abrir palavra final"
                 statusText={timerStatus === 'running' ? 'Silêncio ativo' : timerStatus === 'paused' ? 'Silêncio pausado' : timerStatus === 'complete' ? 'Silêncio concluído' : 'aguardando entrada'}
                 ariaLabel={'Tempo restante ' + formatTime(remaining)}
-              />
+              >
+                <div className="silence-audio-panel" aria-live="polite">
+                  <p>Você pode permanecer em silêncio ou ativar o mantra de apoio.</p>
+                  <div className="silence-audio-actions">
+                    <button type="button" className="mini-action" onClick={handlePlayMantra} disabled={!audioPlayback.enabled || audioPlayback.isAudioPlaying || timerStatus === 'complete'}>Tocar mantra</button>
+                    <button type="button" className="mini-action" onClick={handlePauseMantra} disabled={!audioPlayback.isAudioPlaying}>Pausar áudio</button>
+                    <button type="button" className={audioPlayback.muted ? 'mini-action active' : 'mini-action'} onClick={handleToggleSound} disabled={!audioPlayback.enabled} aria-pressed={!audioPlayback.muted}>Som</button>
+                  </div>
+                  {audioNotice && <small className="silence-audio-notice">{audioNotice}</small>}
+                </div>
+              </D7PulseTimer>
             </div>
           </section>
         )}

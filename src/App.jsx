@@ -937,7 +937,7 @@ function App() {
     handlePracticeDurationChange(parsed)
   }
 
-  function handleStartPractice() {
+  async function handleStartPractice() {
     if (currentUser?.id) {
       recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' })
       trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' }, activeView)
@@ -948,7 +948,7 @@ function App() {
     const startedAt = Date.now()
     mantraCompletionFadeRef.current = false
     setPracticeDurationError('')
-    mantraAudioRef.current?.start()
+    const audioAttempt = mantraAudioRef.current?.start?.()
     setTimer({
       journeyCode,
       startedAt,
@@ -956,6 +956,7 @@ function App() {
       remaining: total,
       status: 'running',
     })
+    return audioAttempt ? await audioAttempt : undefined
   }
 
   function handlePausePractice() {

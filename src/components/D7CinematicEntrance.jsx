@@ -10,13 +10,15 @@ const entranceSymbols = ['A1', 'A7', 'B7', 'C7', 'D7']
 
 function D7CinematicEntrance({ onComplete, onSkip }) {
   const videoRef = useRef(null)
+  const completionTimerRef = useRef(null)
   const [callVisible, setCallVisible] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [soundMessage, setSoundMessage] = useState('')
   const [videoStatus, setVideoStatus] = useState('loading')
 
-  function completeEntrance(delay = 950) {
-    window.setTimeout(() => onComplete?.(), delay)
+  function completeEntrance(delay = 2200) {
+    if (completionTimerRef.current) window.clearTimeout(completionTimerRef.current)
+    completionTimerRef.current = window.setTimeout(() => onComplete?.(), delay)
   }
 
   function handleCall() {
@@ -78,6 +80,7 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
       <div className="d7-entrance-fallback" aria-hidden="true" />
       <div className="d7-entrance-overlay" aria-hidden="true" />
       <div className="d7-entrance-particles" aria-hidden="true" />
+      <div className="d7-entrance-core" aria-hidden="true" />
 
       {videoStatus === 'ready' && (
         <button
@@ -97,9 +100,9 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
       <section className="d7-entrance-content" aria-labelledby="d7-entrance-title">
         <div className="d7-entrance-portal" aria-hidden="true" />
         <img className="d7-entrance-logo" src={entranceAssets.logo} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />
-        <span className="overline">28 dias de presença</span>
-        <h1 id="d7-entrance-title">D7: O Jogo da Consciência</h1>
-        <p className="d7-entrance-subtitle">Domine sua realidade interior.</p>
+        <p className="d7-entrance-eyebrow">28 dias de presença</p>
+        <h1 id="d7-entrance-title">D7</h1>
+        <p className="d7-entrance-subtitle">O Jogo da Consciência</p>
         <p className="d7-entrance-manifesto">O desafio não é fazer. O desafio é não ignorar.</p>
         <p className="d7-entrance-support">28 dias. 4 semanas. Um ciclo de presença.</p>
 
@@ -110,7 +113,7 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
 
         {(videoStatus === 'failed' || soundMessage) && (
           <p className="d7-entrance-note" role="status">
-            {soundMessage || 'Vídeo indisponível agora. A entrada continua com fundo visual seguro.'}
+            {soundMessage || 'A presença não depende do cenário. O chamado permanece.'}
           </p>
         )}
       </section>

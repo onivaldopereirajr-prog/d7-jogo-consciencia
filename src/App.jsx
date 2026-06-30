@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { codexCards, dualBridges, hebrewLetters, hebrewWords, sanskritItems } from './data/codex.js'
 import { dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
 import {
+  advanceProgress,
   cardById,
   completePractice,
   ensureToday,
@@ -21,7 +22,6 @@ import { cancelSealAttempt, completeSealChallenge, getRankingScore, getRequiredG
 import { getAllLocalSummaries, getUserState, localRanking, migrateLegacyProgressIfSafe, resetUserProgress, saveUserProgress } from './services/localProgress.js'
 import D7SymbolicMap from './components/D7SymbolicMap.jsx'
 import D7PulseTimer from './components/D7PulseTimer.jsx'
-import D7DurationSelector from './components/D7DurationSelector.jsx'
 import InitiationLibrary from './components/InitiationLibrary.jsx'
 import LanguageToggle from './components/LanguageToggle.jsx'
 import D7Footer from './components/D7Footer.jsx'
@@ -30,8 +30,8 @@ import D7Room from './components/D7Room.jsx'
 import D7Wheel from './components/D7Wheel.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
 import D7RadioPlayer from './components/D7RadioPlayer.jsx'
-import D7MantraPlayer from './components/D7MantraPlayer.jsx'
 import D7CinematicEntrance from './components/D7CinematicEntrance.jsx'
+import D7PlayablePractice from './components/D7PlayablePractice.jsx'
 import D7Plans from './components/D7Plans.jsx'
 import PremiumGate from './components/PremiumGate.jsx'
 import { getLibraryStudyStats, getRecommendedLibraryCard } from './services/libraryEngine.js'
@@ -40,7 +40,6 @@ import { translate } from './i18n/translations.js'
 import { getStoredLanguage, saveLanguage } from './services/languageService.js'
 import { recordLocalEvent, summarizeLocalEvents } from './services/analyticsLocal.js'
 import { createSecurityAlert, trackAdminEvent } from './services/adminAnalyticsService.js'
-import { hasAdminSession } from './services/adminLocal.js'
 import { markPresenceInactive, updatePresence } from './services/presenceService.js'
 import { getWheelEvents, spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
@@ -640,6 +639,7 @@ function App() {
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
+  const nextJourneyCode = getJourneyCode(advanceProgress(state.progress))
   const practiceTotalSeconds = practiceDurationMinutes * 60
   const timerSynced = timer.journeyCode === journeyCode
   const timerStatus = timerSynced ? timer.status : 'idle'
@@ -1036,28 +1036,55 @@ function App() {
     setState((current) => recordVisit(current, view))
   }
 
+  function practiceCardPayload(card) {
+    if (!card) return null
+    return {
+      title: card.transliteration ?? card.title ?? card.id,
+      track: card.track ?? 'Códice D7',
+      kind: card.kind ?? 'Carta',
+      symbol: card.symbol ?? '✦',
+      text: card.meaning && card.explanation ? `${card.meaning}. ${card.explanation}` : card.explanation ?? card.summary ?? 'A presença registrada abre a próxima passagem.',
+    }
+  }
+
   function finishPractice() {
-    if (timerStatus !== 'complete') return
+    if (timerStatus !== 'complete') return null
     mantraAudioRef.current?.fadeOutAndStop()
     const rewardMode = state.daily.practice ? 'free' : 'primary'
+    const completedCode = journeyCode
+    const beforeCards = new Set(state.unlockedCards)
+    const beforeXp = state.xp
+    const beforeSparks = state.sparks
+    const beforeTokens = state.tokenBalance ?? 0
+    const nextProgress = recordVisit(completePractice(state, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada')
+    const newCardId = nextProgress.unlockedCards.find((id) => !beforeCards.has(id))
+    const revealedCard = practiceCardPayload(cardById(newCardId) ?? cardById(nextProgress.unlockedCards[nextProgress.unlockedCards.length - 1]))
     if (currentUser?.id) {
       recordLocalEvent(currentUser.id, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode })
       trackAdminEvent(currentUser, 'practice_completed', { minutes: practiceDurationMinutes, rewardMode }, activeView)
-      trackAdminEvent(currentUser, 'd7t_earned', { amount: practicePreview.d7t }, activeView)
+      trackAdminEvent(currentUser, 'd7t_earned', { amount: Math.max(0, (nextProgress.tokenBalance ?? 0) - beforeTokens) }, activeView)
     }
-    setState((current) => recordVisit(completePractice(current, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada'))
-    setTimer({ journeyCode, startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
+    setState(nextProgress)
+    setTimer({ journeyCode: getJourneyCode(nextProgress.progress), startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
     setPracticeCelebration(true)
     window.setTimeout(() => setPracticeCelebration(false), 1600)
-    writeHashRoute('jornada')
-    setDirectAdminAccess(false)
-    setActiveView('jornada')
+    return {
+      completedCode,
+      nextCode: getJourneyCode(nextProgress.progress),
+      xpGained: Math.max(0, nextProgress.xp - beforeXp),
+      sparksGained: Math.max(0, nextProgress.sparks - beforeSparks),
+      revealedCard,
+    }
   }
 
   function submitWord(event) {
     event.preventDefault()
     setState((current) => recordWord(current, word))
     setWord('')
+  }
+
+  function submitPracticeWord(text) {
+    setState((current) => recordWord(current, text))
   }
 
   function resetMvp() {
@@ -1263,86 +1290,36 @@ function App() {
         )}
 
         {activeView === 'pratica' && (
-          <section className="practice-layout">
-            <div className="timer-panel">
-              <img className="practice-bg-art" src={visualAssets.practice} alt="" />
-              <SectionTitle eyebrow={`${journeyCode} · modo Nada`} title="Fechar os olhos. Permanecer. Concluir.">{phrase}</SectionTitle>
-              <div className={["practice-banner", state.daily.practice ? "complete" : "idle", practiceCelebration ? "practice-celebration" : ""].filter(Boolean).join(" ")} role="status">
-                <strong>{state.daily.practice ? 'Prática de hoje concluída' : 'Escolha um tempo ritual'}</strong>
-                <span>{state.daily.practice ? 'Você pode repetir em modo livre sem recompensa principal.' : 'Selecione uma duração antes de iniciar.'}</span>
-              </div>
-              <D7DurationSelector
-                value={practiceDurationMinutes}
-                onChange={handlePracticeDurationChange}
-                customValue={practiceDurationInput}
-                onCustomChange={handlePracticeCustomInput}
-                error={practiceDurationError}
-                disabled={timerStatus === 'running' || timerStatus === 'complete'}
-              />
-              <D7MantraPlayer
-                ref={mantraAudioRef}
-                t={t}
-                selectedDurationMinutes={practiceDurationMinutes}
-                isPracticeRunning={timerStatus === 'running'}
-                isPracticePaused={timerStatus === 'paused'}
-                isPracticeCompleted={timerStatus === 'complete'}
-              />
-              <D7PulseTimer
-                label="Timer Ritual D7"
-                subtitle="Prática de presença"
-                hint={timerStatus === 'running' ? 'Presença ativa' : timerStatus === 'paused' ? 'Prática pausada. Reinicie para seguir.' : state.daily.practice ? 'Prática livre disponível. Escolha outro tempo para continuar.' : 'Permaneça. O código desperta no silêncio.'}
-                totalSeconds={practiceTotalSeconds}
-                remainingSeconds={remaining}
-                isRunning={timerStatus === 'running'}
-                isCompleted={timerStatus === 'complete'}
-                isFailed={false}
-                isChallengePending={false}
-                mode="practice"
-                progressPercent={timerStatus === 'running' ? timerProgress : timerStatus === 'complete' ? 100 : 0}
-                currentCount={state.presenceCounter108 ?? 0}
-                countTarget={108}
-                onStart={handleStartPractice}
-                onPause={timerStatus === 'running' ? handlePausePractice : null}
-                onCancel={timerStatus === 'running' || timerStatus === 'paused' ? handleCancelPractice : null}
-                onReset={timerStatus === 'idle' ? handleResetPractice : null}
-                onComplete={timerStatus === 'complete' ? finishPractice : null}
-                completeDisabled={timerStatus !== 'complete'}
-                startLabel={timerStatus === 'paused' ? 'Retomar prática' : state.daily.practice ? 'Iniciar prática livre' : 'Iniciar prática'}
-                pauseLabel="Pausar"
-                cancelLabel="Cancelar prática"
-                resetLabel="Reiniciar seleção"
-                completeLabel={state.daily.practice ? 'Registrar prática livre' : 'Concluir prática'}
-                statusText={timerStatus === 'running' ? 'Presença ativa' : timerStatus === 'paused' ? 'Prática pausada' : timerStatus === 'complete' ? 'Prática concluída' : state.daily.practice ? 'Prática de hoje concluída. A próxima será livre.' : 'aguardando entrada'}
-                ariaLabel={`Tempo restante ${formatTime(remaining)}`}
-              />
-              {state.lastUnlocks.length > 0 && <div className="unlock-feed" aria-live="polite">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
-            </div>
-            <aside className="ritual-panel">
-              <h3>Meta ritual</h3>
-              <StreakFire state={state} />
-              <p>{stage.intent}</p>
-              <div className="reward-preview">
-                <span>Recompensa prevista</span>
-                <strong>+{practicePreview.xp} XP</strong>
-                <strong>+{practicePreview.sparks} Centelhas</strong>
-                <strong>+{practicePreview.d7t} D7T</strong>
-                <small>{practicePreview.text}</small>
-                <small>Portal 21/108: {state.ritualMinutesTotal ?? 0}/108 min · Marcos: {state.ritualMilestonesUnlocked?.length ? state.ritualMilestonesUnlocked.join(' · ') : 'nenhum'}</small>
-              </div>
-              <div className="library-tip">
-                <span className="overline">Biblioteca sugerida</span>
-                <strong>{recommendedLibraryCard ? recommendedLibraryCard.title : 'Nenhum card novo no momento'}</strong>
-                <p>{recommendedLibraryCard ? recommendedLibraryCard.summary : 'O próximo estudo recomendado já foi concluído.'}</p>
-              </div>
-              <form className="word-form" onSubmit={submitWord}>
-                <label htmlFor="word">Registrar palavra</label>
-                <div>
-                  <input id="word" value={word} onChange={(event) => setWord(event.target.value)} placeholder="ex: foco, luz, paz" />
-                  <button type="submit" className="mini-action">Gravar</button>
-                </div>
-              </form>
-            </aside>
-          </section>
+          <D7PlayablePractice
+            journeyCode={journeyCode}
+            nextJourneyCode={nextJourneyCode}
+            stage={stage}
+            phrase={phrase}
+            state={state}
+            practiceCelebration={practiceCelebration}
+            practiceDurationMinutes={practiceDurationMinutes}
+            practiceDurationInput={practiceDurationInput}
+            practiceDurationError={practiceDurationError}
+            practicePreview={practicePreview}
+            practiceTotalSeconds={practiceTotalSeconds}
+            remaining={remaining}
+            timerStatus={timerStatus}
+            timerProgress={timerProgress}
+            mantraAudioRef={mantraAudioRef}
+            t={t}
+            recommendedLibraryCard={recommendedLibraryCard}
+            fallbackCard={cardById(state.unlockedCards[state.unlockedCards.length - 1])}
+            currentLevel={playerLevel(state.xp)}
+            onDurationChange={handlePracticeDurationChange}
+            onCustomDurationChange={handlePracticeCustomInput}
+            onStartPractice={handleStartPractice}
+            onPausePractice={handlePausePractice}
+            onCancelPractice={handleCancelPractice}
+            onResetPractice={handleResetPractice}
+            onCompletePractice={finishPractice}
+            onRecordWord={submitPracticeWord}
+            onNavigate={navigate}
+          />
         )}
 
         {activeView === 'codice' && (
@@ -1404,17 +1381,7 @@ function App() {
         )}
 
         {activeView === 'admin' && (
-          hasAdminSession() ? (
-            <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => { recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh }); trackAdminEvent(currentUser, 'admin_opened', { refresh: adminRefresh }, 'admin') }} />
-          ) : (
-            <section className="content-section" aria-labelledby="admin-restricted-title">
-              <div className="professional-notice">
-                <span className="overline">Administrador Pleno D7</span>
-                <h2 id="admin-restricted-title">Acesso restrito</h2>
-                <p>Acesso restrito ao Administrador Local D7.</p>
-              </div>
-            </section>
-          )
+          <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => { recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh }); trackAdminEvent(currentUser, 'admin_opened', { refresh: adminRefresh }, 'admin') }} />
         )}
 
         {activeView === 'ranking' && (

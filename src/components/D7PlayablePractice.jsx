@@ -37,34 +37,70 @@ function PracticeSteps({ current }) {
 
 function BreathStage({ onDone }) {
   const [tick, setTick] = useState(0)
+  const [isFinished, setIsFinished] = useState(false)
   const totalTicks = BREATH_CYCLES * BREATH_PHASES.length * BREATH_SECONDS
-  const phaseIndex = Math.floor(tick / BREATH_SECONDS) % BREATH_PHASES.length
-  const cycle = Math.min(BREATH_CYCLES, Math.floor(tick / (BREATH_PHASES.length * BREATH_SECONDS)) + 1)
+  const safeTick = Math.min(tick, totalTicks - 0.001)
+  const phaseIndex = Math.floor(safeTick / BREATH_SECONDS) % BREATH_PHASES.length
+  const cycle = Math.min(BREATH_CYCLES, Math.floor(safeTick / (BREATH_PHASES.length * BREATH_SECONDS)) + 1)
   const phase = BREATH_PHASES[phaseIndex]
-  const phaseRemaining = BREATH_SECONDS - (tick % BREATH_SECONDS)
+  const phaseRemaining = Math.max(1, Math.ceil(BREATH_SECONDS - (safeTick % BREATH_SECONDS)))
+  const phaseElapsed = safeTick % BREATH_SECONDS
+  const phaseProgress = phaseElapsed / BREATH_SECONDS
+  const dotPoints = [
+    { x: 50, y: 9 },
+    { x: 90, y: 86 },
+    { x: 10, y: 86 },
+  ]
+  const dotStart = dotPoints[phaseIndex]
+  const dotEnd = dotPoints[(phaseIndex + 1) % dotPoints.length]
+  const dotX = dotStart.x + ((dotEnd.x - dotStart.x) * phaseProgress)
+  const dotY = dotStart.y + ((dotEnd.y - dotStart.y) * phaseProgress)
 
   useEffect(() => {
-    if (tick >= totalTicks) {
-      onDone?.()
-      return undefined
-    }
-    const timeout = window.setTimeout(() => setTick((value) => value + 1), 1000)
-    return () => window.clearTimeout(timeout)
-  }, [onDone, tick, totalTicks])
+    const startedAt = Date.now()
+    const interval = window.setInterval(() => {
+      setTick(Math.min(totalTicks, (Date.now() - startedAt) / 1000))
+    }, 250)
+    return () => window.clearInterval(interval)
+  }, [totalTicks])
+
+  useEffect(() => {
+    if (tick < totalTicks || isFinished) return
+    setIsFinished(true)
+    onDone?.()
+  }, [isFinished, onDone, tick, totalTicks])
+
+  function handleSkip() {
+    if (isFinished) return
+    setIsFinished(true)
+    onDone?.()
+  }
 
   return (
     <section key="breath" className={'breath-stage playable-stage playable-stage--breath phase-' + phase.id} aria-labelledby="breath-stage-title">
-      <div className={'breath-triangle phase-' + phase.id} aria-hidden="true">
-        <span />
-        <i />
+      <div
+        className={'breath-triangle phase-' + phase.id}
+        aria-hidden="true"
+        style={{
+          '--breath-dot-x': `${dotX}`,
+          '--breath-dot-y': `${dotY}`,
+          '--breath-dot-scale': phase.id === 'hold' ? 1.18 : 1,
+        }}
+      >
+        <svg className="breath-triangle-visual" viewBox="0 0 100 100" focusable="false" aria-hidden="true">
+          <polygon className="breath-triangle-fill" points="50 6 94 88 6 88" />
+          <polygon className="breath-triangle-core" points="50 29 72 76 28 76" />
+          <polyline className="breath-triangle-line" points="50 6 94 88 6 88 50 6" />
+          <circle className="breath-triangle-dot" cx={dotX} cy={dotY} r="4.2" />
+        </svg>
       </div>
-      <div className="breath-copy">
+      <div className="breath-copy" aria-live="polite">
         <span className="overline">Respiração triangular</span>
         <h3 id="breath-stage-title">{phase.label}</h3>
         <p>{phase.detail}</p>
         <small>Ciclo {cycle}/{BREATH_CYCLES} · {phaseRemaining}s</small>
       </div>
-      <button type="button" className="ghost-action" onClick={onDone}>Pular respiração</button>
+      <button type="button" className="ghost-action" onClick={handleSkip}>Pular respiração</button>
     </section>
   )
 }

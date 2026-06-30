@@ -5845,13 +5845,16 @@ button:not(:disabled):active {
 
 .breath-stage {
   align-content: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(16px, 4vw, 26px);
 }
 
 .breath-triangle {
   position: relative;
   display: grid;
   place-items: center;
-  width: min(320px, 70vw);
+  width: clamp(250px, 70vw, 320px);
+  max-width: 100%;
   aspect-ratio: 1;
   filter: drop-shadow(0 0 38px rgba(32, 211, 238, 0.2));
 }
@@ -5876,12 +5879,16 @@ button:not(:disabled):active {
 
 .breath-triangle i {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  left: calc(50% + var(--breath-dot-x, 0%));
+  top: calc(50% + var(--breath-dot-y, -38%));
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff7d8;
-  box-shadow: 0 0 24px rgba(242, 206, 114, 0.7);
-  animation: breath-point 12s linear infinite;
+  box-shadow: 0 0 28px rgba(242, 206, 114, 0.78), 0 0 44px rgba(32, 211, 238, 0.34);
+  transform: translate(-50%, -50%) scale(var(--breath-dot-scale, 1));
+  transition: left 820ms linear, top 820ms linear, transform 220ms ease, box-shadow 220ms ease;
+  animation: breath-dot-glow 1.2s ease-in-out infinite;
 }
 
 .breath-copy {
@@ -5973,11 +5980,9 @@ button:not(:disabled):active {
   50% { transform: scale(1.04); opacity: 0.9; }
 }
 
-@keyframes breath-point {
-  0% { transform: translate(0, -112px); }
-  33% { transform: translate(98px, 62px); }
-  66% { transform: translate(-98px, 62px); }
-  100% { transform: translate(0, -112px); }
+@keyframes breath-dot-glow {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
 }
 
 @media (max-width: 1100px) {
@@ -6036,8 +6041,35 @@ button:not(:disabled):active {
     width: 100%;
   }
 
-  .breath-triangle i {
-    animation-name: breath-point-mobile;
+  .breath-stage {
+    gap: 16px;
+    overflow-x: hidden;
+  }
+
+  .breath-triangle {
+    width: clamp(282px, 86vw, 350px);
+  }
+
+  .breath-copy {
+    gap: 10px;
+  }
+
+  .breath-copy h3 {
+    color: #fff7d8;
+    font-size: clamp(2.35rem, 12vw, 3.4rem);
+    text-shadow: 0 0 28px rgba(212, 175, 55, 0.24);
+  }
+
+  .breath-copy small {
+    font-size: 1rem;
+  }
+
+  .breath-stage > .ghost-action {
+    width: 100%;
+    min-height: 50px;
+    justify-content: center;
+    border-color: rgba(242, 206, 114, 0.32);
+    background: rgba(255, 247, 216, 0.07);
   }
 }
 
@@ -6176,6 +6208,74 @@ button:not(:disabled):active {
 
 .breath-triangle i {
   will-change: transform;
+}
+
+.breath-triangle::before {
+  position: absolute;
+  inset: 8%;
+  z-index: 0;
+  width: auto;
+  aspect-ratio: auto;
+  border-radius: 50%;
+  clip-path: none;
+  background:
+    radial-gradient(circle, rgba(255, 247, 216, 0.14), transparent 34%),
+    radial-gradient(circle, rgba(32, 211, 238, 0.2), transparent 62%);
+  opacity: 0.74;
+}
+
+.breath-triangle-visual {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 86%;
+  height: 86%;
+  overflow: visible;
+  touch-action: manipulation;
+}
+
+.breath-triangle-fill {
+  fill: rgba(32, 211, 238, 0.14);
+  stroke: rgba(32, 211, 238, 0.38);
+  stroke-width: 1.6;
+}
+
+.breath-triangle-core {
+  fill: rgba(3, 5, 10, 0.74);
+  stroke: rgba(212, 175, 55, 0.18);
+  stroke-width: 1;
+}
+
+.breath-triangle-line {
+  fill: none;
+  stroke: rgba(255, 247, 216, 0.72);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+  stroke-dasharray: 6 5;
+}
+
+.breath-triangle-dot {
+  fill: #fff7d8;
+  filter: drop-shadow(0 0 5px rgba(242, 206, 114, 0.95)) drop-shadow(0 0 12px rgba(32, 211, 238, 0.55));
+  opacity: 0.96;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(var(--breath-dot-scale, 1));
+  transition: cx 240ms linear, cy 240ms linear, transform 180ms ease, opacity 180ms ease;
+  animation: breath-dot-glow 1s ease-in-out infinite;
+}
+
+.breath-stage.phase-inhale .breath-copy h3 {
+  color: #dffbff;
+}
+
+.breath-stage.phase-hold .breath-copy h3 {
+  color: #fff7d8;
+}
+
+.breath-stage.phase-exhale .breath-copy h3 {
+  color: #e9f1ff;
 }
 
 .playable-silence-frame {
@@ -6386,6 +6486,36 @@ button:not(:disabled):active {
   }
 }
 
+@media (max-width: 430px) {
+  .playable-shell--breath {
+    gap: 12px;
+    padding-inline: 14px;
+  }
+
+  .playable-shell--breath .playable-header {
+    gap: 12px;
+  }
+
+  .playable-shell--breath .playable-steps {
+    gap: 5px;
+  }
+
+  .playable-shell--breath .playable-steps li span {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+  }
+
+  .breath-triangle {
+    width: min(340px, calc(100vw - 36px));
+  }
+
+  .breath-triangle i {
+    width: 18px;
+    height: 18px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .playable-practice *,
   .playable-practice *::before,
@@ -6394,5 +6524,15 @@ button:not(:disabled):active {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .breath-triangle i,
+  .breath-triangle-dot {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .breath-triangle-dot {
+    transition: none !important;
   }
 }

@@ -6145,6 +6145,15 @@ button:not(:disabled):active {
 
 .playable-practice {
   width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.playable-practice,
+.playable-practice *,
+.playable-practice *::before,
+.playable-practice *::after {
+  box-sizing: border-box;
 }
 
 .playable-shell {
@@ -6243,6 +6252,7 @@ button:not(:disabled):active {
 
 .playable-stage {
   min-height: 520px;
+  min-width: 0;
 }
 
 .day-panel-stage,
@@ -6422,14 +6432,21 @@ button:not(:disabled):active {
 
 .silence-stage {
   display: grid;
-  grid-template-columns: minmax(280px, 0.86fr) minmax(320px, 1.14fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 520px);
+  gap: clamp(20px, 2.5vw, 28px);
   align-items: start;
+  width: 100%;
 }
 
 .practice-config-panel {
   display: grid;
   gap: 14px;
+  min-width: 0;
+  width: 100%;
+}
+
+.practice-config-panel > *,
+.playable-silence-frame > * {
   min-width: 0;
 }
 
@@ -6506,6 +6523,15 @@ button:not(:disabled):active {
   .level-stage {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+
+  .silence-stage {
+    gap: 18px;
+  }
+
+  .playable-silence-frame {
+    justify-self: center;
+    max-width: 560px;
   }
 
   .day-panel-copy,
@@ -6803,11 +6829,16 @@ button:not(:disabled):active {
   position: relative;
   isolation: isolate;
   min-width: 0;
+  width: 100%;
+  max-width: 520px;
+  justify-self: end;
 }
 
 .playable-silence-frame .d7-pulse-timer {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 520px;
 }
 
 .playable-silence-orbit,
@@ -7856,7 +7887,31 @@ button:not(:disabled):active {
   }
 
   .app-workspace--pratica .app-content {
-    max-width: 1080px;
+    max-width: 1240px;
+  }
+
+  .app-workspace--pratica .app-radio-rail--floating {
+    position: static;
+    width: min(100%, 520px);
+    justify-self: center;
+    margin-top: 18px;
+  }
+
+  .app-workspace--pratica .silence-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 520px);
+    gap: 28px;
+  }
+
+  .app-workspace--pratica .playable-silence-frame {
+    align-self: start;
+  }
+
+  .app-workspace--pratica .playable-silence-frame .d7-timer-ring {
+    width: clamp(280px, 24vw, 340px);
+  }
+
+  .app-workspace--pratica .playable-silence-frame .d7-pulse-timer {
+    padding: clamp(14px, 1.8vw, 20px);
   }
 
   .app-workspace--pratica .playable-practice,
@@ -8523,6 +8578,30 @@ button:not(:disabled):active {
   .playable-silence-frame,
   .d7-pulse-timer {
     min-width: 0;
+    width: 100%;
+  }
+
+  .practice-config-panel {
+    order: 2;
+  }
+
+  .playable-silence-frame {
+    order: 1;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .playable-silence-frame .d7-pulse-timer {
+    max-width: none;
+  }
+
+  .playable-silence-frame .d7-timer-ring {
+    width: min(100%, 320px);
+  }
+
+  .playable-silence-frame .d7-timer-actions {
+    display: grid;
+    grid-template-columns: 1fr;
     width: 100%;
   }
 

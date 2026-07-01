@@ -6,6 +6,7 @@ const entranceAssets = {
 }
 
 const entranceSymbols = ['M1', 'AI', 'IN', 'DY', 'MG']
+const emberParticles = Array.from({ length: 18 }, (_, index) => index)
 
 function D7CinematicEntrance({ onComplete, onSkip }) {
   const videoRef = useRef(null)
@@ -79,7 +80,16 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
       <div className="d7-entrance-fallback" aria-hidden="true" />
       <div className="d7-entrance-overlay" aria-hidden="true" />
       <div className="d7-entrance-particles" aria-hidden="true" />
+      <div className="d7-entrance-embers" aria-hidden="true">
+        {emberParticles.map((particle) => <span key={particle} className={`ember ember-${particle + 1}`} />)}
+      </div>
       <div className="d7-entrance-core" aria-hidden="true" />
+
+      <div className="d7-entrance-orbits" aria-hidden="true">
+        <span className="entrance-orbit entrance-orbit--outer" />
+        <span className="entrance-orbit entrance-orbit--middle" />
+        <span className="entrance-orbit entrance-orbit--inner" />
+      </div>
 
       {videoStatus === 'ready' && (
         <button
@@ -97,7 +107,11 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
       </div>
 
       <section className="d7-entrance-content" aria-labelledby="d7-entrance-title">
-        <div className="d7-entrance-portal" aria-hidden="true" />
+        <div className="d7-entrance-portal" aria-hidden="true">
+          <span className="portal-halo portal-halo--gold" />
+          <span className="portal-halo portal-halo--cyan" />
+          <span className="portal-halo portal-halo--deep" />
+        </div>
         <div className="d7-entrance-logo" aria-hidden="true" />
         <p className="d7-entrance-eyebrow">Experiência interativa</p>
         <h1 id="d7-entrance-title">Maiindy Game</h1>

@@ -9,8 +9,12 @@ import {
   getJourneyCode,
   getJourneyDayNumber,
   getJourneyProgressPercent,
+  getLivingPortalStatus,
   getOfficialJourneySummary,
+  getPresenceFlameStatus,
+  getReturnRitualStatus,
   getStage,
+  getTomorrowPromise,
   missionStatus,
   openPortal,
   playerLevel,
@@ -314,6 +318,152 @@ function NextUnlockCard({ info, compact = false, t = (path) => path }) {
         <span>{info.daysRemaining === 0 ? t('core.nextUnlock.ready') : t('core.nextUnlock.daysRemaining').replace('{days}', info.daysRemaining)}</span>
         <span>{info.detail}</span>
       </div>
+    </article>
+  )
+}
+
+function RetentionSegments({ value = 0, max = 7, label = 'Progresso' }) {
+  const safeMax = Math.max(1, Math.floor(Number(max) || 1))
+  const safeValue = Math.max(0, Math.min(safeMax, Math.floor(Number(value) || 0)))
+  return (
+    <div className="retention-segments" role="img" aria-label={label}>
+      {Array.from({ length: safeMax }, (_, index) => (
+        <span key={index} className={index < safeValue ? 'active' : ''} />
+      ))}
+    </div>
+  )
+}
+
+function TomorrowPromiseCard({ promise, t, compact = false }) {
+  if (!promise) return null
+  const statusText = promise.daysRemainingToPortal === 0
+    ? t('core.retention.promise.portalOpen')
+    : promise.daysRemainingToPortal === 1
+      ? t('core.retention.promise.oneDay').replace('{portal}', promise.portalName)
+      : t('core.retention.promise.daysLeft').replace('{days}', promise.daysRemainingToPortal).replace('{portal}', promise.portalName)
+  return (
+    <article className={compact ? 'retention-card retention-card--promise compact' : 'retention-card retention-card--promise'}>
+      <div className="retention-card__head">
+        <span className="overline">{t('core.retention.promise.eyebrow')}</span>
+        <strong>{t('core.retention.promise.title')}</strong>
+      </div>
+      <p className="retention-card__lead">{statusText}</p>
+      <div className="retention-code-row">
+        <div>
+          <span>{t('core.retention.promise.current')}</span>
+          <strong>{promise.currentCode} · {promise.currentStageName}</strong>
+        </div>
+        <div>
+          <span>{t('core.retention.promise.next')}</span>
+          <strong>{promise.nextCode} · {promise.nextStageName}</strong>
+        </div>
+      </div>
+      <RetentionSegments value={promise.portalProgress} max={promise.portalMax} label={t('core.retention.promise.progressLabel')} />
+      <div className="retention-meta">
+        <span>{t('core.retention.portal.states.' + promise.portalStateKey)}</span>
+        <span>{t('core.retention.promise.portalMarks').replace('{count}', promise.portalProgress).replace('{max}', promise.portalMax)}</span>
+      </div>
+      <small>{t('core.retention.promise.prompt')}</small>
+    </article>
+  )
+}
+
+function PresenceFlameCard({ flame, t, compact = false }) {
+  if (!flame) return null
+  const toNextMilestone = Math.max(0, flame.nextMilestone - flame.streak)
+  return (
+    <article className={compact ? 'retention-card retention-card--flame compact' : 'retention-card retention-card--flame'}>
+      <div className="retention-card__icon" aria-hidden="true">{flame.symbol}</div>
+      <div className="retention-card__head">
+        <span className="overline">{t('core.retention.flame.eyebrow')}</span>
+        <strong>{t('core.retention.flame.title')}</strong>
+      </div>
+      <p className="retention-card__lead">{t(`core.retention.flame.states.${flame.id}`)}</p>
+      <div className="retention-code-row">
+        <div>
+          <span>{t('core.retention.flame.sequence')}</span>
+          <strong>{flame.streak} {t('practice.days')}</strong>
+        </div>
+        <div>
+          <span>{t('core.retention.flame.next')}</span>
+          <strong>{toNextMilestone} {t('practice.days')}</strong>
+        </div>
+      </div>
+      <ProgressLine value={flame.progressPercent} max={100} label={t('core.retention.flame.progressLabel')} />
+      <small>{t('core.retention.flame.milestones.' + flame.nextMilestoneKey)}</small>
+    </article>
+  )
+}
+
+function LivingPortalCard({ portal, t, compact = false }) {
+  if (!portal) return null
+  return (
+    <article className={compact ? 'retention-card retention-card--portal compact' : 'retention-card retention-card--portal'}>
+      <div className="retention-card__icon" aria-hidden="true">{portal.portalSeal}</div>
+      <div className="retention-card__head">
+        <span className="overline">{t('core.retention.portal.eyebrow')}</span>
+        <strong>{t('core.retention.portal.title')}</strong>
+      </div>
+      <p className="retention-card__lead">{portal.portalPhrase}</p>
+      <div className="retention-code-row">
+        <div>
+          <span>{t('core.retention.portal.current')}</span>
+          <strong>{portal.currentCode}</strong>
+        </div>
+        <div>
+          <span>{t('core.retention.portal.next')}</span>
+          <strong>{portal.nextCode}</strong>
+        </div>
+      </div>
+      <RetentionSegments value={portal.completedInStage} max={portal.totalSegments} label={t('core.retention.portal.progressLabel')} />
+      <div className="retention-meta">
+        <span>{t('core.retention.portal.states.' + portal.id)}</span>
+        <span>{portal.completedInStage}/{portal.totalSegments}</span>
+      </div>
+      <small>{portal.daysRemainingToPortal === 0 ? t('core.retention.portal.open') : t('core.retention.portal.filling').replace('{days}', portal.daysRemainingToPortal)}</small>
+    </article>
+  )
+}
+
+function ReturnRitualCard({ ritual, t, onRetake }) {
+  if (!ritual?.active) return null
+  return (
+    <article className="retention-card retention-card--return">
+      <div className="retention-card__head">
+        <span className="overline">{t('core.retention.return.eyebrow')}</span>
+        <strong>{t('core.retention.return.title')}</strong>
+      </div>
+      <p className="retention-card__lead">{t('core.retention.return.lead')}</p>
+      <small>{t('core.retention.return.detail')}</small>
+      <button type="button" className="primary-action" onClick={onRetake}>{t('core.retention.return.cta')}</button>
+    </article>
+  )
+}
+
+function ContinuityCard({ promise, flame, portal, t, compact = false }) {
+  if (!promise || !flame || !portal) return null
+  return (
+    <article className={compact ? 'retention-card retention-card--continuity compact' : 'retention-card retention-card--continuity'}>
+      <div className="retention-card__head">
+        <span className="overline">{t('core.retention.continuity.eyebrow')}</span>
+        <strong>{t('core.retention.continuity.title')}</strong>
+      </div>
+      <p className="retention-card__lead">{t('core.retention.continuity.lead')}</p>
+      <div className="retention-code-row">
+        <div>
+          <span>{t('core.retention.continuity.streak')}</span>
+          <strong>{flame.streak} {t('practice.days')}</strong>
+        </div>
+        <div>
+          <span>{t('core.retention.continuity.nextMilestone')}</span>
+          <strong>{t('core.retention.flame.milestones.' + flame.nextMilestoneKey)}</strong>
+        </div>
+      </div>
+      <div className="retention-meta">
+        <span>{t('core.retention.continuity.portal').replace('{days}', portal.daysRemainingToPortal)}</span>
+        <span>{t('core.retention.continuity.message')}</span>
+      </div>
+      <small>{t('core.retention.continuity.note')}</small>
     </article>
   )
 }
@@ -776,6 +926,10 @@ function App() {
   const practiceHasPrimaryReward = !state.daily.practice
   const practicePreview = practiceRewardPreview(stage.minutes, practiceHasPrimaryReward && !state.progress.restartRequired && !state.progress.firstPhaseCompleted)
   const t = (path) => translate(language, path)
+  const tomorrowPromise = getTomorrowPromise(state)
+  const presenceFlame = getPresenceFlameStatus(state)
+  const livingPortal = getLivingPortalStatus(state)
+  const returnRitual = getReturnRitualStatus(state)
   const nextUnlockInfo = getNextUnlockInfo(state, t)
   const localSummaries = getAllLocalSummaries()
   const analyticsSummary = summarizeLocalEvents(localSummaries)
@@ -1364,6 +1518,7 @@ function App() {
           <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail app-radio-rail--floating'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
             {activeView === 'home' && (
               <div className="home-side-panel">
+                {returnRitual.active && <ReturnRitualCard ritual={returnRitual} t={t} onRetake={() => navigate('pratica')} />}
                 <section className="home-side-card home-progress-card" aria-labelledby="home-progress-title">
                   <span className="overline">Progresso Maiindy</span>
                   <div className="home-progress-head">
@@ -1466,8 +1621,10 @@ function App() {
                     <button type="button" className="ghost-action" onClick={() => navigate('codice')}>{t('nav.codice')}</button>
                     <button type="button" className="ghost-action" onClick={replayEntrance}>{t('core.dailyRitual.replay')}</button>
                   </div>
-                  <div className="home-core-cards">
-                    <NextUnlockCard info={nextUnlockInfo} compact t={t} />
+                  <div className="retention-grid">
+                    <TomorrowPromiseCard promise={tomorrowPromise} t={t} compact />
+                    <PresenceFlameCard flame={presenceFlame} t={t} compact />
+                    <LivingPortalCard portal={livingPortal} t={t} compact />
                     <WordJournal words={state.wordLog} compact t={t} />
                   </div>
                   <div className="home-next-action home-next-action--portal">
@@ -1557,6 +1714,10 @@ function App() {
             recommendedLibraryCard={recommendedLibraryCard}
             fallbackCard={cardById(state.unlockedCards[state.unlockedCards.length - 1])}
             nextUnlock={nextUnlockInfo}
+            retentionPromise={tomorrowPromise}
+            presenceFlame={presenceFlame}
+            livingPortal={livingPortal}
+            returnRitual={returnRitual}
             currentLevel={playerLevel(state.xp)}
             onDurationChange={handlePracticeDurationChange}
             onCustomDurationChange={handlePracticeCustomInput}

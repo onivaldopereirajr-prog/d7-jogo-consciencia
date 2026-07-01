@@ -135,6 +135,18 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   )
 }
 
+function SegmentMeter({ value = 0, max = 7, label = 'Progresso' }) {
+  const safeMax = Math.max(1, Math.floor(Number(max) || 1))
+  const safeValue = Math.max(0, Math.min(safeMax, Math.floor(Number(value) || 0)))
+  return (
+    <div className="retention-segments" role="img" aria-label={label}>
+      {Array.from({ length: safeMax }, (_, index) => (
+        <span key={index} className={index < safeValue ? 'active' : ''} />
+      ))}
+    </div>
+  )
+}
+
 function resolveCard(summary, recommendedLibraryCard, fallbackCard) {
   if (summary?.revealedCard) return summary.revealedCard
   if (recommendedLibraryCard) return {
@@ -178,6 +190,10 @@ export default function D7PlayablePractice({
   recommendedLibraryCard,
   fallbackCard,
   nextUnlock,
+  retentionPromise,
+  presenceFlame,
+  livingPortal,
+  returnRitual,
   currentLevel,
   onDurationChange,
   onCustomDurationChange,
@@ -502,6 +518,103 @@ export default function D7PlayablePractice({
                 <article><span>{t('topbar.sparks')}</span><strong>+{summary?.sparksGained ?? 0}</strong></article>
                 <article><span>D7T</span><strong>+{summary?.d7tGained ?? 0}</strong></article>
                 <article><span>{t('practice.advance')}</span><strong>{summary?.nextCode ?? nextJourneyCode}</strong></article>
+              </div>
+              <div className="retention-grid retention-grid--final">
+                {retentionPromise && (
+                  <article className="retention-card retention-card--promise">
+                    <div className="retention-card__head">
+                      <span className="overline">{t('core.retention.promise.eyebrow')}</span>
+                      <strong>{t('core.retention.promise.title')}</strong>
+                    </div>
+                    <p className="retention-card__lead">{retentionPromise.daysRemainingToPortal === 0 ? t('core.retention.promise.portalOpen') : retentionPromise.daysRemainingToPortal === 1 ? t('core.retention.promise.oneDay').replace('{portal}', retentionPromise.portalName) : t('core.retention.promise.daysLeft').replace('{days}', retentionPromise.daysRemainingToPortal).replace('{portal}', retentionPromise.portalName)}</p>
+                    <div className="retention-code-row">
+                      <div>
+                        <span>{t('core.retention.promise.current')}</span>
+                        <strong>{retentionPromise.currentCode} · {retentionPromise.currentStageName}</strong>
+                      </div>
+                      <div>
+                        <span>{t('core.retention.promise.next')}</span>
+                        <strong>{retentionPromise.nextCode} · {retentionPromise.nextStageName}</strong>
+                      </div>
+                    </div>
+                    <SegmentMeter value={retentionPromise.portalProgress} max={retentionPromise.portalMax} label={t('core.retention.promise.progressLabel')} />
+                    <div className="retention-meta">
+                      <span>{t('core.retention.portal.states.' + retentionPromise.portalStateKey)}</span>
+                      <span>{retentionPromise.portalProgress}/{retentionPromise.portalMax}</span>
+                    </div>
+                    <small>{t('core.retention.promise.prompt')}</small>
+                  </article>
+                )}
+                {presenceFlame && (
+                  <article className="retention-card retention-card--flame">
+                    <div className="retention-card__icon" aria-hidden="true">{presenceFlame.symbol}</div>
+                    <div className="retention-card__head">
+                      <span className="overline">{t('core.retention.flame.eyebrow')}</span>
+                      <strong>{t('core.retention.flame.title')}</strong>
+                    </div>
+                    <p className="retention-card__lead">{t(`core.retention.flame.states.${presenceFlame.id}`)}</p>
+                    <div className="retention-code-row">
+                      <div>
+                        <span>{t('core.retention.flame.sequence')}</span>
+                        <strong>{presenceFlame.streak} {t('practice.days')}</strong>
+                      </div>
+                      <div>
+                        <span>{t('core.retention.flame.next')}</span>
+                        <strong>{Math.max(0, presenceFlame.nextMilestone - presenceFlame.streak)} {t('practice.days')}</strong>
+                      </div>
+                    </div>
+                    <div className="progress-line" aria-hidden="true"><i style={{ width: String(Math.min(100, Math.max(0, presenceFlame.progressPercent || 0))) + '%' }} /></div>
+                    <small>{t('core.retention.flame.milestones.' + presenceFlame.nextMilestoneKey)}</small>
+                  </article>
+                )}
+                {livingPortal && (
+                  <article className="retention-card retention-card--portal">
+                    <div className="retention-card__icon" aria-hidden="true">{livingPortal.portalSeal}</div>
+                    <div className="retention-card__head">
+                      <span className="overline">{t('core.retention.portal.eyebrow')}</span>
+                      <strong>{t('core.retention.portal.title')}</strong>
+                    </div>
+                    <p className="retention-card__lead">{livingPortal.portalPhrase}</p>
+                    <div className="retention-code-row">
+                      <div>
+                        <span>{t('core.retention.portal.current')}</span>
+                        <strong>{livingPortal.currentCode}</strong>
+                      </div>
+                      <div>
+                        <span>{t('core.retention.portal.next')}</span>
+                        <strong>{livingPortal.nextCode}</strong>
+                      </div>
+                    </div>
+                    <SegmentMeter value={livingPortal.completedInStage} max={livingPortal.totalSegments} label={t('core.retention.portal.progressLabel')} />
+                    <div className="retention-meta">
+                      <span>{t('core.retention.portal.states.' + livingPortal.id)}</span>
+                      <span>{livingPortal.completedInStage}/{livingPortal.totalSegments}</span>
+                    </div>
+                    <small>{livingPortal.daysRemainingToPortal === 0 ? t('core.retention.portal.open') : t('core.retention.portal.filling').replace('{days}', livingPortal.daysRemainingToPortal)}</small>
+                  </article>
+                )}
+                <article className="retention-card retention-card--continuity">
+                  <div className="retention-card__head">
+                    <span className="overline">{t('core.retention.continuity.eyebrow')}</span>
+                    <strong>{t('core.retention.continuity.title')}</strong>
+                  </div>
+                  <p className="retention-card__lead">{t('core.retention.continuity.lead')}</p>
+                  <div className="retention-code-row">
+                    <div>
+                      <span>{t('core.retention.continuity.streak')}</span>
+                      <strong>{presenceFlame?.streak ?? 0} {t('practice.days')}</strong>
+                    </div>
+                    <div>
+                      <span>{t('core.retention.continuity.nextMilestone')}</span>
+                      <strong>{presenceFlame ? t('core.retention.flame.milestones.' + presenceFlame.nextMilestoneKey) : '-'}</strong>
+                    </div>
+                  </div>
+                  <div className="retention-meta">
+                    <span>{t('core.retention.continuity.portal').replace('{days}', livingPortal?.daysRemainingToPortal ?? 0)}</span>
+                    <span>{t('core.retention.continuity.message')}</span>
+                  </div>
+                  <small>{t('core.retention.continuity.note')}</small>
+                </article>
               </div>
               <div className="level-grid">
                 <article><span>{t('practice.day')}</span><strong>{summary?.dayNumber ?? officialJourney?.dayNumber}/{summary?.totalDays ?? 35}</strong><small>{summary?.progressPercent ?? officialJourney?.progressPercent}%</small></article>

@@ -43,6 +43,132 @@ export function compareJourneyCodes(a, b) {
   return parse(a) - parse(b)
 }
 
+function getRetentionProgress(progress) {
+  const currentProgress = progress?.progress ?? progress ?? {}
+  const stage = getStage(currentProgress)
+  const currentCode = getJourneyCode(currentProgress)
+  const nextProgress = advanceProgress(currentProgress)
+  const nextCode = getJourneyCode(nextProgress)
+  const portal = portals.find((item) => item.week === stage.id)
+  const completedInStage = Array.from({ length: 7 }, (_, index) => `${stage.id}${index + 1}`).filter((code) => arrayOr(currentProgress.completedDays).includes(code)).length
+  const daysRemainingToPortal = Math.max(0, 7 - completedInStage)
+  return { currentProgress, stage, portal, currentCode, nextProgress, nextCode, completedInStage, daysRemainingToPortal }
+}
+
+export function getPresenceFlameStatus(progress) {
+  const streak = Math.max(0, Number(progress?.progress?.streak ?? progress?.streak ?? 0))
+  const tiers = [
+    { max: 0, id: 'cold', label: 'Sem chama', description: 'Nenhum ritual concluído ainda.', symbol: '◌', intensity: 0, nextMilestone: 1 },
+    { max: 1, id: 'ember', label: 'Brasa inicial', description: 'A constância começou a aparecer.', symbol: '✦', intensity: 1, nextMilestone: 2 },
+    { max: 3, id: 'alive', label: 'Chama viva', description: 'O caminho já respira com você.', symbol: '◈', intensity: 2, nextMilestone: 4 },
+    { max: 6, id: 'firm', label: 'Chama firme', description: 'A presença ganhou corpo e ritmo.', symbol: '✧', intensity: 3, nextMilestone: 7 },
+    { max: 20, id: 'weekly', label: 'Chama semanal', description: 'A sequência semanal ficou visível.', symbol: '△', intensity: 4, nextMilestone: 21 },
+    { max: 34, id: 'ancestral', label: 'Chama ancestral', description: 'O retorno já deixou história.', symbol: '◉', intensity: 5, nextMilestone: 35 },
+    { max: Infinity, id: 'honor', label: 'Chama de honra', description: 'A Primeira Fase marcou sua memória.', symbol: '✺', intensity: 6, nextMilestone: 35 },
+  ]
+  const tier = tiers.find((item) => streak <= item.max) ?? tiers[tiers.length - 1]
+  const previousMilestone = [0, 1, 2, 4, 7, 21, 35].filter((value) => value <= streak).pop() ?? 0
+  const nextMilestone = tier.nextMilestone
+  const range = Math.max(1, nextMilestone - previousMilestone)
+  const progressPercent = streak >= 35 ? 100 : Math.min(100, Math.round(((streak - previousMilestone) / range) * 100))
+  return {
+    streak,
+    id: tier.id,
+    label: tier.label,
+    description: tier.description,
+    symbol: tier.symbol,
+    intensity: tier.intensity,
+    nextMilestone,
+    progressPercent,
+    nextMilestoneKey: nextMilestone >= 35 ? 'honor' : nextMilestone >= 21 ? 'ancestral' : nextMilestone >= 7 ? 'weekly' : nextMilestone >= 4 ? 'firm' : nextMilestone >= 2 ? 'alive' : 'ember',
+  }
+}
+
+export function getLivingPortalStatus(progress) {
+  const { stage, portal, currentCode, nextCode, completedInStage, daysRemainingToPortal } = getRetentionProgress(progress)
+  const state = completedInStage === 0 ? 'sealed' : completedInStage < 4 ? 'waking' : completedInStage < 7 ? 'almost' : 'open'
+  const stateMap = {
+    sealed: { label: 'Portal selado', description: 'Cada prática ilumina uma parte do portal.' },
+    waking: { label: 'Portal despertando', description: 'O portal já começou a responder ao retorno.' },
+    almost: { label: 'Portal quase aberto', description: 'Faltam poucos traços para abrir o portal.' },
+    open: { label: 'Portal aberto', description: 'Selo semanal conquistado.' },
+  }
+  const currentPortal = portal ?? portals.find((item) => item.week === stage.id)
+  return {
+    id: state,
+    label: stateMap[state].label,
+    description: stateMap[state].description,
+    portalName: currentPortal?.name ?? `Portal ${stage.id}`,
+    portalSeal: currentPortal?.seal ?? stage.seal ?? '◌',
+    portalPhrase: currentPortal?.phrase ?? stage.intent ?? 'Cada prática ilumina uma parte do portal.',
+    portalReward: currentPortal?.reward ?? 'Selo semanal',
+    currentCode,
+    nextCode,
+    currentStage: stage.id,
+    currentStageName: stage.name,
+    completedInStage,
+    totalSegments: 7,
+    progressPercent: Math.round((completedInStage / 7) * 100),
+    daysRemainingToPortal,
+  }
+}
+
+export function getTomorrowPromise(progress) {
+  const retentionProgress = getRetentionProgress(progress)
+  const flame = getPresenceFlameStatus(progress)
+  const portal = getLivingPortalStatus(progress)
+  const promiseText = portal.id === 'open'
+    ? 'Amanhã o silêncio continua de onde você parou.'
+    : retentionProgress.daysRemainingToPortal === 1
+      ? 'Amanhã o portal ganha mais um traço.'
+      : `Faltam ${retentionProgress.daysRemainingToPortal} marcas para abrir ${portal.portalName}.`
+  return {
+    currentCode: retentionProgress.currentCode,
+    nextCode: retentionProgress.nextCode,
+    currentStage: retentionProgress.stage.id,
+    currentStageName: retentionProgress.stage.name,
+    nextStageName: retentionProgress.nextProgress?.weekIndex != null ? getStage(retentionProgress.nextProgress).name : retentionProgress.stage.name,
+    portalName: portal.portalName,
+    portalStateKey: portal.id,
+    portalDescription: portal.description,
+    portalProgress: retentionProgress.completedInStage,
+    portalMax: 7,
+    portalProgressPercent: portal.progressPercent,
+    daysRemainingToPortal: retentionProgress.daysRemainingToPortal,
+    promiseText,
+    flameLabel: flame.label,
+    flameDescription: flame.description,
+    flameSymbol: flame.symbol,
+    flameIntensity: flame.intensity,
+    flameProgressPercent: flame.progressPercent,
+    nextMilestone: flame.nextMilestone,
+    nextMilestoneKey: flame.nextMilestoneKey,
+  }
+}
+
+export function getReturnRitualStatus(progress) {
+  const currentProgress = progress?.progress ?? progress ?? {}
+  const active = Boolean(currentProgress.restartRequired)
+  const stage = getStage(currentProgress)
+  const currentCode = getJourneyCode(currentProgress)
+  return {
+    active,
+    title: 'Ritual de Retorno',
+    label: 'Ritual de Retorno',
+    description: active
+      ? 'A chama não morreu. Ela virou brasa.'
+      : 'O retorno fica pronto quando o caminho pede recomeço.',
+    detail: active
+      ? 'Hoje você pode recomeçar em A1 com histórico honrado.'
+      : 'Quando houver reinício necessário, o jogo mostrará a porta de volta.',
+    cta: 'Retomar o Ritual',
+    currentCode,
+    nextCode: 'A1',
+    stageId: stage.id,
+    stageName: stage.name,
+  }
+}
+
 export function getOfficialJourneySummary(progress) {
   const stage = getStage(progress)
   const code = getJourneyCode(progress)

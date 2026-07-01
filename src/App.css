@@ -7659,7 +7659,8 @@ button:not(:disabled):active {
   line-height: 1.35;
 }
 
-.home-core-cards {
+.home-core-cards,
+.retention-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
   gap: 12px;
@@ -7668,7 +7669,8 @@ button:not(:disabled):active {
 }
 
 .next-unlock-card,
-.word-journal {
+.word-journal,
+.retention-card {
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -7752,6 +7754,161 @@ button:not(:disabled):active {
   flex: 0 0 auto;
   color: var(--text-muted);
   font-size: 0.78rem;
+}
+
+.retention-grid {
+  width: min(820px, 100%);
+}
+
+.retention-grid--final {
+  width: min(940px, 100%);
+}
+
+.retention-grid > .retention-card--promise,
+.retention-grid > .retention-card--return,
+.retention-grid > .word-journal {
+  grid-column: 1 / -1;
+}
+
+.retention-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid rgba(32, 211, 238, 0.14);
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 0 32px rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(14px);
+}
+
+.retention-card--promise {
+  border-color: rgba(212, 175, 55, 0.24);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(212, 175, 55, 0.14), transparent 34%),
+    rgba(0, 0, 0, 0.26);
+}
+
+.retention-card--flame {
+  border-color: rgba(32, 211, 238, 0.18);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(32, 211, 238, 0.12), transparent 34%),
+    rgba(0, 0, 0, 0.26);
+}
+
+.retention-card--portal {
+  border-color: rgba(212, 175, 55, 0.18);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.12), transparent 34%),
+    rgba(0, 0, 0, 0.24);
+}
+
+.retention-card--continuity,
+.retention-card--return {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.retention-card__head,
+.retention-card__icon {
+  display: grid;
+  gap: 4px;
+}
+
+.retention-card__icon {
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 50%;
+  color: #fff7d8;
+  background: rgba(212, 175, 55, 0.08);
+  font-size: 1.55rem;
+  font-weight: 900;
+}
+
+.retention-card__head strong {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: clamp(1.02rem, 1.45vw, 1.18rem);
+}
+
+.retention-card__lead {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.retention-code-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.retention-code-row div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.retention-code-row span,
+.retention-meta span,
+.retention-card small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.retention-code-row strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.retention-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.retention-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--gold);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.retention-segments {
+  display: flex;
+  gap: 6px;
+}
+
+.retention-segments span {
+  flex: 1 1 0;
+  min-height: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.retention-segments span.active {
+  border-color: rgba(242, 206, 114, 0.54);
+  background: linear-gradient(135deg, rgba(32, 211, 238, 0.7), rgba(212, 175, 55, 0.88));
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.18);
+}
+
+.retention-card small {
+  color: var(--gold);
+  font-weight: 800;
 }
 
 .home-next-action--portal {
@@ -9665,7 +9822,8 @@ button:not(:disabled):active {
     grid-column: 2;
   }
 
-  .home-core-cards {
+  .home-core-cards,
+.retention-grid {
     margin-top: 14px;
   }
 
@@ -9676,6 +9834,16 @@ button:not(:disabled):active {
 
   .word-journal-list article {
     border-radius: 12px;
+  }
+
+  .retention-code-row {
+    grid-template-columns: 1fr;
+  }
+
+  .retention-grid > .retention-card--promise,
+  .retention-grid > .retention-card--return,
+  .retention-grid > .word-journal {
+    grid-column: auto;
   }
 
   .practice-completion-banner p {

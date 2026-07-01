@@ -412,11 +412,11 @@ function AuthScreen({ mode, message, t, language, onLanguageChange, onModeChange
   return (
     <main className="auth-shell">
       <div className="auth-language-row"><LanguageToggle language={language} onChange={onLanguageChange} /></div>
-      <section className="auth-layout auth-layout--cinematic" aria-label="Acesso local do D7">
-        <div className="auth-cinematic-symbols" aria-hidden="true"><span>A1</span><span>B7</span><span>D7</span></div>
+      <section className="auth-layout auth-layout--cinematic" aria-label="Acesso local do Maiindy Game">
+        <div className="auth-cinematic-symbols" aria-hidden="true"><span>A1</span><span>B7</span><span>MG</span></div>
         <section className="auth-panel auth-panel--cinematic" aria-labelledby="auth-title">
           <div className="auth-brand">
-            <Sigil label="D7" />
+            <Sigil label="MG" />
             <div>
               <span className="overline">{t('auth.access')}</span>
               <h1 id="auth-title">{t('auth.title')}</h1>
@@ -456,7 +456,7 @@ function AuthScreen({ mode, message, t, language, onLanguageChange, onModeChange
                 <div>
                   <span className="overline">{t('auth.recovery')}</span>
                   <h3>{t('auth.recoveryTitle')}</h3>
-                  <p>Esta recuperação funciona apenas neste navegador. O D7 atual usa login local MVP. Para login real em vários dispositivos será necessário backend futuro.</p>
+                  <p>Esta recuperação funciona apenas neste navegador. O Maiindy Game atual usa login local MVP. Para login real em vários dispositivos será necessário backend futuro.</p>
                 </div>
                 <button type="button" className="ghost-action" onClick={() => onModeChange('register')}>{t('auth.createAccount')}</button>
               </div>
@@ -1162,9 +1162,9 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegação principal">
         <div className="brand-mark">
-          <Sigil label="D7" />
+          <Sigil label="MG" />
           <div>
-            <strong>Jogo da Consciência</strong>
+            <strong>Maiindy Game</strong>
             <small>Códice Dual V2</small>
           </div>
         </div>
@@ -1198,7 +1198,7 @@ function App() {
         {activeView === 'home' && (
           <section className="home-layout">
             <div className="hero-panel">
-              <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Códice Dual D7" />
+              <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Maiindy Game" />
               <div className="hero-sigils">
                 <Sigil label="א" tone="gold" />
                 <Sigil label="ॐ" tone="violet" />

@@ -3,10 +3,9 @@ import { useRef, useState } from 'react'
 const entranceAssets = {
   video: '/assets/d7/entrance/d7-bg-loop.mp4',
   poster: '/assets/d7/entrance/d7-bg-poster.jpg',
-  logo: '/assets/d7/entrance/logo-d7.svg',
 }
 
-const entranceSymbols = ['A1', 'A7', 'B7', 'C7', 'D7']
+const entranceSymbols = ['M1', 'AI', 'IN', 'DY', 'MG']
 
 function D7CinematicEntrance({ onComplete, onSkip }) {
   const videoRef = useRef(null)
@@ -55,7 +54,7 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
   }
 
   return (
-    <main className={`d7-entrance d7-entrance--video-${videoStatus}`} aria-label="Entrada cinematográfica do D7">
+    <main className={`d7-entrance d7-entrance--video-${videoStatus}`} aria-label="Entrada cinematográfica do Maiindy Game">
       <video
         ref={videoRef}
         className="d7-entrance-video"
@@ -99,16 +98,15 @@ function D7CinematicEntrance({ onComplete, onSkip }) {
 
       <section className="d7-entrance-content" aria-labelledby="d7-entrance-title">
         <div className="d7-entrance-portal" aria-hidden="true" />
-        <img className="d7-entrance-logo" src={entranceAssets.logo} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />
-        <p className="d7-entrance-eyebrow">28 dias de presença</p>
-        <h1 id="d7-entrance-title">D7</h1>
-        <p className="d7-entrance-subtitle">O Jogo da Consciência</p>
-        <p className="d7-entrance-manifesto">O desafio não é fazer. O desafio é não ignorar.</p>
-        <p className="d7-entrance-support">28 dias. 4 semanas. Um ciclo de presença.</p>
+        <div className="d7-entrance-logo" aria-hidden="true" />
+        <p className="d7-entrance-eyebrow">Experiência interativa</p>
+        <h1 id="d7-entrance-title">Maiindy Game</h1>
+        <p className="d7-entrance-subtitle">Entre. Respire. Desperte.</p>
+        <p className="d7-entrance-support">Uma jornada interativa de presença, foco e descoberta interior.</p>
 
-        <div className="d7-entrance-actions" aria-label="Ações da entrada D7">
-          <button type="button" className="d7-entrance-primary" onClick={handleCall}>Responder ao Chamado</button>
-          <button type="button" className="d7-entrance-secondary" onClick={handleSkip}>Entrar no D7</button>
+        <div className="d7-entrance-actions" aria-label="Ações da entrada Maiindy Game">
+          <button type="button" className="d7-entrance-primary" onClick={handleCall}>Começar Jornada</button>
+          <button type="button" className="d7-entrance-secondary" onClick={handleSkip}>Entrar no Game</button>
         </div>
 
         {(videoStatus === 'failed' || soundMessage) && (

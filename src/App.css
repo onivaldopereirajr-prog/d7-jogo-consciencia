@@ -4956,11 +4956,11 @@ button:not(:disabled):active {
   animation: d7-entrance-float 10s ease-in-out infinite;
 }
 
-.d7-entrance-symbol.symbol-a1 { top: 24%; left: 11%; animation-duration: 12s; }
-.d7-entrance-symbol.symbol-a7 { top: 67%; left: 16%; animation-duration: 15s; animation-delay: -4s; }
-.d7-entrance-symbol.symbol-b7 { top: 21%; right: 16%; animation-duration: 13s; animation-delay: -2s; }
-.d7-entrance-symbol.symbol-c7 { right: 10%; bottom: 24%; animation-duration: 16s; animation-delay: -6s; }
-.d7-entrance-symbol.symbol-d7 { left: 50%; bottom: 8%; animation-duration: 18s; animation-delay: -8s; }
+.d7-entrance-symbol.symbol-m1 { top: 24%; left: 11%; animation-duration: 12s; }
+.d7-entrance-symbol.symbol-ai { top: 67%; left: 16%; animation-duration: 15s; animation-delay: -4s; }
+.d7-entrance-symbol.symbol-in { top: 21%; right: 16%; animation-duration: 13s; animation-delay: -2s; }
+.d7-entrance-symbol.symbol-dy { right: 10%; bottom: 24%; animation-duration: 16s; animation-delay: -6s; }
+.d7-entrance-symbol.symbol-mg { left: 50%; bottom: 8%; animation-duration: 18s; animation-delay: -8s; }
 
 .d7-entrance-content {
   position: relative;
@@ -5015,7 +5015,16 @@ button:not(:disabled):active {
   width: 34px;
   height: 34px;
   margin-bottom: 14px;
+  border: 1px solid rgba(242, 206, 114, 0.46);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 248, 223, 0.92) 0 12%, transparent 13% 100%),
+    conic-gradient(from 120deg, rgba(103, 229, 255, 0.2), rgba(242, 206, 114, 0.72), rgba(103, 229, 255, 0.2));
   opacity: 0.88;
+  box-shadow:
+    inset 0 0 16px rgba(255, 248, 223, 0.12),
+    0 0 22px rgba(242, 206, 114, 0.28),
+    0 0 34px rgba(103, 229, 255, 0.16);
   filter: drop-shadow(0 0 16px rgba(242, 206, 114, 0.34));
 }
 
@@ -5033,8 +5042,8 @@ button:not(:disabled):active {
   max-width: 920px;
   margin: 0;
   color: #fff7d8;
-  font-size: clamp(5.8rem, 15vw, 13rem);
-  line-height: 0.78;
+  font-size: clamp(4.6rem, 10vw, 9.6rem);
+  line-height: 0.88;
   letter-spacing: 0;
   text-shadow:
     0 0 10px rgba(255, 248, 223, 0.4),
@@ -5045,7 +5054,7 @@ button:not(:disabled):active {
 .d7-entrance-subtitle {
   margin: 20px 0 0;
   color: #67e5ff;
-  font-size: clamp(1rem, 2.4vw, 1.62rem);
+  font-size: clamp(1.18rem, 2.6vw, 2rem);
   font-weight: 780;
   text-shadow: 0 0 28px rgba(103, 229, 255, 0.3);
 }
@@ -5062,10 +5071,12 @@ button:not(:disabled):active {
 }
 
 .d7-entrance-support {
-  margin: 18px auto 0;
+  width: min(680px, 100%);
+  margin: 22px auto 0;
   color: rgba(255, 248, 223, 0.86);
   font-size: clamp(1rem, 1.9vw, 1.2rem);
   line-height: 1.6;
+  text-wrap: balance;
 }
 
 .d7-entrance-actions {
@@ -5215,7 +5226,7 @@ button:not(:disabled):active {
   }
 
   .d7-entrance-content h1 {
-    font-size: clamp(7rem, 12vw, 12.5rem);
+    font-size: clamp(5.8rem, 9vw, 9.8rem);
   }
 }
 
@@ -5226,9 +5237,9 @@ button:not(:disabled):active {
     font-size: 0.86rem;
   }
 
-  .d7-entrance-symbol.symbol-a1 { left: 7%; }
-  .d7-entrance-symbol.symbol-b7 { right: 8%; }
-  .d7-entrance-symbol.symbol-c7 { right: 6%; }
+  .d7-entrance-symbol.symbol-m1 { left: 7%; }
+  .d7-entrance-symbol.symbol-in { right: 8%; }
+  .d7-entrance-symbol.symbol-dy { right: 6%; }
 }
 
 @media (max-width: 767px) {
@@ -5258,7 +5269,8 @@ button:not(:disabled):active {
   }
 
   .d7-entrance-content h1 {
-    font-size: clamp(5rem, 27vw, 8.6rem);
+    font-size: clamp(3.45rem, 16vw, 5.8rem);
+    max-width: 12ch;
   }
 
   .d7-entrance-manifesto {
@@ -5283,8 +5295,8 @@ button:not(:disabled):active {
     opacity: 0.72;
   }
 
-  .d7-entrance-symbol.symbol-a7,
-  .d7-entrance-symbol.symbol-c7 {
+  .d7-entrance-symbol.symbol-ai,
+  .d7-entrance-symbol.symbol-dy {
     display: none;
   }
 }
@@ -5294,9 +5306,9 @@ button:not(:disabled):active {
     letter-spacing: 0.18em;
   }
 
-  .d7-entrance-symbol.symbol-a1 { top: 18%; left: 5%; }
-  .d7-entrance-symbol.symbol-b7 { top: 18%; right: 5%; }
-  .d7-entrance-symbol.symbol-d7 { bottom: 7%; }
+  .d7-entrance-symbol.symbol-m1 { top: 18%; left: 5%; }
+  .d7-entrance-symbol.symbol-in { top: 18%; right: 5%; }
+  .d7-entrance-symbol.symbol-mg { bottom: 7%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

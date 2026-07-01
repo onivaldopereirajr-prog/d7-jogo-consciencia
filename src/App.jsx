@@ -1353,7 +1353,7 @@ function App() {
                     <button type="button" className="ghost-action" onClick={replayEntrance}>Rever abertura</button>
                   </div>
                   <div className="home-next-action home-next-action--portal">
-                    <UserAvatar user={currentUser} progress={state} showMeta />
+                    <UserAvatar user={currentUser} progress={state} />
                     <div><span className="overline">Agora</span><strong>{state.progress.restartRequired ? 'Compromisso renovado' : state.daily.practice ? 'Sessão oficial concluída' : 'Sessão oficial disponível'}</strong><p>{state.progress.restartRequired ? 'Reiniciar não apaga sua história; reforça seu compromisso.' : state.daily.practice ? 'Explore Biblioteca, Códice ou Sala sem pressão.' : 'O sucesso aqui não é velocidade. É consistência.'}</p></div>
                   </div>
                 </div>

@@ -112,8 +112,8 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
         className={'breath-triangle phase-' + phase.id}
         aria-hidden="true"
         style={{
-          '--breath-dot-x': `${dotX}`,
-          '--breath-dot-y': `${dotY}`,
+          '--breath-dot-x': `${dotX}%`,
+          '--breath-dot-y': `${dotY}%`,
           '--breath-dot-scale': phase.id?.startsWith('hold') ? 1.18 : 1,
         }}
       >
@@ -121,8 +121,8 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
           <polygon className="breath-triangle-fill" points="50 6 94 88 6 88" />
           <polygon className="breath-triangle-core" points="50 29 72 76 28 76" />
           <polyline className="breath-triangle-line" points="50 6 94 88 6 88 50 6" />
-          <circle className="breath-triangle-dot" cx={dotX} cy={dotY} r="4.2" />
         </svg>
+        <span className="breath-triangle-dot" aria-hidden="true" />
       </div>
       <div className="breath-copy" aria-live="polite">
         <span className="overline">{technique.name}</span>

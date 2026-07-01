@@ -6381,6 +6381,7 @@ button:not(:disabled):active {
   width: clamp(250px, 70vw, 320px);
   max-width: 100%;
   aspect-ratio: 1;
+  overflow: visible;
   filter: drop-shadow(0 0 38px rgba(32, 211, 238, 0.2));
 }
 
@@ -6402,16 +6403,20 @@ button:not(:disabled):active {
   background: rgba(3, 5, 10, 0.9);
 }
 
-.breath-triangle i {
+.breath-triangle-dot {
   position: absolute;
-  left: calc(50% + var(--breath-dot-x, 0%));
-  top: calc(50% + var(--breath-dot-y, -38%));
+  left: var(--breath-dot-x, 50%);
+  top: var(--breath-dot-y, 50%);
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: #fff7d8;
   box-shadow: 0 0 28px rgba(242, 206, 114, 0.78), 0 0 44px rgba(32, 211, 238, 0.34);
   transform: translate(-50%, -50%) scale(var(--breath-dot-scale, 1));
+  transform-origin: center;
+  will-change: left, top, transform;
+  pointer-events: none;
+  z-index: 2;
   transition: left 820ms linear, top 820ms linear, transform 220ms ease, box-shadow 220ms ease;
   animation: breath-dot-glow 1.2s ease-in-out infinite;
 }
@@ -6840,8 +6845,8 @@ button:not(:disabled):active {
   animation-name: playable-breath-exhale;
 }
 
-.breath-triangle i {
-  will-change: transform;
+.breath-triangle-dot {
+  will-change: left, top, transform;
 }
 
 .breath-triangle::before {
@@ -6889,16 +6894,6 @@ button:not(:disabled):active {
   stroke-dasharray: 6 5;
 }
 
-.breath-triangle-dot {
-  fill: #fff7d8;
-  filter: drop-shadow(0 0 5px rgba(242, 206, 114, 0.95)) drop-shadow(0 0 12px rgba(32, 211, 238, 0.55));
-  opacity: 0.96;
-  transform-box: fill-box;
-  transform-origin: center;
-  transform: scale(var(--breath-dot-scale, 1));
-  transition: cx 240ms linear, cy 240ms linear, transform 180ms ease, opacity 180ms ease;
-  animation: breath-dot-glow 1s ease-in-out infinite;
-}
 
 .breath-stage.phase-inhale .breath-copy h3 {
   color: #dffbff;
@@ -7146,10 +7141,10 @@ button:not(:disabled):active {
   }
 
   .breath-triangle {
-    width: min(340px, calc(100vw - 36px));
+    width: min(320px, calc(100vw - 28px));
   }
 
-  .breath-triangle i {
+  .breath-triangle-dot {
     width: 18px;
     height: 18px;
   }
@@ -7165,7 +7160,6 @@ button:not(:disabled):active {
     scroll-behavior: auto !important;
   }
 
-  .breath-triangle i,
   .breath-triangle-dot {
     animation: none !important;
     opacity: 1;

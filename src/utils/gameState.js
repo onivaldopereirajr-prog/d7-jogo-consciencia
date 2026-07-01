@@ -1,6 +1,6 @@
 import { codexCards } from '../data/codex.js'
 import { studyLibraryCard } from '../services/libraryEngine.js'
-import { codes, missions, portals, weeks } from '../data/game.js'
+import { HONOR_MEDAL_ID, HONOR_MEDAL_NAME, OFFICIAL_JOURNEY_DAYS, codes, missions, portals, weeks } from '../data/game.js'
 
 export const STORAGE_KEY = 'd7-jogo-consciencia-state-v2'
 export const LEGACY_KEY = 'd7-jogo-consciencia-state-v1'
@@ -23,6 +23,46 @@ export function getJourneyCode(progress) {
   return `${getStage(progress).id}${progress.day}`
 }
 
+export function getJourneyDayNumber(progress) {
+  const weekIndex = Math.min(Math.max(numberOr(progress?.weekIndex, 0), 0), weeks.length - 1)
+  const day = Math.min(Math.max(numberOr(progress?.day, 1), 1), 7)
+  return weekIndex * 7 + day
+}
+
+export function getJourneyProgressPercent(progress) {
+  return Math.round((getJourneyDayNumber(progress) / OFFICIAL_JOURNEY_DAYS) * 100)
+}
+
+export function compareJourneyCodes(a, b) {
+  const parse = (code) => {
+    const match = String(code || 'A1').match(/^([A-E])(\d)$/)
+    if (!match) return 1
+    const weekIndex = Math.max(0, weeks.findIndex((week) => week.id === match[1]))
+    return weekIndex * 7 + Math.min(7, Math.max(1, Number(match[2])))
+  }
+  return parse(a) - parse(b)
+}
+
+export function getOfficialJourneySummary(progress) {
+  const stage = getStage(progress)
+  const code = getJourneyCode(progress)
+  const dayNumber = getJourneyDayNumber(progress)
+  return {
+    code,
+    categoryId: stage.id,
+    categoryName: stage.name,
+    weekNumber: stage.week ?? progress?.weekIndex + 1 ?? 1,
+    dayInCategory: Math.min(Math.max(numberOr(progress?.day, 1), 1), 7),
+    dayNumber,
+    totalDays: OFFICIAL_JOURNEY_DAYS,
+    officialMinutes: stage.minutes,
+    progressPercent: Math.round((dayNumber / OFFICIAL_JOURNEY_DAYS) * 100),
+    description: stage.intent,
+    firstPhaseComplete: Boolean(progress?.firstPhaseCompleted),
+    restartRequired: Boolean(progress?.restartRequired),
+  }
+}
+
 export function unique(items) {
   return [...new Set(items.filter(Boolean))]
 }
@@ -34,7 +74,7 @@ export function scoreOf(player) {
 export function makeInitialState(profile = {}) {
   return {
     profile: { name: 'Jogador D7', title: 'Iniciado do Nada', avatar: 'D7', ...profile },
-    progress: { weekIndex: 0, day: 1, streak: 0, lastPracticeDate: null, completedDays: [], resets: 0 },
+    progress: { weekIndex: 0, day: 1, streak: 0, lastPracticeDate: null, completedDays: [], resets: 0, restartRequired: false, bestCode: 'A1', bestDayNumber: 1, firstPhaseCompleted: false, migrationVersion: 2 },
     xp: 0,
     sparks: 0,
     unlockedCards: ['he-alef', 'sa-om'],
@@ -49,6 +89,7 @@ export function makeInitialState(profile = {}) {
     ],
     sessions: [],
     ritualMinutesTotal: 0,
+    honorMedals: [],
     ritualMilestonesUnlocked: [],
     lastPracticeDurationMinutes: null,
     circles: [
@@ -91,7 +132,12 @@ export function normalizeState(raw) {
   progress.day = Math.min(Math.max(numberOr(progress.day, 1), 1), 7)
   progress.streak = Math.max(numberOr(progress.streak, 0), 0)
   progress.resets = Math.max(numberOr(progress.resets, 0), 0)
+  progress.restartRequired = Boolean(progress.restartRequired)
   progress.completedDays = unique(arrayOr(progress.completedDays, base.progress.completedDays))
+  progress.bestCode = typeof progress.bestCode === 'string' ? progress.bestCode : getJourneyCode(progress)
+  progress.bestDayNumber = Math.max(numberOr(progress.bestDayNumber, getJourneyDayNumber(progress)), getJourneyDayNumber(progress))
+  progress.firstPhaseCompleted = Boolean(progress.firstPhaseCompleted || progress.completedDays.includes('E7') || arrayOr(raw.honorMedals).includes(HONOR_MEDAL_ID) || arrayOr(raw.unlockedCodes).includes(HONOR_MEDAL_ID))
+  progress.migrationVersion = Math.max(numberOr(progress.migrationVersion, 2), 2)
 
   const daily = { ...base.daily, ...(raw.daily && typeof raw.daily === 'object' ? raw.daily : {}) }
   daily.visited = unique(arrayOr(daily.visited, base.daily.visited))
@@ -124,6 +170,7 @@ export function normalizeState(raw) {
     codex: arrayOr(raw.codex).length ? raw.codex : base.codex,
     sessions: arrayOr(raw.sessions, base.sessions),
     ritualMinutesTotal,
+    honorMedals: unique(arrayOr(raw.honorMedals, base.honorMedals)),
     ritualMilestonesUnlocked: unique([
       ...arrayOr(raw.ritualMilestonesUnlocked, base.ritualMilestonesUnlocked),
       ...(ritualMinutesTotal >= 21 ? [21] : []),
@@ -204,12 +251,34 @@ export function ensureToday(state) {
     next = { ...next, daily: { date: today, practice: false, word: false, study: false, visited: [] }, completedMissions: [] }
   }
   const last = next.progress.lastPracticeDate
-  if (!last || last === today || daysBetween(last, today) <= 1) return next
+  if (!last || last === today || daysBetween(last, today) <= 1 || next.progress.firstPhaseCompleted) return next
   return unlockDerived({
     ...next,
-    progress: { ...next.progress, weekIndex: 0, day: 1, streak: 0, lastPracticeDate: null, completedDays: [], resets: next.progress.resets + 1 },
-    codex: [{ id: `retorno-${Date.now()}`, title: 'Selo do Retorno', text: 'A sequência foi quebrada. O ciclo retorna para A1 e registra o retorno consciente.', date: new Date().toLocaleDateString('pt-BR') }, ...next.codex],
+    progress: { ...next.progress, streak: 0, restartRequired: true, missedDate: today, failureDetectedAt: new Date().toISOString() },
+    lastUnlocks: unique(['Falha detectada: reinício oficial necessário', ...(next.lastUnlocks ?? [])]).slice(0, 5),
   })
+}
+
+export function restartOfficialJourney(state) {
+  const current = normalizeState({ ...state, daily: { ...(state.daily ?? {}), date: todayKey(), practice: false, word: false, study: false, visited: [] } })
+  const previousCode = getJourneyCode(current.progress)
+  const restartEntry = { id: `restart-${Date.now()}`, from: previousCode, date: todayKey(), at: new Date().toISOString() }
+  return unlockDerived({
+    ...current,
+    progress: {
+      ...current.progress,
+      weekIndex: 0,
+      day: 1,
+      streak: 0,
+      lastPracticeDate: null,
+      completedDays: [],
+      resets: (current.progress.resets ?? 0) + 1,
+      restartRequired: false,
+      missedDate: null,
+    },
+    restartHistory: [restartEntry, ...arrayOr(current.restartHistory, [])].slice(0, 30),
+    codex: [{ id: `retorno-${Date.now()}`, title: 'Recomeço em A1', text: 'Você perdeu um dia. O jogo recomeça em A1. Reiniciar não apaga sua história; reforça seu compromisso.', date: new Date().toLocaleDateString('pt-BR') }, ...current.codex],
+  }, ['Recomeço em A1 registrado'])
 }
 
 export function advanceProgress(progress) {
@@ -311,10 +380,14 @@ export function recordPresenceTick(state, amount = 1, at = new Date().toISOStrin
 
 export function completePractice(state, options = {}) {
   const current = ensureToday(state)
-  const durationMinutes = clampPracticeMinutes(options.durationMinutes ?? getStage(current.progress).minutes)
-  const rewardMode = options.rewardMode === 'free' ? 'free' : 'primary'
+  const officialMinutes = getStage(current.progress).minutes
+  const requestedMinutes = clampPracticeMinutes(options.durationMinutes ?? officialMinutes)
+  const canAdvanceOfficial = !current.progress.restartRequired && requestedMinutes >= officialMinutes && !current.progress.firstPhaseCompleted
+  const durationMinutes = options.rewardMode === 'free' ? requestedMinutes : officialMinutes
+  const rewardMode = options.rewardMode === 'free' || !canAdvanceOfficial ? 'free' : 'primary'
   const code = getJourneyCode(current.progress)
   const totalSessions = current.sessions.length + 1
+  const isPhaseFinal = code === 'E7'
   const completedDays = rewardMode === 'primary' && !current.daily.practice ? unique([...current.progress.completedDays, code]) : current.progress.completedDays
   const newStreak = rewardMode === 'primary' && !current.daily.practice && current.progress.lastPracticeDate !== todayKey() ? current.progress.streak + 1 : current.progress.streak
   const reward = calculatePracticeReward(durationMinutes, current)
@@ -339,6 +412,10 @@ export function completePractice(state, options = {}) {
     completedAt: reward.completedAt,
   }, ...current.sessions]
   const unlockedCards = unique([...current.unlockedCards, ...nextCardsForSession(totalSessions, completedDays)])
+  const advancedProgress = rewardMode === 'primary' && !current.daily.practice ? advanceProgress({ ...current.progress, streak: newStreak, lastPracticeDate: todayKey(), completedDays }) : current.progress
+  const nextBestCode = compareJourneyCodes(code, current.progress.bestCode) > 0 ? code : current.progress.bestCode
+  const firstPhaseCompleted = Boolean(current.progress.firstPhaseCompleted || (rewardMode === 'primary' && !current.daily.practice && isPhaseFinal))
+  const nextHonorMedals = firstPhaseCompleted ? unique([...(current.honorMedals ?? []), HONOR_MEDAL_ID]) : current.honorMedals
   const next = recordPresenceTick({
     ...current,
     xp: current.xp + practiceXp + milestoneXp,
@@ -347,7 +424,8 @@ export function completePractice(state, options = {}) {
     totalTokenEarned: (current.totalTokenEarned ?? 0) + practiceTokens + milestoneTokens,
     unlockedCards,
     daily: { ...current.daily, practice: current.daily.practice || rewardMode === 'primary' },
-    progress: rewardMode === 'primary' && !current.daily.practice ? advanceProgress({ ...current.progress, streak: newStreak, lastPracticeDate: todayKey(), completedDays }) : current.progress,
+    honorMedals: nextHonorMedals,
+    progress: { ...advancedProgress, bestCode: nextBestCode, bestDayNumber: Math.max(current.progress.bestDayNumber ?? 1, getJourneyDayNumber({ weekIndex: Math.max(0, weeks.findIndex((week) => week.id === code[0])), day: Number(code.slice(1)) })), firstPhaseCompleted },
     sessions,
     ritualMinutesTotal,
     ritualMilestonesUnlocked: reward.milestonesUnlocked,
@@ -363,6 +441,7 @@ export function completePractice(state, options = {}) {
   }
   if (unlockedMilestones.includes(21)) lastUnlocks.unshift('Marco 21 desbloqueado', '+21 XP', '+2 D7T')
   if (unlockedMilestones.includes(108)) lastUnlocks.unshift('Marco 108 desbloqueado', '+108 XP', '+7 D7T')
+  if (firstPhaseCompleted && !(current.honorMedals ?? []).includes(HONOR_MEDAL_ID)) lastUnlocks.unshift(HONOR_MEDAL_NAME + ' desbloqueada')
   return unlockDerived({
     ...next,
     ritualMilestonesUnlocked: reward.milestonesUnlocked,
@@ -430,7 +509,7 @@ export function missionStatus(state, mission) {
 export function weeklyMissionStatus(state, missionId) {
   const hebrew = state.unlockedCards.filter((id) => cardById(id)?.track === 'hebraica').length
   const sanskrit = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
-  if (missionId === 'weekly-a7') return ['A7', 'B7', 'C7', 'D7'].some((day) => state.progress.completedDays.includes(day))
+  if (missionId === 'weekly-a7') return ['A7', 'B7', 'C7', 'D7', 'E7'].some((day) => state.progress.completedDays.includes(day))
   if (missionId === 'weekly-hebrew-3') return hebrew >= 3
   if (missionId === 'weekly-sanskrit-3') return sanskrit >= 3
   if (missionId === 'weekly-code') return state.unlockedCodes.length >= 1
@@ -448,9 +527,10 @@ export function unlockDerived(state, messages = []) {
   if (has('hw-ruach') && has('sa-prana')) codeSet.add('code-ruach-prana')
   if (has('hw-emet') && has('sa-dhyana')) codeSet.add('code-emet-dhyana')
   if (state.progress.completedDays.includes('D7')) codeSet.add('seal-d7')
+  if (state.progress.completedDays.includes('E7') || state.progress.firstPhaseCompleted || (state.honorMedals ?? []).includes(HONOR_MEDAL_ID)) codeSet.add(HONOR_MEDAL_ID)
   if (state.progress.resets > 0) codeSet.add('seal-return')
   if (state.progress.streak >= 3) codeSet.add('seal-stay')
-  if (portalSet.size >= 4) codeSet.add('seal-cycle')
+  if (portalSet.size >= 5 || state.progress.firstPhaseCompleted) codeSet.add('seal-cycle')
 
   const completedMissions = unique([
     ...missions.daily.filter((mission) => missionStatus(state, mission)).map((mission) => mission.id),

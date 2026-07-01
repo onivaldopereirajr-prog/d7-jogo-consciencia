@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import D7DurationSelector from './D7DurationSelector.jsx'
 import D7MantraPlayer from './D7MantraPlayer.jsx'
 import D7PulseTimer from './D7PulseTimer.jsx'
 
 const FLOW_STEPS = ['day-panel', 'breath', 'silence', 'word', 'card', 'level-up']
 const BREATH_PHASES = [
-  { id: 'inhale', label: 'Inspirar', detail: 'Receba o chamado.' },
-  { id: 'hold', label: 'Reter', detail: 'Permaneça no centro.' },
-  { id: 'exhale', label: 'Expirar', detail: 'Solte o excesso.' },
+  { id: 'inhale', label: 'Inspirar', detail: 'Prepare-se. Sente-se ou deite-se.' },
+  { id: 'hold', label: 'Reter', detail: 'Feche os olhos quando iniciar o timer.' },
+  { id: 'exhale', label: 'Expirar', detail: 'A prática principal é cumprir o tempo oficial.' },
 ]
 const BREATH_SECONDS = 4
 const BREATH_CYCLES = 3
@@ -26,7 +25,7 @@ function stepIndex(step) {
 
 function PracticeSteps({ current }) {
   return (
-    <ol className="playable-steps" aria-label="Fluxo da prática D7">
+    <ol className="playable-steps" aria-label="Fluxo da sessão oficial Maiindy">
       {FLOW_STEPS.map((step, index) => (
         <li key={step} className={index <= stepIndex(current) ? 'active' : ''}>
           <span>{index + 1}</span>
@@ -133,6 +132,8 @@ export default function D7PlayablePractice({
   stage,
   phrase,
   state,
+  officialJourney,
+  onRestartOfficialJourney,
   practiceCelebration,
   practiceDurationMinutes,
   practiceDurationInput,
@@ -224,11 +225,11 @@ export default function D7PlayablePractice({
   }
 
   return (
-    <section className="playable-practice" aria-label="Prática jogável D7">
+    <section className="playable-practice" aria-label="Sessão oficial Maiindy Game">
       <div className={'playable-shell playable-shell--' + step}>
         <header className="playable-header">
           <div>
-            <span className="overline">Prática guiada</span>
+            <span className="overline">Sessão oficial</span>
             <h2>{journeyCode} · {stage.name}</h2>
           </div>
           <PracticeSteps current={step} />
@@ -239,23 +240,27 @@ export default function D7PlayablePractice({
             <div className="day-code-orb" aria-hidden="true"><span>{journeyCode}</span></div>
             <div className="day-panel-copy">
               <span className="overline">Painel do Dia</span>
-              <h3 id="day-panel-title">{stage.name}</h3>
-              <p className="day-panel-lead">Antes de agir, alinhe o sopro.</p>
-              <p>{phrase}</p>
-              <small className="day-panel-mantra">O jogo começa quando você para de fugir.</small>
+              <h3 id="day-panel-title">Categoria {officialJourney?.categoryId ?? stage.id}: {stage.name}</h3>
+              <p className="day-panel-lead">O sucesso aqui não é medido por velocidade, mas por consistência.</p>
+              <p>{stage.intent}</p>
+              <small className="day-panel-mantra">O verdadeiro desafio não é o ato em si, mas mantê-lo.</small>
               <div className="day-mission-grid">
-                <article><span>Missão</span><strong>{isPracticeDone ? 'Prática livre disponível' : 'Concluir a prática do dia'}</strong></article>
-                <article><span>Tempo recomendado</span><strong>{stage.minutes} min</strong></article>
-                <article><span>Tempo escolhido</span><strong>{practiceDurationMinutes} min</strong></article>
-                <article><span>Recompensa</span><strong>+{practicePreview.xp} XP</strong></article>
+                <article><span>Nível atual</span><strong>{journeyCode}</strong></article>
+                <article><span>Semana</span><strong>{officialJourney?.weekNumber ?? stage.week}/5</strong></article>
+                <article><span>Dia</span><strong>{officialJourney?.dayNumber ?? 1}/35</strong></article>
+                <article><span>Tempo oficial de hoje</span><strong>{stage.minutes} min</strong></article>
               </div>
               <div className={['practice-banner', isPracticeDone ? 'complete' : 'idle', practiceCelebration ? 'practice-celebration' : ''].filter(Boolean).join(' ')} role="status">
-                <strong>{isPracticeDone ? 'Prática de hoje concluída' : 'Jornada pronta'}</strong>
-                <span>{isPracticeDone ? 'O chamado de hoje já foi respondido. Você pode revisitar o silêncio, mas o ciclo já avançou.' : stage.intent}</span>
+                <strong>{state.progress?.restartRequired ? 'Reinício necessário' : isPracticeDone ? 'Sessão oficial de hoje concluída' : 'Sessão oficial pronta'}</strong>
+                <span>{state.progress?.restartRequired ? 'Você perdeu um dia. O jogo recomeça em A1. Isso não é punição; é compromisso renovado.' : isPracticeDone ? 'O ciclo de hoje já avançou. Você pode praticar livremente sem duplicar progresso oficial.' : 'Feche os olhos. Permaneça até o timer terminar.'}</span>
               </div>
               <div className="playable-actions">
-                <button type="button" className="primary-action" onClick={() => setStep('breath')}>Iniciar Respiração</button>
-                <button type="button" className="ghost-action" onClick={() => setStep('silence')}>Ir direto ao silêncio</button>
+                {state.progress?.restartRequired ? (
+                  <button type="button" className="primary-action" onClick={onRestartOfficialJourney}>Recomeçar em A1</button>
+                ) : (
+                  <button type="button" className="primary-action" onClick={() => setStep('breath')}>Começar sessão oficial</button>
+                )}
+                {!state.progress?.restartRequired && <button type="button" className="ghost-action" onClick={() => setStep('silence')}>Ir direto ao silêncio</button>}
               </div>
             </div>
           </section>
@@ -266,14 +271,12 @@ export default function D7PlayablePractice({
         {step === 'silence' && (
           <section key="silence" className="silence-stage playable-stage" aria-labelledby="silence-stage-title">
             <div className="practice-config-panel">
-              <D7DurationSelector
-                value={practiceDurationMinutes}
-                onChange={onDurationChange}
-                customValue={practiceDurationInput}
-                onCustomChange={onCustomDurationChange}
-                error={practiceDurationError}
-                disabled={timerStatus === 'running' || timerStatus === 'complete'}
-              />
+              <section className="official-duration-card" aria-labelledby="official-duration-title">
+                <span className="overline">Tempo oficial de hoje</span>
+                <h3 id="official-duration-title">{stage.minutes} minuto{stage.minutes === 1 ? '' : 's'}</h3>
+                <p>A regra oficial é fixa por categoria: A=1, B=2, C=3, D=4 e E=5 minutos. Prática livre pode existir, mas não avança o progresso oficial.</p>
+                {practiceDurationError && <small role="status">{practiceDurationError}</small>}
+              </section>
               <D7MantraPlayer
                 ref={mantraAudioRef}
                 t={t}
@@ -289,8 +292,8 @@ export default function D7PlayablePractice({
               <span className="playable-silence-particles" aria-hidden="true" />
               <D7PulseTimer
                 label="Silêncio D7"
-                subtitle="Timer de presença"
-                hint={timerStatus === 'running' ? 'Timer medindo a prática. Você pode permanecer em silêncio ou ativar o mantra de apoio.' : timerStatus === 'paused' ? 'Prática pausada. Retome para seguir.' : isPracticeDone ? 'O timer mede a prática livre. O mantra é opcional.' : 'O timer mede a prática. Você pode permanecer em silêncio ou ativar o mantra de apoio.'}
+                subtitle="Olhos fechados · postura sentada ou deitada"
+                hint={timerStatus === 'running' ? 'Feche os olhos. Permaneça até o timer terminar.' : timerStatus === 'paused' ? 'Sessão pausada. Retome quando estiver pronto.' : isPracticeDone ? 'O timer mede uma prática livre. O mantra é opcional.' : 'Prepare-se. Sente-se ou deite-se. Feche os olhos quando iniciar o timer.'}
                 totalSeconds={practiceTotalSeconds}
                 remainingSeconds={remaining}
                 isRunning={timerStatus === 'running'}
@@ -307,7 +310,7 @@ export default function D7PlayablePractice({
                 onReset={timerStatus === 'idle' ? onResetPractice : null}
                 onComplete={timerStatus === 'complete' ? handleSilenceComplete : null}
                 completeDisabled={timerStatus !== 'complete'}
-                startLabel={timerStatus === 'paused' ? 'Retomar silêncio' : isPracticeDone ? 'Iniciar prática livre' : 'Iniciar silêncio'}
+                startLabel={timerStatus === 'paused' ? 'Retomar silêncio' : isPracticeDone ? 'Iniciar prática livre' : 'Iniciar sessão oficial'}
                 pauseLabel="Pausar"
                 cancelLabel="Cancelar prática"
                 resetLabel="Reiniciar seleção"
@@ -316,7 +319,7 @@ export default function D7PlayablePractice({
                 ariaLabel={'Tempo restante ' + formatTime(remaining)}
               >
                 <div className="silence-audio-panel" aria-live="polite">
-                  <p>Você pode permanecer em silêncio ou ativar o mantra de apoio.</p>
+                  <p>O mantra é opcional. A sessão oficial conta pelo tempo cumprido.</p>
                   <div className="silence-audio-actions">
                     <button type="button" className="mini-action" onClick={handlePlayMantra} disabled={!audioPlayback.enabled || audioPlayback.isAudioPlaying || timerStatus === 'complete'}>Tocar mantra</button>
                     <button type="button" className="mini-action" onClick={handlePauseMantra} disabled={!audioPlayback.isAudioPlaying}>Pausar áudio</button>
@@ -334,7 +337,7 @@ export default function D7PlayablePractice({
             <div className="word-orb" aria-hidden="true">?</div>
             <form className="playable-word-form" onSubmit={handleRecordWord}>
               <span className="overline">Palavra final</span>
-              <h3 id="word-stage-title">Qual palavra ficou?</h3>
+              <h3 id="word-stage-title">Qual palavra ficou depois do silêncio?</h3>
               <input
                 className={word.trim() ? 'has-value' : ''}
                 value={word}
@@ -344,7 +347,7 @@ export default function D7PlayablePractice({
                 aria-describedby={wordAttempted && !word.trim() ? 'practice-word-alert' : undefined}
                 autoFocus
               />
-              {wordAttempted && !word.trim() && <small id="practice-word-alert" className="playable-word-alert" role="alert">Digite uma palavra para selar a prática.</small>}
+              {wordAttempted && !word.trim() && <small id="practice-word-alert" className="playable-word-alert" role="alert">Digite uma palavra para registrar sua reflexão.</small>}
               <button type="submit" className="primary-action">Registrar Palavra</button>
             </form>
           </section>
@@ -354,7 +357,7 @@ export default function D7PlayablePractice({
           <section key="card" className="card-stage playable-stage" aria-labelledby="card-stage-title">
             <article className="revealed-card">
               <span className="overline">Carta revelada</span>
-              <p className="revealed-card__intro">Um símbolo respondeu ao seu retorno.</p>
+              <p className="revealed-card__intro">Uma marca simbólica registrou sua constância.</p>
               <div className="revealed-card__glyph" aria-hidden="true">{card.symbol}</div>
               <h3 id="card-stage-title">{card.title}</h3>
               <small>{card.kind} · {card.track}</small>
@@ -369,15 +372,18 @@ export default function D7PlayablePractice({
           <section key="level-up" className="level-stage playable-stage" aria-labelledby="level-stage-title">
             <div className="level-ring" aria-hidden="true"><span>Nv. {currentLevel}</span></div>
             <div className="level-copy">
-              <span className="overline">Avanço de nível</span>
-              <h3 id="level-stage-title">Ciclo registrado</h3>
+              <span className="overline">Avanço oficial</span>
+              <h3 id="level-stage-title">{summary?.firstPhaseCompleted ? 'Você concluiu a Primeira Fase do Maiindy Game.' : 'Ciclo registrado'}</h3>
+              {summary?.firstPhaseCompleted && <p className="medal-copy">35 dias. 5 categorias. Um compromisso cumprido. Medalha de Honra da Primeira Fase desbloqueada.</p>}
               <div className="level-grid">
                 <article><span>Código concluído</span><strong>{summary?.completedCode ?? journeyCode}</strong></article>
                 <article><span>Próximo código</span><strong>{summary?.nextCode ?? nextJourneyCode}</strong></article>
-                <article><span>XP</span><strong>{state.xp}</strong><small>{summary ? '+' + summary.xpGained : 'total'}</small></article>
-                <article><span>Centelhas</span><strong>{state.sparks}</strong><small>{summary ? '+' + summary.sparksGained : 'total'}</small></article>
+                <article><span>Dia</span><strong>{summary?.dayNumber ?? officialJourney?.dayNumber}/{summary?.totalDays ?? 35}</strong><small>{summary?.progressPercent ?? officialJourney?.progressPercent}%</small></article>
                 <article><span>Streak</span><strong>{state.progress?.streak ?? 0}</strong><small>dias</small></article>
+                <article><span>Reinícios</span><strong>{summary?.resets ?? state.progress?.resets ?? 0}</strong><small>histórico preservado</small></article>
+                <article><span>Medalha</span><strong>{summary?.honorMedalUnlocked ? 'Honra' : 'Pendente'}</strong><small>Primeira Fase</small></article>
               </div>
+              <p className="level-message">Falhar não é o fim — é uma lição. Reiniciar não apaga sua história; reforça seu compromisso.</p>
               {state.lastUnlocks?.length > 0 && <div className="unlock-feed" aria-live="polite">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
               <div className="playable-actions">
                 <button type="button" className="primary-action" onClick={() => onNavigate?.('jornada')}>Ir para Jornada</button>

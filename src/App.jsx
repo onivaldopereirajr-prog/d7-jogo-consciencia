@@ -1,18 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { codexCards, dualBridges, hebrewLetters, hebrewWords, sanskritItems } from './data/codex.js'
-import { dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
+import { HONOR_MEDAL_ID, OFFICIAL_JOURNEY_DAYS, dayPhrases, missions, navItems, portals, weeks } from './data/game.js'
 import {
   advanceProgress,
   cardById,
   completePractice,
   ensureToday,
   getJourneyCode,
+  getJourneyDayNumber,
+  getJourneyProgressPercent,
+  getOfficialJourneySummary,
   getStage,
   missionStatus,
   openPortal,
   playerLevel,
   recordVisit,
   recordWord,
+  restartOfficialJourney,
   studyCard,
 } from './utils/gameState.js'
 import { deleteUser, getCurrentUser, getPublicUsers, loginUser, logout, registerUser, resetLocalPassword } from './services/localAuth.js'
@@ -602,7 +606,7 @@ function App() {
   const initialUser = getCurrentUser()
   const initialRoute = readHashRoute()
   const initialState = initialUser ? getUserState(initialUser) : ensureToday(getUserState(null))
-  const initialPracticeMinutes = normalizePracticeMinutes(initialState.lastPracticeDurationMinutes ?? 7)
+  const initialPracticeMinutes = getStage(initialState.progress).minutes
   const [currentUser, setCurrentUser] = useState(() => initialUser)
   const [showEntrance, setShowEntrance] = useState(() => shouldShowInitialEntrance(initialUser, initialRoute.adminLocal))
   const [language, setLanguage] = useState(() => getStoredLanguage())
@@ -639,6 +643,7 @@ function App() {
 
   const stage = getStage(state.progress)
   const journeyCode = getJourneyCode(state.progress)
+  const officialJourney = getOfficialJourneySummary(state.progress)
   const nextJourneyCode = getJourneyCode(advanceProgress(state.progress))
   const practiceTotalSeconds = practiceDurationMinutes * 60
   const timerSynced = timer.journeyCode === journeyCode
@@ -653,7 +658,7 @@ function App() {
   const phrase = dayPhrases[(state.progress.day - 1) % dayPhrases.length]
   const rank = localRanking(currentUser?.id)
   const practiceHasPrimaryReward = !state.daily.practice
-  const practicePreview = practiceRewardPreview(practiceDurationMinutes, practiceHasPrimaryReward)
+  const practicePreview = practiceRewardPreview(stage.minutes, practiceHasPrimaryReward && !state.progress.restartRequired && !state.progress.firstPhaseCompleted)
   const t = (path) => translate(language, path)
   const localSummaries = getAllLocalSummaries()
   const analyticsSummary = summarizeLocalEvents(localSummaries)
@@ -689,6 +694,16 @@ function App() {
     presenceStateRef.current = state
     presenceViewRef.current = activeView
   }, [activeView, state])
+
+  useEffect(() => {
+    if (timerStatus === 'running') return
+    const officialMinutes = stage.minutes
+    if (practiceDurationMinutes === officialMinutes && timer.remaining === officialMinutes * 60 && timer.journeyCode === journeyCode) return
+    setPracticeDurationMinutes(officialMinutes)
+    setPracticeDurationInput(String(officialMinutes))
+    setPracticeDurationError('')
+    setTimer((current) => ({ ...current, journeyCode, remaining: officialMinutes * 60, status: 'idle', startedAt: null, expectedEndAt: null }))
+  }, [journeyCode, practiceDurationMinutes, stage.minutes, timer.journeyCode, timer.remaining, timerStatus])
 
   useEffect(() => {
     if (!currentUser) return undefined
@@ -912,29 +927,15 @@ function App() {
     return normalizedMinutes
   }
 
-  function handlePracticeDurationChange(minutes) {
-    const normalizedMinutes = normalizePracticeMinutes(minutes)
-    setPracticeDurationMinutes(normalizedMinutes)
-    setPracticeDurationInput(String(normalizedMinutes))
-    setPracticeDurationError('')
-    if (timerStatus !== 'running' && timerStatus !== 'complete') {
-      syncPracticeTimer(normalizedMinutes)
-    }
+  function handlePracticeDurationChange() {
+    setPracticeDurationMinutes(stage.minutes)
+    setPracticeDurationInput(String(stage.minutes))
+    setPracticeDurationError('O modo oficial usa o tempo fixo da categoria atual.')
+    if (timerStatus !== 'running' && timerStatus !== 'complete') syncPracticeTimer(stage.minutes)
   }
 
-  function handlePracticeCustomInput(value) {
-    const raw = String(value)
-    setPracticeDurationInput(raw)
-    if (!raw.trim()) {
-      setPracticeDurationError('')
-      return
-    }
-    const parsed = Number(raw)
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 108) {
-      setPracticeDurationError('Escolha um número inteiro entre 1 e 108 minutos.')
-      return
-    }
-    handlePracticeDurationChange(parsed)
+  function handlePracticeCustomInput() {
+    handlePracticeDurationChange()
   }
 
   async function handleStartPractice() {
@@ -943,7 +944,11 @@ function App() {
       trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' }, activeView)
       updatePresence(currentUser, state, activeView, 'practice_started')
     }
-    const normalizedMinutes = normalizePracticeMinutes(practiceDurationMinutes)
+    if (state.progress.restartRequired) {
+      setPracticeDurationError('Recomece em A1 antes de iniciar uma nova sessão oficial.')
+      return undefined
+    }
+    const normalizedMinutes = stage.minutes
     const total = timerStatus === 'paused' ? Math.max(1, timer.remaining) : normalizedMinutes * 60
     const startedAt = Date.now()
     mantraCompletionFadeRef.current = false
@@ -1057,7 +1062,7 @@ function App() {
     const beforeXp = state.xp
     const beforeSparks = state.sparks
     const beforeTokens = state.tokenBalance ?? 0
-    const nextProgress = recordVisit(completePractice(state, { durationMinutes: practiceDurationMinutes, rewardMode }), 'jornada')
+    const nextProgress = recordVisit(completePractice(state, { durationMinutes: stage.minutes, rewardMode }), 'jornada')
     const newCardId = nextProgress.unlockedCards.find((id) => !beforeCards.has(id))
     const revealedCard = practiceCardPayload(cardById(newCardId) ?? cardById(nextProgress.unlockedCards[nextProgress.unlockedCards.length - 1]))
     if (currentUser?.id) {
@@ -1066,7 +1071,10 @@ function App() {
       trackAdminEvent(currentUser, 'd7t_earned', { amount: Math.max(0, (nextProgress.tokenBalance ?? 0) - beforeTokens) }, activeView)
     }
     setState(nextProgress)
-    setTimer({ journeyCode: getJourneyCode(nextProgress.progress), startedAt: null, expectedEndAt: null, remaining: practiceDurationMinutes * 60, status: 'idle' })
+    const nextOfficialMinutes = getStage(nextProgress.progress).minutes
+    setPracticeDurationMinutes(nextOfficialMinutes)
+    setPracticeDurationInput(String(nextOfficialMinutes))
+    setTimer({ journeyCode: getJourneyCode(nextProgress.progress), startedAt: null, expectedEndAt: null, remaining: nextOfficialMinutes * 60, status: 'idle' })
     setPracticeCelebration(true)
     window.setTimeout(() => setPracticeCelebration(false), 1600)
     return {
@@ -1075,7 +1083,23 @@ function App() {
       xpGained: Math.max(0, nextProgress.xp - beforeXp),
       sparksGained: Math.max(0, nextProgress.sparks - beforeSparks),
       revealedCard,
+      dayNumber: getJourneyDayNumber(state.progress),
+      totalDays: OFFICIAL_JOURNEY_DAYS,
+      progressPercent: getJourneyProgressPercent(nextProgress.progress),
+      resets: nextProgress.progress.resets ?? 0,
+      firstPhaseCompleted: Boolean(nextProgress.progress.firstPhaseCompleted),
+      honorMedalUnlocked: Boolean(nextProgress.honorMedals?.includes(HONOR_MEDAL_ID)),
     }
+  }
+
+  function handleRestartOfficialJourney() {
+    const restarted = restartOfficialJourney(state)
+    const officialMinutes = getStage(restarted.progress).minutes
+    setState(restarted)
+    setPracticeDurationMinutes(officialMinutes)
+    setPracticeDurationInput(String(officialMinutes))
+    setPracticeDurationError('')
+    setTimer({ journeyCode: getJourneyCode(restarted.progress), startedAt: null, expectedEndAt: null, remaining: officialMinutes * 60, status: 'idle' })
   }
 
   function submitWord(event) {
@@ -1218,14 +1242,26 @@ function App() {
               </div>
               <div className="home-next-action">
                 <UserAvatar user={currentUser} progress={state} showMeta />
-                <div><span className="overline">Próxima ação</span><strong>{state.daily.practice ? 'Estudar Biblioteca ou entrar na Sala D7' : `Prática ritual de ${practiceDurationMinutes} min`}</strong><p>{recommendedLibraryCard ? `Estudo recomendado: ${recommendedLibraryCard.title}` : 'Acompanhe seu ciclo e mantenha presença.'}</p></div>
+                <div><span className="overline">Próxima ação</span><strong>{state.progress.restartRequired ? 'Recomeçar em A1' : state.daily.practice ? 'Estudar Biblioteca ou entrar na Sala D7' : `Sessão oficial de ${stage.minutes} min`}</strong><p>{state.progress.restartRequired ? 'Você perdeu um dia. O compromisso recomeça sem apagar sua história.' : recommendedLibraryCard ? `Estudo recomendado: ${recommendedLibraryCard.title}` : 'Acompanhe seu ciclo e mantenha presença.'}</p></div>
               </div>
             </div>
             <div className="dashboard-stack">
-              <StatCard label="Meta atual" value={`${stage.minutes} min`} detail={`${journeyCode} · ${phrase}`} />
+              <StatCard label="Semana" value={`${officialJourney.weekNumber}/5`} detail={`Dia ${officialJourney.dayNumber}/35 · ${journeyCode}`} />
+              <StatCard label="Tempo oficial" value={`${stage.minutes} min`} detail="consistência, não velocidade" />
+              <StatCard label="Categoria" value={stage.id} detail={stage.name} />
               <StreakFire state={state} />
-              <StatCard label="Trilha Hebraica" value={`${hebrewUnlocked}/${hebrewLetters.length + hebrewWords.length}`} detail="letras e palavras" />
-              <StatCard label="Trilha Sânscrita" value={`${sanskritUnlocked}/${sanskritItems.length}`} detail="sons, mantras e estados" />
+              <StatCard label="Melhor nível" value={state.progress.bestCode ?? journeyCode} detail={`${state.progress.resets ?? 0} reinício(s)`} />
+              <StatCard label="Medalha de Honra" value={state.honorMedals?.includes(HONOR_MEDAL_ID) ? 'Desbloqueada' : 'Pendente'} detail="Primeira Fase" />
+              <article className="community-checkin-card">
+                <span className="overline">Comunidade</span>
+                <h3>Compartilhe seu check-in</h3>
+                <p>Sem julgamentos. Apenas compromisso, respeito e encorajamento.</p>
+                <div className="community-checkin-tags" aria-label="Hashtags sugeridas">
+                  <span>#MaiindyGame</span>
+                  <span>{`#MeuNivel${journeyCode}`}</span>
+                  <span>#MedalhaEH7</span>
+                </div>
+              </article>
               <div className="mission-panel compact-panel home-seal-panel">
                 <div className="seal-pair" aria-hidden="true">
                   <img src={visualAssets.sealD7} alt="" />
@@ -1251,18 +1287,24 @@ function App() {
 
         {activeView === 'jornada' && (
           <section className="content-section">
-            <SectionTitle eyebrow="Mapa A1-D7" title="Jornada transcendental">A duração sobe por semana. Se um dia for esquecido, a jornada retorna para A1 e registra o Selo do Retorno.</SectionTitle>
+            <SectionTitle eyebrow="Mapa A1-E7" title="Primeira Fase Maiindy">35 dias, 5 categorias e tempo fixo por categoria. O sucesso aqui não é medido por velocidade, mas por consistência.</SectionTitle>
+            <div className="official-progress-band">
+              <div><span className="overline">Progresso geral</span><strong>Dia {officialJourney.dayNumber}/35</strong><p>{officialJourney.progressPercent}% da Primeira Fase</p></div>
+              <ProgressLine value={officialJourney.dayNumber} max={OFFICIAL_JOURNEY_DAYS} label="Progresso da Primeira Fase" />
+              {state.progress.restartRequired && <button type="button" className="primary-action" onClick={handleRestartOfficialJourney}>Recomeçar em A1</button>}
+            </div>
             <div className="journey-board">
               {weeks.map((week, weekIndex) => {
                 const portal = portals.find((item) => item.week === week.id)
                 const complete = state.progress.completedDays.includes(`${week.id}7`)
                 return (
                   <article key={week.id} className="week-card" style={{ '--week': week.color }}>
-                    <div className="week-head"><span>Semana {week.id}</span><strong>{week.minutes} min</strong></div>
-                    <div className="portal-seal">{portal.seal}</div>
-                    <img className="week-portal-art" src={portalArtById[portal.id]} alt="" />
+                    <div className="week-head"><span>Semana {week.week} de 5 · Categoria {week.id}</span><strong>{week.minutes} min</strong></div>
+                    <div className="portal-seal">{portal?.seal ?? week.seal}</div>
+                    {portalArtById[portal?.id] && <img className="week-portal-art" src={portalArtById[portal.id]} alt="" />}
                     <h3>{week.name}</h3>
                     <p>{week.intent}</p>
+                    <small>Tempo oficial fixo: {week.minutes} minuto(s) por sessão.</small>
                     <div className="day-grid">
                       {Array.from({ length: 7 }, (_, index) => {
                         const day = index + 1
@@ -1273,9 +1315,9 @@ function App() {
                       })}
                     </div>
                     <ProgressLine value={Array.from({ length: 7 }, (_, index) => `${week.id}${index + 1}`).filter((day) => state.progress.completedDays.includes(day)).length} max={7} label={`Progresso da semana ${week.id}`} />
-                    <button type="button" className="mini-action" disabled={!complete || state.openedPortals.includes(portal.id)} onClick={() => setState((current) => openPortal(current, portal.id))}>
-                      {state.openedPortals.includes(portal.id) ? 'Portal aberto' : complete ? 'Abrir portal' : 'Portal selado'}
-                    </button>
+                    {portal && <button type="button" className="mini-action" disabled={!complete || state.openedPortals.includes(portal.id)} onClick={() => setState((current) => openPortal(current, portal.id))}>
+                      {state.openedPortals.includes(portal.id) ? 'Portal aberto' : complete ? 'Abrir portal' : week.id === 'E' ? 'Medalha selada' : 'Portal selado'}
+                    </button>}
                   </article>
                 )
               })}
@@ -1284,7 +1326,7 @@ function App() {
               {portals.map((portal) => (
                 <article key={portal.id} className={`portal-card ${state.openedPortals.includes(portal.id) ? 'open' : ''}`}>
                   <div className="portal-icon">{portal.seal}</div>
-                  <img className="portal-card-art" src={portalArtById[portal.id]} alt="" />
+                  {portalArtById[portal.id] && <img className="portal-card-art" src={portalArtById[portal.id]} alt="" />}
                   <h3>{portal.name}</h3>
                   <p>{portal.phrase}</p>
                   <small>{portal.reward}</small>
@@ -1302,6 +1344,8 @@ function App() {
             phrase={phrase}
             state={state}
             practiceCelebration={practiceCelebration}
+            officialJourney={officialJourney}
+            onRestartOfficialJourney={handleRestartOfficialJourney}
             practiceDurationMinutes={practiceDurationMinutes}
             practiceDurationInput={practiceDurationInput}
             practiceDurationError={practiceDurationError}
@@ -1437,12 +1481,14 @@ function App() {
             <div className="inventory-card">
               <SectionTitle eyebrow="Perfil do jogador" title="Progressão e Selos" />
               <div className="profile-stats">
-                <StatCard label="Ciclo" value={journeyCode} detail={stage.name} />
+                <StatCard label="Ciclo" value={journeyCode} detail={`Semana ${officialJourney.weekNumber}/5 · Dia ${officialJourney.dayNumber}/35`} />
                 <StatCard label="Sequência" value={state.progress.streak} detail="dias ativos" />
                 <StatCard label="Cartas" value={state.unlockedCards.length} detail={`${codexCards.length} totais`} />
                 <StatCard label="Missões" value={state.completedMissions.length} detail="ativas concluídas" />
                 <StatCard label="Biblioteca" value={`${libraryStats.studiedCardsCount}/${libraryStats.unlockedStudyCount}`} detail={libraryStats.title} />
-                <StatCard label="Portais" value={state.openedPortals.length} detail="4 possíveis" />
+                <StatCard label="Portais" value={state.openedPortals.length} detail="5 possíveis" />
+                <StatCard label="Reinícios" value={state.progress.resets ?? 0} detail={`melhor ${state.progress.bestCode ?? journeyCode}`} />
+                <StatCard label="Medalha de Honra" value={state.honorMedals?.includes(HONOR_MEDAL_ID) ? 'sim' : 'não'} detail="Primeira Fase" />
                 <StatCard label="Códigos" value={state.unlockedCodes.length} detail="8 possíveis" />
                 <StatCard label="Minutos rituais" value={state.ritualMinutesTotal ?? 0} detail="21/108 simbólico" />
                 <StatCard label="D7 Tokens" value={state.tokenBalance ?? 0} detail="simbólicos MVP" />

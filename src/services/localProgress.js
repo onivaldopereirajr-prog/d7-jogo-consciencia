@@ -1,5 +1,5 @@
-import { mockPlayers } from '../data/game.js'
-import { STORAGE_KEY, LEGACY_KEY, ensureToday, getJourneyCode, getStage, loadState, makeInitialState, normalizeState, playerLevel } from '../utils/gameState.js'
+import { HONOR_MEDAL_ID, mockPlayers } from '../data/game.js'
+import { STORAGE_KEY, LEGACY_KEY, ensureToday, getJourneyCode, getJourneyDayNumber, getJourneyProgressPercent, getStage, loadState, makeInitialState, normalizeState, playerLevel } from '../utils/gameState.js'
 import { getRankingScore, getSealGateScore, getUserSealEvents } from './sealEngine.js'
 import { getLibraryStudyStats } from './libraryEngine.js'
 import { safeGetStorage, safeRemoveStorage, safeSetStorage } from '../utils/storageSafe.js'
@@ -74,7 +74,16 @@ export function userProgressSummary(user, state) {
     user: publicUser(user),
     currentStage: getJourneyCode(current.progress),
     currentWeek: stage.id,
+    currentWeekNumber: stage.week ?? current.progress.weekIndex + 1,
     currentDay: current.progress.day,
+    officialDayNumber: getJourneyDayNumber(current.progress),
+    officialProgressPercent: getJourneyProgressPercent(current.progress),
+    officialMinutes: stage.minutes,
+    bestStage: current.progress.bestCode ?? getJourneyCode(current.progress),
+    resets: current.progress.resets ?? 0,
+    restartRequired: Boolean(current.progress.restartRequired),
+    firstPhaseCompleted: Boolean(current.progress.firstPhaseCompleted),
+    honorMedalUnlocked: Boolean(current.honorMedals?.includes(HONOR_MEDAL_ID) || current.unlockedCodes?.includes(HONOR_MEDAL_ID)),
     xp: current.xp,
     sparks: current.sparks,
     level: playerLevel(current.xp),
@@ -103,6 +112,7 @@ export function userProgressSummary(user, state) {
     lastPracticeDate: current.progress.lastPracticeDate,
     cards: current.unlockedCards,
     medals: current.unlockedCodes,
+    honorMedals: current.honorMedals ?? [],
     portals: current.openedPortals,
     practiceHistory: current.sessions,
     updatedAt: current.updatedAt ?? null,
@@ -145,6 +155,9 @@ export function localRanking(currentUserId) {
     ritualMinutesTotal: summary.ritualMinutesTotal ?? 0,
     ritualMilestonesUnlocked: summary.ritualMilestonesUnlocked ?? [],
     stage: summary.currentStage,
+    bestStage: summary.bestStage,
+    resets: summary.resets ?? 0,
+    honorMedalUnlocked: summary.honorMedalUnlocked,
     score: summary.score,
     libraryCardsStudied: summary.libraryCardsStudied ?? 0,
     libraryModulesCompleted: summary.libraryModulesCompleted ?? 0,

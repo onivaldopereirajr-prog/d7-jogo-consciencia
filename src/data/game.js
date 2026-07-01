@@ -1,9 +1,14 @@
 export const weeks = [
-  { id: 'A', name: 'O Chamado', minutes: 1, color: '#20d3ee', intent: 'Abrir o campo e aceitar o primeiro minuto de presença.' },
-  { id: 'B', name: 'A Permanência', minutes: 2, color: '#d4af37', intent: 'Ficar quando a mente pede saída.' },
-  { id: 'C', name: 'A Observação', minutes: 3, color: '#a78bfa', intent: 'Ver pensamentos como movimentos do campo.' },
-  { id: 'D', name: 'O Ciclo Completo', minutes: 4, color: '#48d388', intent: 'Integrar silêncio, foco e constância.' },
+  { id: 'A', name: 'Iniciante', week: 1, minutes: 1, color: '#20d3ee', seal: '△', intent: 'Início suave: construa o hábito de fechar os olhos diariamente, sem pressa.' },
+  { id: 'B', name: 'Consolidação', week: 2, minutes: 2, color: '#d4af37', seal: '◈', intent: 'Evolução: aumente o tempo para aprofundar o foco.' },
+  { id: 'C', name: 'Avanço', week: 3, minutes: 3, color: '#a78bfa', seal: '⬡', intent: 'Intensificação: sinta o compromisso se solidificar.' },
+  { id: 'D', name: 'Maestria', week: 4, minutes: 4, color: '#48d388', seal: '✺', intent: 'Desafio: teste sua resiliência em sessões mais longas.' },
+  { id: 'E', name: 'Culminação', week: 5, minutes: 5, color: '#ffcf5a', seal: '✦', intent: 'Grande Final: culmine com maestria e receba a Medalha de Honra em E7.' },
 ]
+
+export const OFFICIAL_JOURNEY_DAYS = weeks.length * 7
+export const HONOR_MEDAL_ID = 'honor-first-phase'
+export const HONOR_MEDAL_NAME = 'Medalha de Honra da Primeira Fase'
 
 export const navItems = [
   { id: 'home', label: 'Home', icon: '◇' },
@@ -24,7 +29,7 @@ export const missions = {
     { id: 'daily-ranking', title: 'Visitar o Ranking', reward: '+10 XP', type: 'visit', view: 'ranking' },
   ],
   weekly: [
-    { id: 'weekly-a7', title: 'Completar A7, B7, C7 ou D7', reward: 'Selo de semana' },
+    { id: 'weekly-a7', title: 'Completar o sétimo nível de uma categoria', reward: 'Selo de semana' },
     { id: 'weekly-hebrew-3', title: 'Desbloquear 3 cartas hebraicas', reward: 'Fragmento hebraico' },
     { id: 'weekly-sanskrit-3', title: 'Desbloquear 3 cartas sânscritas', reward: 'Fragmento sânscrito' },
     { id: 'weekly-code', title: 'Resolver 1 código', reward: 'Chave simbólica' },
@@ -33,10 +38,11 @@ export const missions = {
 }
 
 export const portals = [
-  { id: 'portal-a', week: 'A', name: 'Portal A: O Chamado', seal: '△', phrase: 'Toda jornada começa quando o ruído perde autoridade.', reward: '+120 XP · Carta rara Alef-Om', rareCard: 'Alef-Om' },
-  { id: 'portal-b', week: 'B', name: 'Portal B: A Permanência', seal: '◈', phrase: 'Permanecer é vencer a negociação invisível.', reward: '+160 XP · Carta rara Or-Śānti', rareCard: 'Or-Śānti' },
-  { id: 'portal-c', week: 'C', name: 'Portal C: A Observação', seal: '⬡', phrase: 'O observador não precisa empurrar o mundo.', reward: '+200 XP · Carta rara Ruach-Prāṇa', rareCard: 'Ruach-Prāṇa' },
-  { id: 'portal-d', week: 'D', name: 'Portal D: O Ciclo Completo', seal: '✺', phrase: 'Quando o ciclo fecha, a presença deixa uma assinatura.', reward: '+280 XP · Carta rara Selo D7', rareCard: 'Selo D7' },
+  { id: 'portal-a', week: 'A', name: 'Portal A: Iniciante', seal: '△', phrase: 'Toda jornada começa quando o ruído perde autoridade.', reward: '+120 XP · Carta rara Alef-Om', rareCard: 'Alef-Om' },
+  { id: 'portal-b', week: 'B', name: 'Portal B: Consolidação', seal: '◈', phrase: 'Permanecer é vencer a negociação invisível.', reward: '+160 XP · Carta rara Or-Śānti', rareCard: 'Or-Śānti' },
+  { id: 'portal-c', week: 'C', name: 'Portal C: Avanço', seal: '⬡', phrase: 'O observador não precisa empurrar o mundo.', reward: '+200 XP · Carta rara Ruach-Prāṇa', rareCard: 'Ruach-Prāṇa' },
+  { id: 'portal-d', week: 'D', name: 'Portal D: Maestria', seal: '✺', phrase: 'Quando o ciclo fecha, a presença deixa uma assinatura.', reward: '+280 XP · Carta rara Selo D7', rareCard: 'Selo D7' },
+  { id: 'portal-e', week: 'E', name: 'Portal E: Culminação', seal: '✦', phrase: '35 dias. 5 categorias. Um compromisso cumprido.', reward: 'Medalha de Honra da Primeira Fase', rareCard: 'Medalha de Honra' },
 ]
 
 export const codes = [
@@ -47,7 +53,8 @@ export const codes = [
   { id: 'seal-d7', name: 'Selo D7', glyph: 'D7', unlock: 'Complete D7.', bridge: 'bridge-d7' },
   { id: 'seal-return', name: 'Selo do Retorno', glyph: '↺', unlock: 'Retorne conscientemente após quebra de sequência.' },
   { id: 'seal-stay', name: 'Selo da Permanência', glyph: '◉', unlock: 'Mantenha 3 dias de sequência.' },
-  { id: 'seal-cycle', name: 'Selo do Ciclo Completo', glyph: '◎', unlock: 'Abra os quatro portais.' },
+  { id: 'seal-cycle', name: 'Selo do Ciclo Completo', glyph: '◎', unlock: 'Abra os portais da jornada.' },
+  { id: HONOR_MEDAL_ID, name: HONOR_MEDAL_NAME, glyph: '✦', unlock: 'Complete E7 na Primeira Fase.' },
 ]
 
 export const mockPlayers = [

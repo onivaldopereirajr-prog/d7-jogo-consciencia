@@ -238,6 +238,110 @@ function practiceRewardPreview(minutes, hasPrimaryReward) {
   }
 }
 
+function getNextUnlockInfo(state, t = (path) => path) {
+  const current = ensureToday(state)
+  const stage = getStage(current.progress)
+  const currentCode = getJourneyCode(current.progress)
+  const nextCode = getJourneyCode(advanceProgress(current.progress))
+  const portal = portals.find((item) => item.week === stage.id)
+  const completedInStage = Array.from({ length: 7 }, (_, index) => `${stage.id}${index + 1}`).filter((code) => current.progress.completedDays.includes(code)).length
+  const daysToPortal = Math.max(0, 7 - completedInStage)
+
+  if (current.progress.restartRequired) {
+    return {
+      title: t('core.nextUnlock.returnTitle'),
+      text: t('core.nextUnlock.returnText'),
+      detail: t('core.nextUnlock.returnDetail'),
+      progressValue: 0,
+      progressMax: 7,
+      daysRemaining: 7,
+      nextCode: 'A1',
+    }
+  }
+
+  if (current.progress.firstPhaseCompleted) {
+    return {
+      title: t('core.nextUnlock.completeTitle'),
+      text: t('core.nextUnlock.completeText'),
+      detail: t('core.nextUnlock.completeDetail'),
+      progressValue: 7,
+      progressMax: 7,
+      daysRemaining: 0,
+      nextCode: currentCode,
+    }
+  }
+
+  if (daysToPortal <= 0) {
+    return {
+      title: t('core.nextUnlock.portalReadyTitle'),
+      text: portal?.name ? t('core.nextUnlock.portalReadyText').replace('{portal}', portal.name) : t('core.nextUnlock.portalReadyFallback'),
+      detail: t('core.nextUnlock.portalReadyDetail'),
+      progressValue: 7,
+      progressMax: 7,
+      daysRemaining: 0,
+      nextCode,
+    }
+  }
+
+  const portalName = portal?.name?.replace(/^Portal [A-E]:\s*/, '') ?? `${t('core.nextUnlock.weekSeal')} ${stage.id}`
+  const text = daysToPortal === 1
+    ? t('core.nextUnlock.oneDayText').replace('{portal}', portalName)
+    : t('core.nextUnlock.daysText').replace('{days}', daysToPortal).replace('{portal}', portalName)
+  const detail = t('core.nextUnlock.nextCodeDetail').replace('{code}', nextCode)
+
+  return {
+    title: t('core.nextUnlock.title'),
+    text,
+    detail,
+    progressValue: completedInStage,
+    progressMax: 7,
+    daysRemaining: daysToPortal,
+    nextCode,
+  }
+}
+
+function NextUnlockCard({ info, compact = false, t = (path) => path }) {
+  if (!info) return null
+  return (
+    <article className={compact ? 'next-unlock-card compact' : 'next-unlock-card'}>
+      <div className="next-unlock-head">
+        <span className="overline">{t('core.nextUnlock.eyebrow')}</span>
+        <strong>{info.title}</strong>
+      </div>
+      <p>{info.text}</p>
+      <ProgressLine value={info.progressValue} max={info.progressMax} label={t('core.nextUnlock.progressLabel')} />
+      <div className="next-unlock-meta">
+        <span>{info.daysRemaining === 0 ? t('core.nextUnlock.ready') : t('core.nextUnlock.daysRemaining').replace('{days}', info.daysRemaining)}</span>
+        <span>{info.detail}</span>
+      </div>
+    </article>
+  )
+}
+
+function WordJournal({ words = [], t = (path) => path, compact = false }) {
+  const recent = Array.isArray(words) ? words.slice(0, 3) : []
+  return (
+    <section className={compact ? 'word-journal compact' : 'word-journal'} aria-labelledby={compact ? 'word-journal-compact-title' : 'word-journal-title'}>
+      <div className="word-journal-head">
+        <span className="overline">{t('core.wordJournal.eyebrow')}</span>
+        <h3 id={compact ? 'word-journal-compact-title' : 'word-journal-title'}>{t('core.wordJournal.title')}</h3>
+      </div>
+      {recent.length === 0 ? (
+        <p className="word-journal-empty">{t('core.wordJournal.empty')}</p>
+      ) : (
+        <div className="word-journal-list">
+          {recent.map((entry) => (
+            <article key={entry.id ?? `${entry.text}-${entry.date}`}>
+              <strong>{entry.text}</strong>
+              <span>{entry.date ?? t('core.wordJournal.today')}</span>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function cardUnlockHint(card) {
   const hints = {
     'he-alef': 'Requer: Código Alef-Om.',
@@ -672,6 +776,7 @@ function App() {
   const practiceHasPrimaryReward = !state.daily.practice
   const practicePreview = practiceRewardPreview(stage.minutes, practiceHasPrimaryReward && !state.progress.restartRequired && !state.progress.firstPhaseCompleted)
   const t = (path) => translate(language, path)
+  const nextUnlockInfo = getNextUnlockInfo(state, t)
   const localSummaries = getAllLocalSummaries()
   const analyticsSummary = summarizeLocalEvents(localSummaries)
 
@@ -708,7 +813,7 @@ function App() {
   }, [activeView, state])
 
   useEffect(() => {
-    if (timerStatus === 'running') return
+    if (timerStatus !== 'idle') return
     const officialMinutes = stage.minutes
     if (practiceDurationMinutes === officialMinutes && timer.remaining === officialMinutes * 60 && timer.journeyCode === journeyCode) return
     setPracticeDurationMinutes(officialMinutes)
@@ -1066,16 +1171,18 @@ function App() {
     }
   }
 
-  function finishPractice() {
+  function finishPractice(options = {}) {
     if (timerStatus !== 'complete') return null
     mantraAudioRef.current?.fadeOutAndStop()
+    const finalWord = typeof options.finalWord === 'string' ? options.finalWord.trim() : ''
+    const completionBaseState = finalWord ? recordWord(state, finalWord) : state
     const rewardMode = state.daily.practice ? 'free' : 'primary'
     const completedCode = journeyCode
     const beforeCards = new Set(state.unlockedCards)
     const beforeXp = state.xp
     const beforeSparks = state.sparks
     const beforeTokens = state.tokenBalance ?? 0
-    const nextProgress = recordVisit(completePractice(state, { durationMinutes: stage.minutes, rewardMode }), 'jornada')
+    const nextProgress = recordVisit(completePractice(completionBaseState, { durationMinutes: stage.minutes, rewardMode }), 'jornada')
     const newCardId = nextProgress.unlockedCards.find((id) => !beforeCards.has(id))
     const revealedCard = practiceCardPayload(cardById(newCardId) ?? cardById(nextProgress.unlockedCards[nextProgress.unlockedCards.length - 1]))
     if (currentUser?.id) {
@@ -1095,7 +1202,9 @@ function App() {
       nextCode: getJourneyCode(nextProgress.progress),
       xpGained: Math.max(0, nextProgress.xp - beforeXp),
       sparksGained: Math.max(0, nextProgress.sparks - beforeSparks),
+      d7tGained: Math.max(0, (nextProgress.tokenBalance ?? 0) - beforeTokens),
       revealedCard,
+      nextUnlock: getNextUnlockInfo(nextProgress, t),
       dayNumber: getJourneyDayNumber(state.progress),
       totalDays: OFFICIAL_JOURNEY_DAYS,
       progressPercent: getJourneyProgressPercent(nextProgress.progress),
@@ -1336,25 +1445,34 @@ function App() {
                     <Sigil label="א" tone="gold" />
                     <Sigil label="ॐ" tone="violet" />
                   </div>
-                  <span className="overline">Ciclo atual</span>
-                  <h2>{journeyCode} · {stage.name}</h2>
-                  <p className="home-portal-lead">Entre no estado de presença.</p>
-                  <p className="home-portal-copy">Sua prática oficial: {stage.minutes} minuto{stage.minutes === 1 ? '' : 's'} de silêncio, foco e respiração.</p>
+                  <span className="overline">{t('core.dailyRitual.eyebrow')}</span>
+                  <h2>{t('core.dailyRitual.title')}</h2>
+                  <p className="home-portal-lead">{state.progress.restartRequired ? t('core.dailyRitual.returnLead') : state.daily.practice ? t('core.dailyRitual.doneLead') : t('core.dailyRitual.openLead')}</p>
+                  <p className="home-portal-copy">{t('core.dailyRitual.copy').replace('{code}', journeyCode).replace('{stage}', stage.name).replace('{minutes}', stage.minutes)}</p>
                   <div className="home-portal-meta">
-                    <span>Dia {officialJourney.dayNumber}/35</span>
-                    <span>Semana {officialJourney.weekNumber}/5</span>
-                    <span>Categoria {stage.id}</span>
+                    <span>{journeyCode} · {stage.name}</span>
+                    <span>{t('core.dailyRitual.day').replace('{day}', officialJourney.dayNumber).replace('{total}', OFFICIAL_JOURNEY_DAYS)}</span>
+                    <span>{t('core.dailyRitual.week').replace('{week}', officialJourney.weekNumber)}</span>
+                    <span>{t('core.dailyRitual.officialTime').replace('{minutes}', stage.minutes)}</span>
                   </div>
+                  <ol className="daily-ritual-steps" aria-label={t('core.dailyRitual.stepsLabel')}>
+                    <li className="active"><span>1</span><strong>{t('core.dailyRitual.prepare')}</strong><small>{t('core.dailyRitual.prepareHint')}</small></li>
+                    <li className={timerStatus === 'running' || state.daily.practice ? 'active' : ''}><span>2</span><strong>{t('core.dailyRitual.silence')}</strong><small>{t('core.dailyRitual.silenceHint')}</small></li>
+                    <li className={state.daily.word ? 'active' : ''}><span>3</span><strong>{t('core.dailyRitual.name')}</strong><small>{t('core.dailyRitual.nameHint')}</small></li>
+                  </ol>
                   <div className="hero-actions home-portal-actions">
-                    <button type="button" className="primary-action home-primary-action" onClick={() => navigate('pratica')}>{state.progress.restartRequired ? 'Recomeçar em A1' : 'Entrar no Nada'}</button>
-                    <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Biblioteca</button>
-                    <button type="button" className="ghost-action" onClick={() => navigate('codice')}>Códice</button>
-                    <button type="button" className="ghost-action" onClick={() => navigate('pratica')}>Técnicas de Respiração</button>
-                    <button type="button" className="ghost-action" onClick={replayEntrance}>Rever abertura</button>
+                    <button type="button" className="primary-action home-primary-action" onClick={() => navigate('pratica')}>{state.progress.restartRequired ? t('core.dailyRitual.restartCta') : t('core.dailyRitual.cta')}</button>
+                    <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>{t('nav.biblioteca')}</button>
+                    <button type="button" className="ghost-action" onClick={() => navigate('codice')}>{t('nav.codice')}</button>
+                    <button type="button" className="ghost-action" onClick={replayEntrance}>{t('core.dailyRitual.replay')}</button>
+                  </div>
+                  <div className="home-core-cards">
+                    <NextUnlockCard info={nextUnlockInfo} compact t={t} />
+                    <WordJournal words={state.wordLog} compact t={t} />
                   </div>
                   <div className="home-next-action home-next-action--portal">
                     <UserAvatar user={currentUser} progress={state} />
-                    <div><span className="overline">Agora</span><strong>{state.progress.restartRequired ? 'Compromisso renovado' : state.daily.practice ? 'Sessão oficial concluída' : 'Sessão oficial disponível'}</strong><p>{state.progress.restartRequired ? 'Reiniciar não apaga sua história; reforça seu compromisso.' : state.daily.practice ? 'Explore Biblioteca, Códice ou Sala sem pressão.' : 'O sucesso aqui não é velocidade. É consistência.'}</p></div>
+                    <div><span className="overline">{t('core.dailyRitual.now')}</span><strong>{state.progress.restartRequired ? t('core.dailyRitual.returnState') : state.daily.practice ? t('core.dailyRitual.doneState') : t('core.dailyRitual.readyState')}</strong><p>{state.progress.restartRequired ? t('core.dailyRitual.returnCopy') : state.daily.practice ? t('core.dailyRitual.afterCopy') : t('core.dailyRitual.readyCopy')}</p></div>
                   </div>
                 </div>
               </section>
@@ -1372,6 +1490,7 @@ function App() {
               <ProgressLine value={officialJourney.dayNumber} max={OFFICIAL_JOURNEY_DAYS} label="Progresso da Primeira Fase" />
               {state.progress.restartRequired && <button type="button" className="primary-action" onClick={handleRestartOfficialJourney}>Recomeçar em A1</button>}
             </div>
+            <NextUnlockCard info={nextUnlockInfo} t={t} />
             <div className="journey-board">
               {weeks.map((week, weekIndex) => {
                 const portal = portals.find((item) => item.week === week.id)
@@ -1437,6 +1556,7 @@ function App() {
             t={t}
             recommendedLibraryCard={recommendedLibraryCard}
             fallbackCard={cardById(state.unlockedCards[state.unlockedCards.length - 1])}
+            nextUnlock={nextUnlockInfo}
             currentLevel={playerLevel(state.xp)}
             onDurationChange={handlePracticeDurationChange}
             onCustomDurationChange={handlePracticeCustomInput}

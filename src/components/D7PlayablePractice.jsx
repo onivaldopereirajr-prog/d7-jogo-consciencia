@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_BREATHING_TECHNIQUE_ID, breathingTechniques, fallbackBreathingTechnique, getBreathingTechnique } from '../data/breathingTechniques.js'
 import D7MantraPlayer from './D7MantraPlayer.jsx'
 import D7PulseTimer from './D7PulseTimer.jsx'
@@ -177,6 +177,7 @@ export default function D7PlayablePractice({
   t,
   recommendedLibraryCard,
   fallbackCard,
+  nextUnlock,
   currentLevel,
   onDurationChange,
   onCustomDurationChange,
@@ -196,13 +197,30 @@ export default function D7PlayablePractice({
   const [audioNotice, setAudioNotice] = useState('')
   const [selectedBreathingId, setSelectedBreathingId] = useState(readStoredBreathingTechniqueId)
   const [previewBreathingId, setPreviewBreathingId] = useState(() => selectedBreathingId === DEFAULT_BREATHING_TECHNIQUE_ID ? breathingTechniques[0]?.id ?? DEFAULT_BREATHING_TECHNIQUE_ID : selectedBreathingId)
+  const completionSubmittedRef = useRef(false)
   const isPracticeDone = Boolean(state.daily?.practice)
   const selectedBreathingTechnique = useMemo(() => getBreathingTechnique(selectedBreathingId), [selectedBreathingId])
   const previewBreathingTechnique = useMemo(() => getBreathingTechnique(previewBreathingId), [previewBreathingId])
   const card = useMemo(() => resolveCard(summary, recommendedLibraryCard, fallbackCard), [fallbackCard, recommendedLibraryCard, summary])
+  const completionUnlocks = useMemo(() => {
+    const messages = Array.isArray(state.lastUnlocks) ? state.lastUnlocks : []
+    if (!summary) return messages
+    return messages.map((item) => (
+      /^\+\d+\s+Centelhas$/.test(item) ? '+' + (summary.sparksGained ?? 0) + ' Centelhas' : item
+    ))
+  }, [state.lastUnlocks, summary])
 
   useEffect(() => {
     if (timerStatus === 'running' && step !== 'silence') setStep('silence')
+  }, [step, timerStatus])
+
+  useEffect(() => {
+    if (timerStatus === 'running') completionSubmittedRef.current = false
+  }, [timerStatus])
+
+  useEffect(() => {
+    if (timerStatus !== 'complete' || step !== 'silence') return
+    setStep('word')
   }, [step, timerStatus])
 
   function updateAudioNotice(result) {
@@ -244,9 +262,6 @@ export default function D7PlayablePractice({
   }
 
   function handleSilenceComplete() {
-    const result = onCompletePractice?.()
-    if (!result) return
-    setSummary(result)
     setStep('word')
   }
 
@@ -258,9 +273,26 @@ export default function D7PlayablePractice({
       return
     }
     setWordAttempted(false)
-    onRecordWord?.(cleanWord)
+    if (completionSubmittedRef.current) return
+    completionSubmittedRef.current = true
+    const result = onCompletePractice?.({ finalWord: cleanWord })
+    if (!result) {
+      completionSubmittedRef.current = false
+      onRecordWord?.(cleanWord)
+      setSummary((current) => ({ ...(current ?? {}), finalWord: cleanWord }))
+    } else {
+      setSummary({ ...result, finalWord: cleanWord })
+    }
     setWord('')
     setStep('card')
+  }
+
+  function handlePracticeAgain() {
+    completionSubmittedRef.current = false
+    setSummary(null)
+    setWord('')
+    setWordAttempted(false)
+    setStep('day-panel')
   }
 
   return (
@@ -426,7 +458,7 @@ export default function D7PlayablePractice({
                 autoFocus
               />
               {wordAttempted && !word.trim() && <small id="practice-word-alert" className="playable-word-alert" role="alert">Digite uma palavra para registrar sua reflexão.</small>}
-              <button type="submit" className="primary-action">Registrar Palavra</button>
+              <button type="submit" className="primary-action" disabled={completionSubmittedRef.current}>Registrar palavra</button>
             </form>
           </section>
         )}
@@ -448,25 +480,45 @@ export default function D7PlayablePractice({
 
         {step === 'level-up' && (
           <section key="level-up" className="level-stage playable-stage" aria-labelledby="level-stage-title">
-            <div className="level-ring" aria-hidden="true"><span>Nv. {currentLevel}</span></div>
+            <div className="level-ring" aria-hidden="true"><span>{t('practice.level')} {currentLevel}</span></div>
             <div className="level-copy">
-              <span className="overline">Avanço oficial</span>
-              <h3 id="level-stage-title">{summary?.firstPhaseCompleted ? 'Você concluiu a Primeira Fase do Maiindy Game.' : 'Ciclo registrado'}</h3>
-              {summary?.firstPhaseCompleted && <p className="medal-copy">35 dias. 5 categorias. Um compromisso cumprido. Medalha de Honra da Primeira Fase desbloqueada.</p>}
-              <div className="level-grid">
-                <article><span>Código concluído</span><strong>{summary?.completedCode ?? journeyCode}</strong></article>
-                <article><span>Próximo código</span><strong>{summary?.nextCode ?? nextJourneyCode}</strong></article>
-                <article><span>Dia</span><strong>{summary?.dayNumber ?? officialJourney?.dayNumber}/{summary?.totalDays ?? 35}</strong><small>{summary?.progressPercent ?? officialJourney?.progressPercent}%</small></article>
-                <article><span>Streak</span><strong>{state.progress?.streak ?? 0}</strong><small>dias</small></article>
-                <article><span>Reinícios</span><strong>{summary?.resets ?? state.progress?.resets ?? 0}</strong><small>histórico preservado</small></article>
-                <article><span>Medalha</span><strong>{summary?.honorMedalUnlocked ? 'Honra' : 'Pendente'}</strong><small>Primeira Fase</small></article>
+              <span className="overline">{t('practice.completedEyebrow')}</span>
+              <h3 id="level-stage-title">{summary?.firstPhaseCompleted ? t('practice.firstPhaseComplete') : t('practice.ritualComplete')}</h3>
+              {summary?.firstPhaseCompleted && <p className="medal-copy">{t('practice.honorMedalCopy')}</p>}
+              <div className="practice-completion-banner">
+                <div>
+                  <span>{t('practice.completedCode')}</span>
+                  <strong>{summary?.completedCode ?? journeyCode}</strong>
+                </div>
+                <div>
+                  <span>{t('practice.finalWord')}</span>
+                  <strong>{summary?.finalWord ?? t('practice.wordSaved')}</strong>
+                </div>
+                <small>Sua palavra entrou no Diário de Palavras.</small>
+                <p>{t('practice.successPhrase')}</p>
               </div>
-              <p className="level-message">Falhar não é o fim — é uma lição. Reiniciar não apaga sua história; reforça seu compromisso.</p>
-              {state.lastUnlocks?.length > 0 && <div className="unlock-feed" aria-live="polite">{state.lastUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
+              <div className="reward-highlight-grid" aria-label={t('practice.rewardsLabel')}>
+                <article><span>{t('topbar.xp')}</span><strong>+{summary?.xpGained ?? 0}</strong></article>
+                <article><span>{t('topbar.sparks')}</span><strong>+{summary?.sparksGained ?? 0}</strong></article>
+                <article><span>D7T</span><strong>+{summary?.d7tGained ?? 0}</strong></article>
+                <article><span>{t('practice.advance')}</span><strong>{summary?.nextCode ?? nextJourneyCode}</strong></article>
+              </div>
+              <div className="level-grid">
+                <article><span>{t('practice.day')}</span><strong>{summary?.dayNumber ?? officialJourney?.dayNumber}/{summary?.totalDays ?? 35}</strong><small>{summary?.progressPercent ?? officialJourney?.progressPercent}%</small></article>
+                <article><span>Streak</span><strong>{state.progress?.streak ?? 0}</strong><small>{t('practice.days')}</small></article>
+                <article><span>{t('practice.resets')}</span><strong>{summary?.resets ?? state.progress?.resets ?? 0}</strong><small>{t('practice.historyPreserved')}</small></article>
+                <article><span>{t('practice.medal')}</span><strong>{summary?.honorMedalUnlocked ? t('practice.honor') : t('practice.pending')}</strong><small>{t('practice.firstPhase')}</small></article>
+              </div>
+              <article className="practice-next-step">
+                <span className="overline">{t('practice.nextStep')}</span>
+                <strong>{summary?.nextCode && !summary?.firstPhaseCompleted ? 'Amanhã você continua em ' + summary.nextCode + '.' : summary?.nextUnlock?.title ?? nextUnlock?.title ?? t('practice.returnTomorrow')}</strong>
+                <p>{summary?.nextUnlock?.text ?? nextUnlock?.text ?? t('practice.returnTomorrowText')}</p>
+              </article>
+              {completionUnlocks.length > 0 && <div className="unlock-feed" aria-live="polite">{completionUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
               <div className="playable-actions">
-                <button type="button" className="primary-action" onClick={() => onNavigate?.('jornada')}>Ir para Jornada</button>
-                <button type="button" className="ghost-action" onClick={() => onNavigate?.('home')}>Voltar à Home</button>
-                <button type="button" className="ghost-action" onClick={() => { setSummary(null); setStep('day-panel') }}>Praticar novamente sem duplicar ciclo</button>
+                <button type="button" className="primary-action" onClick={() => onNavigate?.('jornada')}>{t('practice.goJourney')}</button>
+                <button type="button" className="ghost-action" onClick={() => onNavigate?.('home')}>{t('practice.backHome')}</button>
+                <button type="button" className="ghost-action" onClick={handlePracticeAgain}>{t('practice.practiceAgain')}</button>
               </div>
             </div>
           </section>

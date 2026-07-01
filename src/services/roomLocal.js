@@ -36,7 +36,7 @@ function sanitizePermissionItem(item = {}) {
 function sanitizePlayerRoomItem(room = {}) {
   return {
     ...room,
-    name: sanitizeRoomName(room.name, { fallback: 'Sala D7 Local' }),
+    name: sanitizeRoomName(room.name, { fallback: 'Sala Maiindy Local' }),
     description: sanitizeRoomDescription(room.description),
     theme: sanitizeText(room.theme, { fallback: 'presença', maxLength: 50 }),
     icon: sanitizeAvatar(room.icon),
@@ -80,7 +80,7 @@ export function createPlayerRoom(user, form = {}, progress = {}) {
   if (!user?.id) return getPlayerRoomsState()
   const avatar = getUserAvatarProfile(user, progress)
   const cleanRoom = {
-    name: sanitizeRoomName(form.name, { fallback: 'Sala D7 Local' }),
+    name: sanitizeRoomName(form.name, { fallback: 'Sala Maiindy Local' }),
     description: sanitizeRoomDescription(form.description),
     theme: sanitizeText(form.theme, { fallback: 'presença', maxLength: 50 }),
     icon: sanitizeAvatar(form.icon || avatar.glyph),

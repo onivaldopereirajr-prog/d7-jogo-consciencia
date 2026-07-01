@@ -355,7 +355,7 @@ export const initiationModules = [
 ]
 
 export const libraryGlossary = [
-  { id: 'glossary-codex', term: 'Códice Dual D7', definition: 'Arquitetura simbólica do jogo que organiza letras, sons, selos e mapas em trilhas distintas.' },
+  { id: 'glossary-codex', term: 'Códice Maiindy', definition: 'Arquitetura simbólica do jogo que organiza letras, sons, selos e mapas em trilhas distintas.' },
   { id: 'glossary-cabala', term: 'Cabala', definition: 'Tradição mística judaica que trabalha letras, símbolos e relações com o infinito.' },
   { id: 'glossary-tree', term: 'Árvore da Vida', definition: 'Mapa simbólico das sefirot e de suas relações de fluxo.' },
   { id: 'glossary-sefirot', term: 'Sefirot', definition: 'Dez atributos ou emanações usadas na leitura simbólica da Cabala.' },

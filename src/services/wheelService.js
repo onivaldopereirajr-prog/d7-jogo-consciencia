@@ -9,7 +9,7 @@ export const WHEEL_DAILY_LIMIT = 3
 const rewards = [
   { type: 'xp', label: '+10 XP', apply: (state) => ({ ...state, xp: state.xp + 10 }) },
   { type: 'sparks', label: '+1 centelha', apply: (state) => ({ ...state, sparks: state.sparks + 1 }) },
-  { type: 'cosmetic_card', label: 'Carta cosmética: Portal Sereno', apply: (state) => ({ ...state, codex: [{ id: `wheel-card-${Date.now()}`, title: 'Carta cosmética: Portal Sereno', text: 'Recompensa simbólica da Roda D7.', date: new Date().toLocaleDateString('pt-BR') }, ...state.codex] }) },
+  { type: 'cosmetic_card', label: 'Carta cosmética: Portal Sereno', apply: (state) => ({ ...state, codex: [{ id: `wheel-card-${Date.now()}`, title: 'Carta cosmética: Portal Sereno', text: 'Recompensa simbólica da Roda Maiindy.', date: new Date().toLocaleDateString('pt-BR') }, ...state.codex] }) },
   { type: 'temporary_title', label: 'Título simbólico: Guardião do Foco', apply: (state) => ({ ...state, profile: { ...state.profile, title: 'Guardião do Foco' } }) },
   { type: 'theme', label: 'Tema visual simbólico: Aurora Interna', apply: (state) => ({ ...state, lastUnlocks: unique(['Tema simbólico: Aurora Interna', ...(state.lastUnlocks ?? [])]).slice(0, 5) }) },
   { type: 'mission', label: 'Missão especial: respire por 1 minuto', apply: (state) => ({ ...state, codex: [{ id: `wheel-mission-${Date.now()}`, title: 'Missão especial', text: 'Respire por 1 minuto antes da próxima prática.', date: new Date().toLocaleDateString('pt-BR') }, ...state.codex] }) },
@@ -90,7 +90,7 @@ export function getWheelAvailability(state, userId) {
   return {
     canSpin: true,
     reason: welcomeAvailable ? 'welcome_spin' : 'ready',
-    message: welcomeAvailable ? 'Você possui 1 giro de boas-vindas para conhecer a Roda D7.' : 'Você pode girar a Roda D7.',
+    message: welcomeAvailable ? 'Você possui 1 giro de boas-vindas para conhecer a Roda Maiindy.' : 'Você pode girar a Roda Maiindy.',
     balance,
     missingD7T,
     todayCount,
@@ -129,7 +129,7 @@ export function spinD7Wheel(state, userId, options = {}) {
   return {
     ok: true,
     event,
-    message: `${useWelcomeSpin ? 'Giro de boas-vindas' : 'Roda D7'}: ${reward.label}`,
+    message: `${useWelcomeSpin ? 'Giro de boas-vindas' : 'Roda Maiindy'}: ${reward.label}`,
     state: {
       ...rewarded,
       lastUnlocks: unique([reward.label, ...(rewarded.lastUnlocks ?? [])]).slice(0, 5),

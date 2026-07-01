@@ -63,7 +63,7 @@ export default function D7Plans({ userId, onPlanChanged }) {
     <section className="content-section d7-plans-section" aria-labelledby="d7-plans-title">
       <div className="section-title">
         <span>Prévia local Premium</span>
-        <h2 id="d7-plans-title">Planos D7</h2>
+        <h2 id="d7-plans-title">Planos Maiindy</h2>
         <p>Plano local de teste para validar a experiência. Assinaturas reais exigirão backend, pagamento seguro e validação server-side.</p>
       </div>
 

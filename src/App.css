@@ -4132,7 +4132,7 @@ button:not(:disabled):active {
 }
 
 
-/* Rádio D7 */
+/* Rádio Maiindy */
 .d7-radio {
   width: min(100%, 1240px);
   margin: 0 auto;
@@ -7458,5 +7458,245 @@ button:not(:disabled):active {
 
   .home-next-action--portal {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Premium polish pass: translations, proportions and dense-view focus */
+.status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status-pills span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.045);
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+@media (min-width: 1101px) {
+  .app-workspace:not(.app-workspace--home) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-workspace:not(.app-workspace--home) .app-content {
+    width: min(100%, 1380px);
+    justify-self: center;
+  }
+
+  .app-radio-rail--floating {
+    position: fixed;
+    right: clamp(16px, 1.6vw, 28px);
+    bottom: clamp(16px, 1.6vw, 28px);
+    top: auto;
+    z-index: 30;
+    width: min(318px, calc(100vw - 32px));
+    max-height: none;
+    overflow: visible;
+  }
+
+  .floating-radio-mini .d7-radio-card {
+    padding: 11px;
+    gap: 8px;
+    border-color: rgba(32, 211, 238, 0.18);
+    background: linear-gradient(180deg, rgba(5, 9, 17, 0.88), rgba(5, 9, 17, 0.72));
+    box-shadow: 0 18px 54px rgba(0, 0, 0, 0.38), 0 0 24px rgba(32, 211, 238, 0.08);
+    backdrop-filter: blur(18px);
+  }
+
+  .floating-radio-mini .d7-radio-head p,
+  .floating-radio-mini .d7-radio-badges,
+  .floating-radio-mini .d7-radio-wave,
+  .floating-radio-mini .d7-radio-playlist,
+  .floating-radio-mini .d7-radio-track p,
+  .floating-radio-mini .d7-radio-status {
+    display: none;
+  }
+
+  .floating-radio-mini .d7-radio-title {
+    font-size: 0.98rem;
+  }
+
+  .floating-radio-mini .d7-radio-track {
+    padding: 8px;
+  }
+
+  .floating-radio-mini .d7-radio-track strong {
+    font-size: 0.86rem;
+  }
+
+  .floating-radio-mini .d7-radio-controls {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    gap: 7px;
+  }
+
+  .floating-radio-mini .d7-radio-volume {
+    margin-top: 0;
+  }
+
+  .app-workspace--pratica .app-content {
+    max-width: 1080px;
+  }
+
+  .app-workspace--pratica .playable-practice,
+  .app-workspace--pratica .playable-shell {
+    width: 100%;
+  }
+
+  .app-workspace--pratica .playable-stage {
+    min-height: min(650px, calc(100dvh - 170px));
+  }
+
+  .app-workspace--pratica .day-panel-stage {
+    grid-template-columns: minmax(180px, 0.48fr) minmax(0, 1.22fr);
+  }
+
+  .app-workspace--jornada .app-content,
+  .app-workspace--codice .app-content,
+  .app-workspace--biblioteca .app-content {
+    max-width: 1460px;
+  }
+
+  .app-workspace--jornada .journey-board {
+    grid-template-columns: repeat(3, minmax(250px, 1fr));
+    gap: 18px;
+  }
+
+  .app-workspace--jornada .portal-grid {
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
+  }
+
+  .app-workspace--codice .content-section,
+  .app-workspace--biblioteca .content-section {
+    padding: clamp(22px, 2vw, 32px);
+  }
+
+  .app-workspace--codice .bridge-grid {
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .app-workspace--codice .symbol-grid {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+  }
+
+  .app-workspace--biblioteca .library-layout {
+    grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr);
+    gap: 20px;
+  }
+
+  .app-workspace--biblioteca .library-card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .app-workspace--biblioteca .library-phases {
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  }
+
+  .app-workspace--ranking .ranking-list,
+  .app-workspace--circulos .circle-grid,
+  .app-workspace--perfil .profile-grid,
+  .app-workspace--planos .d7-plan-grid,
+  .app-workspace--acompanhamento .local-user-grid {
+    gap: 18px;
+  }
+
+  .app-workspace--perfil .profile-grid {
+    grid-template-columns: minmax(300px, 0.62fr) minmax(0, 1.38fr);
+    align-items: start;
+  }
+
+  .app-workspace--planos .d7-plan-grid {
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
+  }
+
+  .app-workspace--roda .wheel-layout,
+  .app-workspace--sala .room-grid {
+    gap: 20px;
+  }
+}
+
+@media (max-width: 1500px) and (min-width: 1101px) {
+  .app-workspace--jornada .journey-board,
+  .app-workspace--jornada .portal-grid,
+  .app-workspace--codice .bridge-grid,
+  .app-workspace--planos .d7-plan-grid {
+    grid-template-columns: repeat(2, minmax(250px, 1fr));
+  }
+
+  .app-workspace--biblioteca .library-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1366px) and (min-width: 1101px) {
+  .main-panel {
+    padding: 18px;
+  }
+
+  .topbar {
+    margin-bottom: 16px;
+  }
+
+  .home-portal-panel {
+    min-height: min(540px, calc(100dvh - 138px));
+    padding: 30px;
+  }
+
+  .home-portal-panel h2 {
+    font-size: clamp(2.55rem, 5.6vw, 4.8rem);
+  }
+
+  .home-portal-actions {
+    margin-top: 24px;
+  }
+
+  .home-next-action--portal {
+    margin-top: 24px;
+  }
+
+  .home-side-card {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .app-workspace--pratica .playable-stage {
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-radio-rail--floating {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+  }
+
+  .floating-radio-mini .d7-radio-playlist,
+  .floating-radio-mini .d7-radio-status {
+    display: none;
+  }
+
+  .status-pills {
+    justify-content: flex-start;
+  }
+
+  .status-pills span {
+    padding: 7px 10px;
+    font-size: 0.84rem;
+  }
+
+  .app-workspace--pratica .playable-stage,
+  .app-workspace--pratica .day-panel-stage {
+    min-height: auto;
   }
 }

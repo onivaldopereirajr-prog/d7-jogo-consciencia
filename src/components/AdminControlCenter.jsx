@@ -88,7 +88,7 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
   const accesses = accessRows(summaries, presence, localEventsByUser, analytics.events)
   const report = {
     ...buildAdminReport({ summaries, presence, analytics, roomState }),
-    title: 'Administrador Pleno D7 - relatório local',
+    title: 'Administrador Maiindy - relatório local',
     growth,
     access: accesses.map((row) => ({
       userId: row.summary.user.id,
@@ -118,7 +118,7 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
   }
 
   async function copySummary() {
-    const text = `Administrador Pleno D7\nUsuários locais: ${growth.totalUsers}\nNovos hoje: ${growth.newUsersToday}\nAtivos hoje: ${growth.activeUsersToday}\nOnline local: ${growth.onlineLocal}\nSessões hoje: ${growth.sessionsToday}\nPráticas hoje: ${growth.practicesToday}\nCards estudados hoje: ${growth.cardsStudiedToday}\nGiros Roda D7: ${growth.wheelSpins}\nD7T gerado: ${growth.d7tGenerated}\nD7T gasto: ${growth.d7tSpent}\nAlertas pendentes: ${growth.pendingAlerts}`
+    const text = `Administrador Maiindy\nUsuários locais: ${growth.totalUsers}\nNovos hoje: ${growth.newUsersToday}\nAtivos hoje: ${growth.activeUsersToday}\nOnline local: ${growth.onlineLocal}\nSessões hoje: ${growth.sessionsToday}\nPráticas hoje: ${growth.practicesToday}\nCards estudados hoje: ${growth.cardsStudiedToday}\nGiros Roda Maiindy: ${growth.wheelSpins}\nD7T gerado: ${growth.d7tGenerated}\nD7T gasto: ${growth.d7tSpent}\nAlertas pendentes: ${growth.pendingAlerts}`
     try {
       await navigator.clipboard.writeText(text)
       setMessage({ type: 'success', text: 'Resumo administrativo copiado.' })
@@ -169,7 +169,7 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
   return (
     <div className="control-center admin-owner-center">
       <div className="professional-notice">
-        <span className="overline">Administrador Pleno D7</span>
+        <span className="overline">Administrador Maiindy</span>
         <h2>Centro de Controle e Crescimento Local</h2>
         <p>Essas métricas representam apenas este navegador nesta versão local. Para crescimento real entre dispositivos, será necessário backend com autenticação, banco de dados, sessões, presença, eventos, segurança e política de privacidade.</p>
       </div>
@@ -189,8 +189,8 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
         <article><span>Práticas hoje</span><strong>{growth.practicesToday}</strong></article>
         <article><span>Cards estudados hoje</span><strong>{growth.cardsStudiedToday}</strong></article>
         <article><span>Posts criados hoje</span><strong>{growth.postsToday}</strong></article>
-        <article><span>Mensagens Sala D7</span><strong>{growth.roomMessages}</strong></article>
-        <article><span>Giros Roda D7</span><strong>{growth.wheelSpins}</strong></article>
+        <article><span>Mensagens Sala Maiindy</span><strong>{growth.roomMessages}</strong></article>
+        <article><span>Giros Roda Maiindy</span><strong>{growth.wheelSpins}</strong></article>
         <article><span>D7T total gerado</span><strong>{growth.d7tGenerated}</strong></article>
         <article><span>D7T total gasto</span><strong>{growth.d7tSpent}</strong></article>
         <article><span>Alertas pendentes</span><strong>{growth.pendingAlerts}</strong></article>
@@ -267,8 +267,8 @@ export default function AdminControlCenter({ summaries, onResolvedAlert }) {
       <AdminEventTimeline events={analytics.events} filter={filter} onFilterChange={setFilter} summaries={summaries} />
 
       <section className="control-panel" aria-labelledby="room-admin-title">
-        <div className="control-panel-head"><div><span className="overline">Sala e Círculos</span><h3 id="room-admin-title">Sala D7 e comunidade local</h3></div></div>
-        <p className="control-note">Admin vê apenas estado local da Sala D7 neste navegador: participantes, solicitações e metadados de mensagens recentes. O conteúdo privado futuro deve exigir regras de acesso no backend.</p>
+        <div className="control-panel-head"><div><span className="overline">Sala e Círculos</span><h3 id="room-admin-title">Sala Maiindy e comunidade local</h3></div></div>
+        <p className="control-note">Admin vê apenas estado local da Sala Maiindy neste navegador: participantes, solicitações e metadados de mensagens recentes. O conteúdo privado futuro deve exigir regras de acesso no backend.</p>
         <div className="room-admin-grid">
           {Object.values(roomState.permissions ?? {}).map((participant) => <article key={participant.userId}><strong>{participant.nickname}</strong><small>Fala: {participant.speech} · Câmera: {participant.camera} · Papel: {participant.role}</small></article>)}
           {(roomState.messages ?? []).slice(0, 5).map((msg) => <article key={msg.id}><strong>{msg.nickname}</strong><small>Mensagem local em {new Date(msg.createdAt).toLocaleString('pt-BR')}</small></article>)}

@@ -74,7 +74,7 @@ const codexFeaturedCards = [
   { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
 ]
 
-const appNavItems = [...navItems, { id: 'planos', label: 'Planos', icon: '◈' }, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
+const appNavItems = [...navItems, { id: 'planos', label: 'Planos', icon: '◈' }, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala Maiindy', icon: '◌' }, { id: 'roda', label: 'Roda Maiindy', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
 const navGroups = [
   { title: { 'pt-BR': 'Principal', 'en-US': 'Main' }, items: ['home', 'jornada', 'pratica'] },
   { title: { 'pt-BR': 'Conhecimento', 'en-US': 'Knowledge' }, items: ['codice', 'biblioteca', 'sala'] },
@@ -285,7 +285,7 @@ function SealRoom({ state, activeSealId, challengeValue, sealMessage, tick, onSe
       <div className="seal-room-head">
         <div>
           <span className="overline">Sala dos Selos</span>
-          <h3 id="seal-room-title">Chaves, desafios e D7 Tokens</h3>
+          <h3 id="seal-room-title">Chaves, desafios e Tokens Maiindy</h3>
           <p>D7T é token simbólico interno do MVP. Não possui valor financeiro, saque, venda ou transferência.</p>
         </div>
         <div className="token-pill"><strong>{state.tokenBalance ?? 0}</strong><span>D7T</span></div>
@@ -552,7 +552,7 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
   const wheelEvents = getWheelEvents(currentUserId).slice(0, 5)
   return (
     <section className="content-section local-panel">
-      <SectionTitle eyebrow="Acompanhamento Local" title="Relatório visual D7">Este painel mostra apenas contas e progresso salvos neste navegador/dispositivo. Não é banco de dados remoto.</SectionTitle>
+      <SectionTitle eyebrow="Acompanhamento Local" title="Relatório visual Maiindy">Este painel mostra apenas contas e progresso salvos neste navegador/dispositivo. Não é banco de dados remoto.</SectionTitle>
       {currentSummary && (
         <div className="report-summary-grid">
           <article><span>Jogador</span><UserAvatar user={currentSummary.user} progress={{ profile: { name: currentSummary.user.name, avatarSymbol: currentSummary.avatarSymbol, avatarColor: currentSummary.avatarColor, avatarTitle: currentSummary.avatarTitle }, xp: currentSummary.xp }} showMeta /></article>
@@ -568,7 +568,7 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
         <button type="button" className="ghost-action" onClick={onDownloadReport}>Exportar JSON</button>
       </div>
       <section className="wheel-report-panel" aria-labelledby="wheel-report-title">
-        <h3 id="wheel-report-title">Últimos giros da Roda D7</h3>
+        <h3 id="wheel-report-title">Últimos giros da Roda Maiindy</h3>
         {wheelEvents.length === 0 && <p>Nenhum giro registrado para este usuário local.</p>}
         {wheelEvents.map((event) => (
           <article key={event.id}>
@@ -1172,6 +1172,15 @@ function App() {
     setShowEntrance(false)
   }
 
+  function replayEntrance() {
+    try {
+      window.localStorage.removeItem(D7_ENTRANCE_SEEN_KEY)
+    } catch {
+      // LocalStorage can be unavailable in restricted browser modes.
+    }
+    setShowEntrance(true)
+  }
+
   if (showEntrance) {
     return <D7CinematicEntrance onComplete={completeEntrance} onSkip={completeEntrance} />
   }
@@ -1200,7 +1209,7 @@ function App() {
           <Sigil label="MG" />
           <div>
             <strong>Maiindy Game</strong>
-            <small>Códice Dual V2</small>
+            <small>Códice Maiindy</small>
           </div>
         </div>
         <nav className="nav-list nav-list--grouped">
@@ -1227,8 +1236,8 @@ function App() {
 
       <main className="main-panel">
         <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
-        <div className="app-workspace">
-          <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
+        <div className={`app-workspace app-workspace--${activeView}`}>
+          <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail app-radio-rail--floating'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
             {activeView === 'home' && (
               <div className="home-side-panel">
                 <section className="home-side-card home-progress-card" aria-labelledby="home-progress-title">
@@ -1286,7 +1295,7 @@ function App() {
                 </section>
               </div>
             )}
-            <div className={activeView === 'home' ? 'home-radio-mini' : ''}>
+            <div className={activeView === 'home' ? 'home-radio-mini' : 'floating-radio-mini'}>
               <D7RadioPlayer t={t} compact />
             </div>
           </aside>
@@ -1298,9 +1307,9 @@ function App() {
                 <h1>{t(`views.${activeView}.title`)}</h1>
               </div>
               <div className="status-pills">
-                <span>{t('topbar.level', { level: playerLevel(state.xp) })}</span>
-                <span>{t('topbar.xp', { xp: state.xp })}</span>
-                <span>{t('topbar.sparks', { sparks: state.sparks })}</span>
+                <span>{t('topbar.level')} {playerLevel(state.xp)}</span>
+                <span>{state.xp} {t('topbar.xp')}</span>
+                <span>{state.sparks} {t('topbar.sparks')}</span>
               </div>
             </header>
 
@@ -1326,6 +1335,7 @@ function App() {
                     <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Biblioteca</button>
                     <button type="button" className="ghost-action" onClick={() => navigate('codice')}>Códice</button>
                     <button type="button" className="ghost-action" onClick={() => navigate('pratica')}>Técnicas de Respiração</button>
+                    <button type="button" className="ghost-action" onClick={replayEntrance}>Rever abertura</button>
                   </div>
                   <div className="home-next-action home-next-action--portal">
                     <UserAvatar user={currentUser} progress={state} showMeta />
@@ -1427,7 +1437,7 @@ function App() {
 
         {activeView === 'codice' && (
           <section className="content-section">
-            <SectionTitle eyebrow="Biblioteca simbólica" title="Códice Dual D7">Hebraico e sânscrito aparecem como trilhas simbólicas distintas dentro do jogo, unidas por pontes lúdicas de presença.</SectionTitle>
+            <SectionTitle eyebrow="Biblioteca simbólica" title="Códice Maiindy">Hebraico e sânscrito aparecem como trilhas simbólicas distintas dentro do jogo, unidas por pontes lúdicas de presença.</SectionTitle>
             <nav className="codex-quick-nav" aria-label="Navegação interna do Códice">
               <a href="#codex-overview">Visão geral</a>
               <a href="#codex-map">Mapa Simbólico</a>
@@ -1437,13 +1447,13 @@ function App() {
             </nav>
             <div id="codex-overview" className="library-callout">
               <div>
-                <span className="overline">Biblioteca Iniciática D7</span>
+                <span className="overline">Biblioteca Maiindy</span>
                 <p>Resumos, missões e títulos desbloqueáveis para estudar símbolos com ritmo e progressão.</p>
               </div>
               <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Abrir Biblioteca</button>
             </div>
             <div className="codex-visual-band">
-              <img src={visualAssets.codex} alt="Símbolo central do Códice Dual D7" />
+              <img src={visualAssets.codex} alt="Símbolo central do Códice Maiindy" />
               <div className="featured-card-grid">
                 {codexFeaturedCards.map((card) => (
                   <article key={card.id} className="featured-card-art">
@@ -1490,7 +1500,7 @@ function App() {
         {activeView === 'ranking' && (
           <section className="content-section">
             <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência + cartas + portais + códigos + D7T + minutos rituais + marcos 21/108.</SectionTitle>
-            <img className="ranking-seal-art" src={visualAssets.ranking} alt="Selo visual do ranking D7" />
+            <img className="ranking-seal-art" src={visualAssets.ranking} alt="Selo visual do ranking Maiindy" />
             <PremiumGate key={subscriptionRefresh} userId={currentUser.id} featureKey="ranking_premium">
               <div className="ranking-list">
                 {rank.map((player, index) => (
@@ -1514,7 +1524,7 @@ function App() {
                 <img src={visualAssets.sealD7} alt="" />
                 <img src={visualAssets.cycle} alt="" />
               </div>
-              <span className="overline">Identidade D7</span>
+              <span className="overline">Identidade Maiindy</span>
               <h2>{getUserAvatarProfile(currentUser, state).title}</h2>
               <p>Sua identidade simbólica dentro da jornada.</p>
               <div className="profile-level">Nível {playerLevel(state.xp)} · {currentScore} score</div>
@@ -1549,7 +1559,7 @@ function App() {
                 <StatCard label="Selos" value={state.sealProgress.unlockedSeals.length} detail="8 possíveis" />
                 <StatCard label="Ranking" value={currentScore} detail="score local" />
               </div>
-              <p className="token-disclaimer">D7T é um token simbólico interno desta versão MVP. Não possui valor financeiro.</p>
+              <p className="token-disclaimer">D7T é um token simbólico interno do Maiindy Game nesta versão MVP. Não possui valor financeiro.</p>
               <div className="token-origin-grid">
                 {Object.entries(tokenTotalsByOrigin(state)).map(([origin, amount]) => <span key={origin}>{origin}: {amount} D7T</span>)}
               </div>

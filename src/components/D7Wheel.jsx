@@ -7,7 +7,7 @@ function spinButtonLabel({ availability, isSpinning }) {
   if (isSpinning) return 'Girando...'
   if (availability.reason === 'insufficient_balance') return 'D7T insuficiente'
   if (availability.reason === 'daily_limit') return 'Limite diário atingido'
-  return 'Girar Roda D7'
+  return 'Girar Roda Maiindy'
 }
 
 export default function D7Wheel({ state, userId, result, t = (path) => path, onSpin, onNavigate }) {
@@ -42,12 +42,12 @@ export default function D7Wheel({ state, userId, result, t = (path) => path, onS
         <button
           type="button"
           className={`wheel-visual ${availability.canSpin ? 'can-spin' : 'is-blocked'} ${isSpinning ? 'is-spinning' : ''}`}
-          aria-label={availability.canSpin ? 'Girar Roda D7 de recompensas simbólicas' : availability.message}
+          aria-label={availability.canSpin ? 'Girar Roda Maiindy de recompensas simbólicas' : availability.message}
           aria-disabled={!availability.canSpin}
           onClick={requestSpin}
         >
           {segments.map((segment, index) => <span key={segment} style={{ '--i': index }}>{segment}</span>)}
-          <strong>D7</strong>
+          <strong>MG</strong>
         </button>
         <div className="wheel-panel">
           <div className="admin-metrics-grid compact">
@@ -56,13 +56,13 @@ export default function D7Wheel({ state, userId, result, t = (path) => path, onS
             <article><span>Limite diário</span><strong>{availability.todayCount}/{WHEEL_DAILY_LIMIT}</strong></article>
           </div>
           {availability.welcomeAvailable && availability.todayCount < WHEEL_DAILY_LIMIT && (
-            <div className="auth-message success" role="status">Você possui 1 giro de boas-vindas para conhecer a Roda D7.</div>
+            <div className="auth-message success" role="status">Você possui 1 giro de boas-vindas para conhecer a Roda Maiindy.</div>
           )}
           {!availability.canSpin && <p className="token-disclaimer wheel-block-message">{availability.message}</p>}
           <button type="button" className="primary-action" disabled={disabled} onClick={requestSpin} aria-label={spinButtonLabel({ availability, isSpinning })}>{spinButtonLabel({ availability, isSpinning })}</button>
           {localMessage && <div className={`auth-message ${localMessage.type}`} role="status">{localMessage.text}</div>}
           {result && <div className={`auth-message ${result.ok ? 'success' : 'error'}`} role="status">{result.message}</div>}
-          <p className="token-disclaimer">A Roda D7 distribui recompensas educativas e cosméticas. Não há aposta, prêmio financeiro ou conversão externa.</p>
+          <p className="token-disclaimer">A Roda Maiindy distribui recompensas educativas e cosméticas. Não há aposta, prêmio financeiro ou conversão externa.</p>
         </div>
       </div>
 

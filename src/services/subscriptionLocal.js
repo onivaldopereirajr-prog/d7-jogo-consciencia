@@ -64,7 +64,7 @@ export const PLAN_DEFINITIONS = [
   },
   {
     id: PLAN_IDS.FOUNDER,
-    publicName: 'Administrador Pleno D7',
+    publicName: 'Administrador Maiindy',
     message: 'Somente o guardião do sistema local pode administrar este ambiente.',
     badge: 'Founder local',
     features: FOUNDER_FEATURES,

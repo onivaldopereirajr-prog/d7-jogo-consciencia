@@ -35,7 +35,7 @@ export function sanitizeAvatar(value, options = {}) {
 }
 
 export function sanitizeRoomName(value, options = {}) {
-  return sanitizeText(value, { fallback: 'Sala D7', maxLength: 50, ...options })
+  return sanitizeText(value, { fallback: 'Sala Maiindy', maxLength: 50, ...options })
 }
 
 export function sanitizeRoomDescription(value, options = {}) {

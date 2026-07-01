@@ -16,14 +16,14 @@ function AdminAccessForm({ hasAdmin, onDone }) {
       trackAdminEvent('local-admin', hasAdmin ? 'admin_login' : 'admin_created', { admin: true, alias: form.alias })
       onDone()
     } else if (hasAdmin) {
-      createSecurityAlert({ severity: 'warning', message: 'Tentativa de acessar admin pleno local sem credenciais válidas.', metadata: { alias: form.alias } })
+      createSecurityAlert({ severity: 'warning', message: 'Tentativa de acessar admin Maiindy local sem credenciais válidas.', metadata: { alias: form.alias } })
       trackAdminEvent('anonymous', 'admin_login_failed', { alias: form.alias })
     }
   }
 
   return (
     <form className="admin-access-form" onSubmit={submit}>
-      <h3>{hasAdmin ? 'Entrar como Administrador Pleno D7' : 'Criar Administrador Pleno Local'}</h3>
+      <h3>{hasAdmin ? 'Entrar como Administrador Maiindy' : 'Criar Administrador Pleno Local'}</h3>
       <p>Acesso administrativo local deste navegador. Não é visão remota real; backend será necessário para administração entre dispositivos.</p>
       {!hasAdmin && (
         <>
@@ -46,7 +46,7 @@ function AdminAccessForm({ hasAdmin, onDone }) {
         <span>Lembrar este dispositivo por 7 dias</span>
       </label>
       <small>Sem esta opção, a sessão admin local expira em 8 horas neste navegador.</small>
-      <button type="submit" className="primary-action">{hasAdmin ? 'Entrar como admin pleno' : 'Criar administrador pleno'}</button>
+      <button type="submit" className="primary-action">{hasAdmin ? 'Entrar como admin Maiindy' : 'Criar administrador pleno'}</button>
       {message && <div className={`auth-message ${message.type}`} role="status">{message.text}</div>}
     </form>
   )
@@ -69,7 +69,7 @@ export default function AdminPanel({ summaries, t = (path) => path, onRefresh, o
       <section className="admin-shell content-section" aria-labelledby="admin-title">
         <div className="professional-notice">
           <span className="overline">Privacidade</span>
-          <h2 id="admin-title">Administrador Pleno D7</h2>
+          <h2 id="admin-title">Administrador Maiindy</h2>
           <p>{t('admin.privacy')}</p>
         </div>
         <AdminAccessForm hasAdmin={hasAdmin} onDone={() => { setSession(true); onRefresh?.() }} />
@@ -87,10 +87,10 @@ export default function AdminPanel({ summaries, t = (path) => path, onRefresh, o
       <div className="admin-head">
         <div>
           <span className="overline">{t('admin.localMvp')}</span>
-          <h2 id="admin-title">Administrador Pleno D7</h2>
+          <h2 id="admin-title">Administrador Maiindy</h2>
           <p>Esta versão usa dados locais do navegador. Recursos reais de administração e sala ao vivo exigirão backend e consentimento dos usuários.</p>
         </div>
-        <button type="button" className="ghost-action" onClick={() => { trackAdminEvent('local-admin', 'admin_logout', { admin: true }); endAdminSession(); setSession(false) }}>Sair do admin pleno</button>
+        <button type="button" className="ghost-action" onClick={() => { trackAdminEvent('local-admin', 'admin_logout', { admin: true }); endAdminSession(); setSession(false) }}>Sair do admin Maiindy</button>
       </div>
 
       <div className="admin-toggle-row">
@@ -98,7 +98,7 @@ export default function AdminPanel({ summaries, t = (path) => path, onRefresh, o
           <input id="observer-mode" type="checkbox" checked={observer} onChange={toggleObserver} />
           <span>Modo observador da sala</span>
         </label>
-        <p>Quando ativo, a Sala D7 mostra aviso de moderação. Não grava, não espiona e não acessa câmera/microfone.</p>
+        <p>Quando ativo, a Sala Maiindy mostra aviso de moderação. Não grava, não espiona e não acessa câmera/microfone.</p>
       </div>
 
       <AdminControlCenter summaries={summaries} onResolvedAlert={onRefresh} />

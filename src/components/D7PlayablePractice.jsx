@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DEFAULT_BREATHING_TECHNIQUE_ID, breathingTechniques, fallbackBreathingTechnique, getBreathingTechnique } from '../data/breathingTechniques.js'
 import D7MantraPlayer from './D7MantraPlayer.jsx'
 import D7PulseTimer from './D7PulseTimer.jsx'
 
 const FLOW_STEPS = ['day-panel', 'breath', 'silence', 'word', 'card', 'level-up']
-const BREATH_PHASES = [
-  { id: 'inhale', label: 'Inspirar', detail: 'Prepare-se. Sente-se ou deite-se.' },
-  { id: 'hold', label: 'Reter', detail: 'Feche os olhos quando iniciar o timer.' },
-  { id: 'exhale', label: 'Expirar', detail: 'A prática principal é cumprir o tempo oficial.' },
-]
-const BREATH_SECONDS = 4
+const BREATHING_STORAGE_KEY = 'maiindy_breathing_technique'
 const BREATH_CYCLES = 3
 const AUDIO_BLOCKED_MESSAGE = 'Toque em Reproduzir áudio para iniciar o mantra.'
 
@@ -35,23 +31,57 @@ function PracticeSteps({ current }) {
   )
 }
 
-function BreathStage({ onDone }) {
+function readStoredBreathingTechniqueId() {
+  try {
+    return window.localStorage.getItem(BREATHING_STORAGE_KEY) || DEFAULT_BREATHING_TECHNIQUE_ID
+  } catch {
+    return DEFAULT_BREATHING_TECHNIQUE_ID
+  }
+}
+
+function saveStoredBreathingTechniqueId(id) {
+  try {
+    window.localStorage.setItem(BREATHING_STORAGE_KEY, id)
+  } catch {
+    // Optional UI preference only.
+  }
+}
+
+function cycleDuration(steps) {
+  return steps.reduce((sum, step) => sum + Number(step.seconds ?? 0), 0)
+}
+
+function phaseAtTick(steps, tick) {
+  const total = cycleDuration(steps) || 1
+  const inCycle = tick % total
+  let cursor = 0
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index]
+    const seconds = Math.max(1, Number(step.seconds ?? 1))
+    if (inCycle < cursor + seconds) return { phase: step, index, elapsed: inCycle - cursor, seconds }
+    cursor += seconds
+  }
+  const fallback = steps[steps.length - 1] ?? fallbackBreathingTechnique.steps[0]
+  return { phase: fallback, index: steps.length - 1, elapsed: 0, seconds: Math.max(1, Number(fallback.seconds ?? 1)) }
+}
+
+function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   const [tick, setTick] = useState(0)
   const [isFinished, setIsFinished] = useState(false)
-  const totalTicks = BREATH_CYCLES * BREATH_PHASES.length * BREATH_SECONDS
+  const steps = technique.steps?.length ? technique.steps : fallbackBreathingTechnique.steps
+  const cycleSeconds = cycleDuration(steps)
+  const totalTicks = BREATH_CYCLES * cycleSeconds
   const safeTick = Math.min(tick, totalTicks - 0.001)
-  const phaseIndex = Math.floor(safeTick / BREATH_SECONDS) % BREATH_PHASES.length
-  const cycle = Math.min(BREATH_CYCLES, Math.floor(safeTick / (BREATH_PHASES.length * BREATH_SECONDS)) + 1)
-  const phase = BREATH_PHASES[phaseIndex]
-  const phaseRemaining = Math.max(1, Math.ceil(BREATH_SECONDS - (safeTick % BREATH_SECONDS)))
-  const phaseElapsed = safeTick % BREATH_SECONDS
-  const phaseProgress = phaseElapsed / BREATH_SECONDS
-  const dotPoints = [
-    { x: 50, y: 9 },
-    { x: 90, y: 86 },
-    { x: 10, y: 86 },
-  ]
-  const dotStart = dotPoints[phaseIndex]
+  const cycle = Math.min(BREATH_CYCLES, Math.floor(safeTick / cycleSeconds) + 1)
+  const { phase, index: phaseIndex, elapsed: phaseElapsed, seconds: phaseSeconds } = phaseAtTick(steps, safeTick)
+  const phaseRemaining = Math.max(1, Math.ceil(phaseSeconds - phaseElapsed))
+  const phaseProgress = phaseElapsed / phaseSeconds
+  const dotPoints = steps.length === 2
+    ? [{ x: 22, y: 78 }, { x: 78, y: 22 }]
+    : steps.length === 4
+      ? [{ x: 50, y: 8 }, { x: 90, y: 50 }, { x: 50, y: 92 }, { x: 10, y: 50 }]
+      : [{ x: 50, y: 9 }, { x: 90, y: 86 }, { x: 10, y: 86 }]
+  const dotStart = dotPoints[phaseIndex % dotPoints.length]
   const dotEnd = dotPoints[(phaseIndex + 1) % dotPoints.length]
   const dotX = dotStart.x + ((dotEnd.x - dotStart.x) * phaseProgress)
   const dotY = dotStart.y + ((dotEnd.y - dotStart.y) * phaseProgress)
@@ -84,7 +114,7 @@ function BreathStage({ onDone }) {
         style={{
           '--breath-dot-x': `${dotX}`,
           '--breath-dot-y': `${dotY}`,
-          '--breath-dot-scale': phase.id === 'hold' ? 1.18 : 1,
+          '--breath-dot-scale': phase.id?.startsWith('hold') ? 1.18 : 1,
         }}
       >
         <svg className="breath-triangle-visual" viewBox="0 0 100 100" focusable="false" aria-hidden="true">
@@ -95,10 +125,10 @@ function BreathStage({ onDone }) {
         </svg>
       </div>
       <div className="breath-copy" aria-live="polite">
-        <span className="overline">Respiração triangular</span>
+        <span className="overline">{technique.name}</span>
         <h3 id="breath-stage-title">{phase.label}</h3>
-        <p>{phase.detail}</p>
-        <small>Ciclo {cycle}/{BREATH_CYCLES} · {phaseRemaining}s</small>
+        <p>{phase.detail ?? technique.use}</p>
+        <small>Ciclo {cycle}/{BREATH_CYCLES} · {phase.seconds}s · faltam {phaseRemaining}s</small>
       </div>
       <button type="button" className="ghost-action" onClick={handleSkip}>Pular respiração</button>
     </section>
@@ -164,7 +194,11 @@ export default function D7PlayablePractice({
   const [summary, setSummary] = useState(null)
   const [audioPlayback, setAudioPlayback] = useState({ enabled: true, muted: false, isAudioPlaying: false })
   const [audioNotice, setAudioNotice] = useState('')
+  const [selectedBreathingId, setSelectedBreathingId] = useState(readStoredBreathingTechniqueId)
+  const [previewBreathingId, setPreviewBreathingId] = useState(() => selectedBreathingId === DEFAULT_BREATHING_TECHNIQUE_ID ? breathingTechniques[0]?.id ?? DEFAULT_BREATHING_TECHNIQUE_ID : selectedBreathingId)
   const isPracticeDone = Boolean(state.daily?.practice)
+  const selectedBreathingTechnique = useMemo(() => getBreathingTechnique(selectedBreathingId), [selectedBreathingId])
+  const previewBreathingTechnique = useMemo(() => getBreathingTechnique(previewBreathingId), [previewBreathingId])
   const card = useMemo(() => resolveCard(summary, recommendedLibraryCard, fallbackCard), [fallbackCard, recommendedLibraryCard, summary])
 
   useEffect(() => {
@@ -202,6 +236,11 @@ export default function D7PlayablePractice({
   function handlePlaybackStateChange(nextState) {
     setAudioPlayback(nextState)
     if (nextState.isAudioPlaying) setAudioNotice('')
+  }
+
+  function handleUseBreathingTechnique() {
+    setSelectedBreathingId(previewBreathingTechnique.id)
+    saveStoredBreathingTechniqueId(previewBreathingTechnique.id)
   }
 
   function handleSilenceComplete() {
@@ -250,6 +289,45 @@ export default function D7PlayablePractice({
                 <article><span>Dia</span><strong>{officialJourney?.dayNumber ?? 1}/35</strong></article>
                 <article><span>Tempo oficial de hoje</span><strong>{stage.minutes} min</strong></article>
               </div>
+              <section className="breathing-library-card" aria-labelledby="breathing-library-title">
+                <div className="breathing-library-head">
+                  <div>
+                    <span className="overline">Apoio educativo</span>
+                    <h4 id="breathing-library-title">Técnicas de Respiração</h4>
+                    <p>Escolha uma respiração de apoio antes de iniciar sua sessão oficial.</p>
+                  </div>
+                  <strong>{selectedBreathingTechnique.shortName}</strong>
+                </div>
+                <div className="breathing-technique-grid" role="list" aria-label="Técnicas de respiração disponíveis">
+                  {breathingTechniques.map((technique) => (
+                    <button
+                      key={technique.id}
+                      type="button"
+                      className={technique.id === previewBreathingTechnique.id ? 'breathing-technique-card active' : 'breathing-technique-card'}
+                      onClick={() => setPreviewBreathingId(technique.id)}
+                      aria-pressed={technique.id === previewBreathingTechnique.id}
+                    >
+                      <strong>{technique.shortName}</strong>
+                      <span>{technique.steps.map((item) => item.seconds).join('-')}s</span>
+                    </button>
+                  ))}
+                </div>
+                <article className="breathing-technique-detail">
+                  <div>
+                    <span className="overline">Técnica selecionada</span>
+                    <h5>{previewBreathingTechnique.name}</h5>
+                    <p>{previewBreathingTechnique.use}</p>
+                  </div>
+                  <ol>
+                    {previewBreathingTechnique.steps.map((item, index) => (
+                      <li key={item.id + '-' + index}><span>{item.label}</span><strong>{item.seconds}s</strong></li>
+                    ))}
+                  </ol>
+                  <button type="button" className="mini-action" onClick={handleUseBreathingTechnique}>Usar como preparação</button>
+                </article>
+                <p className="breathing-library-note">As técnicas de respiração são apoio. A prática oficial continua sendo cumprir o tempo do nível atual com os olhos fechados.</p>
+              </section>
+
               <div className={['practice-banner', isPracticeDone ? 'complete' : 'idle', practiceCelebration ? 'practice-celebration' : ''].filter(Boolean).join(' ')} role="status">
                 <strong>{state.progress?.restartRequired ? 'Reinício necessário' : isPracticeDone ? 'Sessão oficial de hoje concluída' : 'Sessão oficial pronta'}</strong>
                 <span>{state.progress?.restartRequired ? 'Você perdeu um dia. O jogo recomeça em A1. Isso não é punição; é compromisso renovado.' : isPracticeDone ? 'O ciclo de hoje já avançou. Você pode praticar livremente sem duplicar progresso oficial.' : 'Feche os olhos. Permaneça até o timer terminar.'}</span>
@@ -266,7 +344,7 @@ export default function D7PlayablePractice({
           </section>
         )}
 
-        {step === 'breath' && <BreathStage onDone={() => setStep('silence')} />}
+        {step === 'breath' && <BreathStage technique={selectedBreathingTechnique} onDone={() => setStep('silence')} />}
 
         {step === 'silence' && (
           <section key="silence" className="silence-stage playable-stage" aria-labelledby="silence-stage-title">

@@ -9150,3 +9150,262 @@ button:not(:disabled):active {
     padding: 14px;
   }
 }
+
+/* Radio Maiindy compact artifact */
+.d7-radio--compact {
+  width: min(100%, 220px);
+  margin: 0;
+}
+
+.d7-radio--compact .d7-radio-card {
+  position: relative;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(32, 211, 238, 0.28);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(32, 211, 238, 0.16), transparent 36%),
+    radial-gradient(circle at 96% 8%, rgba(212, 175, 55, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(5, 10, 18, 0.9), rgba(4, 7, 13, 0.74));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34), 0 0 18px rgba(32, 211, 238, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.d7-radio--compact .d7-radio-head {
+  display: block;
+}
+
+.d7-radio--compact .overline,
+.d7-radio--compact .d7-radio-head p,
+.d7-radio--compact .d7-radio-badges,
+.d7-radio--compact .d7-radio-wave,
+.d7-radio--compact .d7-radio-track p,
+.d7-radio--compact .d7-radio-status {
+  display: none;
+}
+
+.d7-radio--compact .d7-radio-title {
+  max-width: 100%;
+  font-size: 0.82rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d7-radio--compact .d7-radio-track {
+  gap: 2px;
+  padding: 6px 7px;
+  min-height: 34px;
+  border-color: rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.d7-radio--compact .d7-radio-track span,
+.d7-radio--compact .d7-radio-track small {
+  font-size: 0.62rem;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+}
+
+.d7-radio--compact .d7-radio-track small {
+  display: none;
+}
+
+.d7-radio--compact .d7-radio-track strong {
+  font-size: 0.74rem;
+  line-height: 1.18;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d7-radio--compact .d7-radio-controls,
+.app-radio-rail .d7-radio--compact .d7-radio-controls,
+.floating-radio-mini .d7-radio--compact .d7-radio-controls,
+.home-radio-mini .d7-radio--compact .d7-radio-controls {
+  display: grid;
+  grid-template-columns: 32px minmax(38px, 1fr) 32px 32px;
+  gap: 5px;
+  align-items: center;
+}
+
+.d7-radio--compact.d7-radio--open .d7-radio-controls,
+.app-radio-rail .d7-radio--compact.d7-radio--open .d7-radio-controls,
+.floating-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-controls,
+.home-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-controls {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.d7-radio--compact .d7-radio-controls .ghost-action,
+.d7-radio--compact .d7-radio-controls .primary-action,
+.d7-radio--compact .d7-radio-controls .mini-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 7px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.d7-radio--compact .d7-radio-controls .primary-action {
+  min-width: 0;
+  color: #041016;
+  font-size: 0.82rem;
+  box-shadow: 0 0 16px rgba(32, 211, 238, 0.14);
+}
+
+.d7-radio--compact .d7-radio-controls .mini-action.active {
+  border-color: rgba(32, 211, 238, 0.45);
+  background: rgba(32, 211, 238, 0.13);
+}
+
+.d7-radio--compact .d7-radio-advanced {
+  min-width: 0;
+}
+
+.d7-radio--compact .d7-radio-playlist {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  max-height: 56px;
+  overflow: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.d7-radio--compact .d7-radio-playlist .mini-action {
+  min-height: 28px;
+  justify-content: flex-start;
+  padding: 0 8px;
+  font-size: 0.68rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.d7-radio--compact .d7-radio-volume,
+.app-radio-rail .d7-radio--compact .d7-radio-volume,
+.floating-radio-mini .d7-radio--compact .d7-radio-volume,
+.home-radio-mini .d7-radio--compact .d7-radio-volume {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.68rem;
+}
+
+.d7-radio--compact .d7-radio-volume input {
+  width: 100%;
+  min-height: 24px;
+}
+
+.app-radio-rail .d7-radio--compact .d7-radio-volume input,
+.floating-radio-mini .d7-radio--compact .d7-radio-volume input,
+.home-radio-mini .d7-radio--compact .d7-radio-volume input {
+  grid-column: auto;
+}
+
+@media (min-width: 1101px) {
+  .app-radio-rail--floating {
+    right: clamp(14px, 1.4vw, 22px);
+    bottom: clamp(14px, 1.4vw, 22px);
+    width: min(220px, calc(100vw - 28px));
+  }
+
+  .floating-radio-mini .d7-radio--compact.d7-radio--closed .d7-radio-card {
+    max-height: 118px;
+  }
+
+  .floating-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-card {
+    max-height: 180px;
+  }
+
+  .app-workspace--pratica .app-radio-rail--floating {
+    width: min(100%, 220px);
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .app-radio-rail,
+  .app-radio-rail--floating,
+  .home-dashboard-rail {
+    width: 100%;
+  }
+
+  .app-radio-rail .d7-radio--compact,
+  .floating-radio-mini .d7-radio--compact,
+  .home-radio-mini .d7-radio--compact {
+    width: min(100%, 420px);
+    max-width: 100%;
+  }
+
+  .d7-radio--compact .d7-radio-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .d7-radio--compact .d7-radio-head,
+  .d7-radio--compact .d7-radio-track,
+  .d7-radio--compact .d7-radio-advanced,
+  .d7-radio--compact .d7-radio-volume {
+    grid-column: 1;
+  }
+
+  .d7-radio--compact .d7-radio-controls,
+  .app-radio-rail .d7-radio--compact .d7-radio-controls,
+  .floating-radio-mini .d7-radio--compact .d7-radio-controls,
+  .home-radio-mini .d7-radio--compact .d7-radio-controls {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    grid-template-columns: repeat(2, 34px);
+    width: 73px;
+  }
+
+  .d7-radio--compact.d7-radio--open .d7-radio-controls,
+  .app-radio-rail .d7-radio--compact.d7-radio--open .d7-radio-controls,
+  .floating-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-controls,
+  .home-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-controls {
+    grid-row: 1 / span 4;
+    grid-template-columns: repeat(2, 34px);
+  }
+}
+
+@media (max-width: 520px) {
+  .app-radio-rail .d7-radio--compact,
+  .floating-radio-mini .d7-radio--compact,
+  .home-radio-mini .d7-radio--compact {
+    width: 100%;
+  }
+
+  .d7-radio--compact .d7-radio-card {
+    padding: 10px;
+  }
+
+  .d7-radio--compact .d7-radio-controls,
+  .app-radio-rail .d7-radio--compact .d7-radio-controls,
+  .floating-radio-mini .d7-radio--compact .d7-radio-controls,
+  .home-radio-mini .d7-radio--compact .d7-radio-controls,
+  .d7-radio--compact.d7-radio--open .d7-radio-controls,
+  .app-radio-rail .d7-radio--compact.d7-radio--open .d7-radio-controls,
+  .floating-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-controls,
+  .home-radio-mini .d7-radio--compact.d7-radio--open .d7-radio-controls {
+    grid-template-columns: repeat(2, 36px);
+    width: 77px;
+  }
+
+  .d7-radio--compact .d7-radio-controls .ghost-action,
+  .d7-radio--compact .d7-radio-controls .primary-action,
+  .d7-radio--compact .d7-radio-controls .mini-action {
+    min-height: 36px;
+    padding-inline: 6px;
+  }
+}

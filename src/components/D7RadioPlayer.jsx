@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { d7RadioTracks } from '../data/d7RadioTracks.js'
 import { getNextTrackIndex, getPreviousTrackIndex, getRadioSettings, getTrackIndex, saveRadioSettings } from '../services/radioService.js'
 
@@ -13,9 +13,13 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState(t('radio.touchNotice'))
   const [trackError, setTrackError] = useState(false)
+  const [compactOpen, setCompactOpen] = useState(false)
   const audioRef = useRef(null)
+  const advancedControlsId = useId()
+  const volumeControlId = useId()
   const tracks = d7RadioTracks
   const currentTrack = tracks[trackIndex] ?? null
+  const showAdvancedControls = !compact || compactOpen
 
   useEffect(() => {
     const audio = audioRef.current
@@ -118,7 +122,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
   }
 
   return (
-    <section className={["d7-radio", compact ? "d7-radio--compact" : "", isPlaying ? "is-playing" : "", isLoading ? "is-loading" : ""].filter(Boolean).join(" ")} aria-labelledby="d7-radio-title">
+    <section className={["d7-radio", compact ? "d7-radio--compact" : "", compactOpen ? "d7-radio--open" : "d7-radio--closed", isPlaying ? "is-playing" : "", isLoading ? "is-loading" : ""].filter(Boolean).join(" ")} aria-labelledby="d7-radio-title">
       <div className="d7-radio-card">
         <div className="d7-radio-head">
           <div>
@@ -144,12 +148,14 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
           <small>{trackError ? t('radio.noMusic') : currentTrack.durationLabel}</small>
         </div>
 
-        <div className="d7-radio-playlist" aria-label="Músicas disponíveis na Rádio Maiindy">
-          {tracks.map((track, index) => (
-            <button key={track.id} type="button" className={index === trackIndex ? 'mini-action active' : 'mini-action'} onClick={() => changeTrack(index, isPlaying)}>
-              {track.title}
-            </button>
-          ))}
+        <div id={advancedControlsId} className="d7-radio-advanced" hidden={!showAdvancedControls}>
+          <div className="d7-radio-playlist" aria-label="Músicas disponíveis na Rádio Maiindy">
+            {tracks.map((track, index) => (
+              <button key={track.id} type="button" className={index === trackIndex ? 'mini-action active' : 'mini-action'} onClick={() => changeTrack(index, isPlaying)}>
+                {track.title}
+              </button>
+            ))}
+          </div>
         </div>
 
         <audio
@@ -167,19 +173,37 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
         <div className="d7-radio-controls" aria-label="Controles da Rádio Maiindy">
           <button type="button" className="ghost-action" onClick={previousTrack} aria-label={t('radio.previous')}>‹</button>
           <button type="button" className="primary-action" onClick={togglePlay} aria-label={isPlaying ? t('radio.pause') : t('radio.play')}>
-            {isPlaying ? t('radio.pause') : t('radio.play')}
+            {compact ? (isPlaying ? 'Ⅱ' : '▶') : (isPlaying ? t('radio.pause') : t('radio.play'))}
           </button>
           <button type="button" className="ghost-action" onClick={() => nextTrack()} aria-label={t('radio.next')}>›</button>
-          <button type="button" className={repeat ? 'mini-action active' : 'mini-action'} onClick={() => setRepeat((value) => !value)} aria-pressed={repeat} aria-label={t('radio.repeat')}>↻</button>
-          <button type="button" className={shuffle ? 'mini-action active' : 'mini-action'} onClick={() => setShuffle((value) => !value)} aria-pressed={shuffle} aria-label={t('radio.shuffle')}>⤨</button>
-          <button type="button" className={muted ? 'mini-action active' : 'mini-action'} onClick={() => setMuted((value) => !value)} aria-pressed={muted} aria-label={muted ? t('radio.unmute') : t('radio.mute')}>{muted ? t('radio.muted') : t('radio.sound')}</button>
+          {compact && (
+            <button
+              type="button"
+              className={compactOpen ? 'mini-action active' : 'mini-action'}
+              onClick={() => setCompactOpen((value) => !value)}
+              aria-expanded={compactOpen}
+              aria-controls={advancedControlsId}
+              aria-label={`${t('radio.volume')} / ${t('radio.shuffle')}`}
+            >
+              {compactOpen ? '⌃' : '⋯'}
+            </button>
+          )}
+          {showAdvancedControls && (
+            <>
+              <button type="button" className={repeat ? 'mini-action active' : 'mini-action'} onClick={() => setRepeat((value) => !value)} aria-pressed={repeat} aria-label={t('radio.repeat')}>↻</button>
+              <button type="button" className={shuffle ? 'mini-action active' : 'mini-action'} onClick={() => setShuffle((value) => !value)} aria-pressed={shuffle} aria-label={t('radio.shuffle')}>⤨</button>
+              <button type="button" className={muted ? 'mini-action active' : 'mini-action'} onClick={() => setMuted((value) => !value)} aria-pressed={muted} aria-label={muted ? t('radio.unmute') : t('radio.mute')}>{muted ? t('radio.muted') : t('radio.sound')}</button>
+            </>
+          )}
         </div>
 
-        <label className="d7-radio-volume" htmlFor="d7-radio-volume">
-          <span>{t('radio.volume')}</span>
-          <input id="d7-radio-volume" type="range" min="0" max="100" value={Math.round(volume * 100)} onChange={(event) => handleVolumeChange(event.target.value)} />
-          <strong>{Math.round(volume * 100)}%</strong>
-        </label>
+        {showAdvancedControls && (
+          <label className="d7-radio-volume" htmlFor={volumeControlId}>
+            <span>{t('radio.volume')}</span>
+            <input id={volumeControlId} type="range" min="0" max="100" value={Math.round(volume * 100)} onChange={(event) => handleVolumeChange(event.target.value)} />
+            <strong>{Math.round(volume * 100)}%</strong>
+          </label>
+        )}
 
         <div className="d7-radio-status" role="status" aria-live="polite">
           <div className="d7-radio-equalizer" aria-hidden="true"><span /><span /><span /></div>

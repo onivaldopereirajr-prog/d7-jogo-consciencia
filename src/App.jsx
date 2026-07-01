@@ -1180,7 +1180,11 @@ function App() {
 
       <main className="main-panel">
         <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
-        <D7RadioPlayer t={t} compact />
+        <div className="app-workspace">
+          <aside className="app-radio-rail" aria-label="Player de apoio Maiindy">
+            <D7RadioPlayer t={t} compact />
+          </aside>
+          <section className="app-content" aria-label="Conteúdo principal do jogo">
 
         <header className="topbar">
           <div>
@@ -1487,6 +1491,9 @@ function App() {
             </PremiumGate>
           </section>
         )}
+
+          </section>
+        </div>
 
         <D7Footer copy={t('footer.copy')} tagline={t('footer.tagline')} />
       </main>

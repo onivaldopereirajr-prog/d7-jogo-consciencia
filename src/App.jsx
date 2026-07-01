@@ -75,6 +75,13 @@ const codexFeaturedCards = [
 ]
 
 const appNavItems = [...navItems, { id: 'planos', label: 'Planos', icon: '◈' }, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala D7', icon: '◌' }, { id: 'roda', label: 'Roda D7', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
+const navGroups = [
+  { title: { 'pt-BR': 'Principal', 'en-US': 'Main' }, items: ['home', 'jornada', 'pratica'] },
+  { title: { 'pt-BR': 'Conhecimento', 'en-US': 'Knowledge' }, items: ['codice', 'biblioteca', 'sala'] },
+  { title: { 'pt-BR': 'Comunidade', 'en-US': 'Community' }, items: ['ranking', 'circulos', 'roda', 'perfil'] },
+  { title: { 'pt-BR': 'Sistema', 'en-US': 'System' }, items: ['planos', 'acompanhamento', 'admin'] },
+]
+const navItemById = Object.fromEntries(appNavItems.map((item) => [item.id, item]))
 const D7_ENTRANCE_SEEN_KEY = 'd7_entrance_seen'
 const ADMIN_LOCAL_HASH = 'admin-local'
 const DEFAULT_VIEW = 'home'
@@ -653,6 +660,10 @@ function App() {
   const hebrewUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'hebraica').length
   const sanskritUnlocked = state.unlockedCards.filter((id) => cardById(id)?.track === 'sânscrita').length
   const currentScore = getRankingScore(state)
+  const levelBaseXp = (playerLevel(state.xp) - 1) * 250
+  const levelXp = Math.max(0, state.xp - levelBaseXp)
+  const levelProgress = Math.min(250, levelXp)
+  const scoreDial = Math.min(100, Math.round(currentScore / 30))
   const libraryStats = getLibraryStudyStats(state)
   const recommendedLibraryCard = getRecommendedLibraryCard(state)
   const phrase = dayPhrases[(state.progress.day - 1) % dayPhrases.length]
@@ -1192,94 +1203,137 @@ function App() {
             <small>Códice Dual V2</small>
           </div>
         </div>
-        <nav className="nav-list">
-          {appNavItems.map((item) => (
-            <button key={item.id} className={activeView === item.id ? 'active' : ''} type="button" aria-current={activeView === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
-              <span>{item.icon}</span>
-              {t(`nav.${item.id}`)}
-            </button>
-          ))}
+        <nav className="nav-list nav-list--grouped">
+          {navGroups.map((group) => {
+            const groupTitle = group.title[language] ?? group.title['pt-BR']
+            return (
+            <section key={groupTitle} className="nav-group" aria-label={groupTitle}>
+              <span className="nav-group-title">{groupTitle}</span>
+              {group.items.map((id) => {
+                const item = navItemById[id]
+                if (!item) return null
+                return (
+                  <button key={item.id} className={activeView === item.id ? 'active' : ''} type="button" aria-current={activeView === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
+                    <span>{item.icon}</span>
+                    {t(`nav.${item.id}`)}
+                  </button>
+                )
+              })}
+            </section>
+            )
+          })}
         </nav>
       </aside>
 
       <main className="main-panel">
         <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
         <div className="app-workspace">
-          <aside className="app-radio-rail" aria-label="Player de apoio Maiindy">
-            <D7RadioPlayer t={t} compact />
+          <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
+            {activeView === 'home' && (
+              <div className="home-side-panel">
+                <section className="home-side-card home-progress-card" aria-labelledby="home-progress-title">
+                  <span className="overline">Progresso Maiindy</span>
+                  <div className="home-progress-head">
+                    <div>
+                      <h3 id="home-progress-title">{journeyCode}</h3>
+                      <p>Dia {officialJourney.dayNumber}/35 · Semana {officialJourney.weekNumber}/5</p>
+                    </div>
+                    <div className="score-dial" style={{ '--score': scoreDial }} aria-label={`Score ${currentScore}`}>
+                      <strong>{currentScore}</strong>
+                      <span>score</span>
+                    </div>
+                  </div>
+                  <div className="side-progress-row"><span>XP</span><strong>{levelProgress}/250</strong></div>
+                  <ProgressLine value={levelProgress} max={250} label="XP para próximo nível" />
+                  <div className="spark-orbs" aria-label={`${state.sparks} centelhas`}>
+                    {Array.from({ length: 6 }, (_, index) => <span key={index} className={index < Math.min(6, state.sparks ?? 0) ? 'active' : ''} />)}
+                  </div>
+                </section>
+
+                <section className="home-side-card home-streak-card">
+                  <span className="overline">Streak</span>
+                  <div className="streak-compact"><strong>{state.progress.streak ?? 0}</strong><span>dias</span></div>
+                  <div className="week-dots" aria-label="Pontos de sequência semanal">
+                    {Array.from({ length: 7 }, (_, index) => <span key={index} className={index < Math.min(7, state.progress.streak ?? 0) ? 'active' : ''} />)}
+                  </div>
+                </section>
+
+                <section className="home-side-card home-journey-card">
+                  <span className="overline">Jornada oficial</span>
+                  <div className="journey-mini-grid">
+                    <article><span>Categoria</span><strong>{stage.id}</strong><small>{stage.name}</small></article>
+                    <article><span>Tempo</span><strong>{stage.minutes} min</strong><small>oficial</small></article>
+                    <article><span>Melhor</span><strong>{state.progress.bestCode ?? journeyCode}</strong><small>nível</small></article>
+                    <article><span>Reinícios</span><strong>{state.progress.resets ?? 0}</strong><small>histórico</small></article>
+                  </div>
+                  <ProgressLine value={officialJourney.dayNumber} max={OFFICIAL_JOURNEY_DAYS} label="Dia da Primeira Fase" />
+                  <p className="medal-state">Medalha de Honra: <strong>{state.honorMedals?.includes(HONOR_MEDAL_ID) ? 'desbloqueada' : 'pendente'}</strong></p>
+                </section>
+
+                <section className="home-side-card home-tracks-card">
+                  <span className="overline">Trilhas</span>
+                  <div className="track-mini-row"><span>Hebraica</span><strong>{hebrewUnlocked}</strong></div>
+                  <ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Trilha Hebraica" />
+                  <div className="track-mini-row"><span>Sânscrita</span><strong>{sanskritUnlocked}</strong></div>
+                  <ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Trilha Sânscrita" />
+                </section>
+
+                <section className="home-side-card home-missions-card">
+                  <span className="overline">Missões hoje</span>
+                  {missions.daily.slice(0, 4).map((mission) => (
+                    <MissionRow key={mission.id} mission={mission} done={missionStatus(state, mission)} onNavigate={() => navigate(missionNavigationTarget(mission))} />
+                  ))}
+                </section>
+              </div>
+            )}
+            <div className={activeView === 'home' ? 'home-radio-mini' : ''}>
+              <D7RadioPlayer t={t} compact />
+            </div>
           </aside>
+
           <section className="app-content" aria-label="Conteúdo principal do jogo">
+            <header className={activeView === 'home' ? 'topbar topbar--home' : 'topbar'}>
+              <div>
+                <span className="eyebrow">{t('topbar.eyebrow')}</span>
+                <h1>{t(`views.${activeView}.title`)}</h1>
+              </div>
+              <div className="status-pills">
+                <span>{t('topbar.level', { level: playerLevel(state.xp) })}</span>
+                <span>{t('topbar.xp', { xp: state.xp })}</span>
+                <span>{t('topbar.sparks', { sparks: state.sparks })}</span>
+              </div>
+            </header>
 
-        <header className="topbar">
-          <div>
-            <span className="overline">Ciclo atual</span>
-            <h1>{journeyCode} · {stage.name}</h1>
-          </div>
-          <div className="resource-strip" aria-label="Recursos do jogador">
-            <span>Nv. {playerLevel(state.xp)}</span>
-            <span>{state.xp} XP</span>
-            <span>{state.sparks} Centelhas</span>
-            <span>{currentScore} Score</span>
-          </div>
-        </header>
-
-        {activeView === 'home' && (
-          <section className="home-layout">
-            <div className="hero-panel">
-              <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Maiindy Game" />
-              <div className="hero-sigils">
-                <Sigil label="א" tone="gold" />
-                <Sigil label="ॐ" tone="violet" />
-              </div>
-              <span className="overline">{t('home.eyebrow')}</span>
-              <h2>{t('home.title')}</h2>
-              <p>{t('home.body')}</p>
-              <div className="hero-actions">
-                <button type="button" className="primary-action" onClick={() => navigate('pratica')}>{t('home.practice')}</button>
-                <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>{t('home.library')}</button>
-                <button type="button" className="ghost-action" onClick={() => navigate('sala')}>Sala D7</button>
-                <button type="button" className="ghost-action" onClick={() => setShowEntrance(true)}>Ver entrada</button>
-              </div>
-              <div className="home-next-action">
-                <UserAvatar user={currentUser} progress={state} showMeta />
-                <div><span className="overline">Próxima ação</span><strong>{state.progress.restartRequired ? 'Recomeçar em A1' : state.daily.practice ? 'Estudar Biblioteca ou entrar na Sala D7' : `Sessão oficial de ${stage.minutes} min`}</strong><p>{state.progress.restartRequired ? 'Você perdeu um dia. O compromisso recomeça sem apagar sua história.' : recommendedLibraryCard ? `Estudo recomendado: ${recommendedLibraryCard.title}` : 'Acompanhe seu ciclo e mantenha presença.'}</p></div>
-              </div>
-            </div>
-            <div className="dashboard-stack">
-              <StatCard label="Semana" value={`${officialJourney.weekNumber}/5`} detail={`Dia ${officialJourney.dayNumber}/35 · ${journeyCode}`} />
-              <StatCard label="Tempo oficial" value={`${stage.minutes} min`} detail="consistência, não velocidade" />
-              <StatCard label="Categoria" value={stage.id} detail={stage.name} />
-              <StreakFire state={state} />
-              <StatCard label="Melhor nível" value={state.progress.bestCode ?? journeyCode} detail={`${state.progress.resets ?? 0} reinício(s)`} />
-              <StatCard label="Medalha de Honra" value={state.honorMedals?.includes(HONOR_MEDAL_ID) ? 'Desbloqueada' : 'Pendente'} detail="Primeira Fase" />
-              <article className="community-checkin-card">
-                <span className="overline">Comunidade</span>
-                <h3>Compartilhe seu check-in</h3>
-                <p>Sem julgamentos. Apenas compromisso, respeito e encorajamento.</p>
-                <div className="community-checkin-tags" aria-label="Hashtags sugeridas">
-                  <span>#MaiindyGame</span>
-                  <span>{`#MeuNivel${journeyCode}`}</span>
-                  <span>#MedalhaEH7</span>
+            {activeView === 'home' && (
+              <section className="home-layout home-layout--portal">
+                <div className="hero-panel home-portal-panel">
+                  <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Maiindy Game" />
+                  <div className="hero-sigils">
+                    <Sigil label="א" tone="gold" />
+                    <Sigil label="ॐ" tone="violet" />
+                  </div>
+                  <span className="overline">Ciclo atual</span>
+                  <h2>{journeyCode} · {stage.name}</h2>
+                  <p className="home-portal-lead">Entre no estado de presença.</p>
+                  <p className="home-portal-copy">Sua prática oficial: {stage.minutes} minuto{stage.minutes === 1 ? '' : 's'} de silêncio, foco e respiração.</p>
+                  <div className="home-portal-meta">
+                    <span>Dia {officialJourney.dayNumber}/35</span>
+                    <span>Semana {officialJourney.weekNumber}/5</span>
+                    <span>Categoria {stage.id}</span>
+                  </div>
+                  <div className="hero-actions home-portal-actions">
+                    <button type="button" className="primary-action home-primary-action" onClick={() => navigate('pratica')}>{state.progress.restartRequired ? 'Recomeçar em A1' : 'Entrar no Nada'}</button>
+                    <button type="button" className="ghost-action" onClick={() => navigate('biblioteca')}>Biblioteca</button>
+                    <button type="button" className="ghost-action" onClick={() => navigate('codice')}>Códice</button>
+                    <button type="button" className="ghost-action" onClick={() => navigate('pratica')}>Técnicas de Respiração</button>
+                  </div>
+                  <div className="home-next-action home-next-action--portal">
+                    <UserAvatar user={currentUser} progress={state} showMeta />
+                    <div><span className="overline">Agora</span><strong>{state.progress.restartRequired ? 'Compromisso renovado' : state.daily.practice ? 'Sessão oficial concluída' : 'Sessão oficial disponível'}</strong><p>{state.progress.restartRequired ? 'Reiniciar não apaga sua história; reforça seu compromisso.' : state.daily.practice ? 'Explore Biblioteca, Códice ou Sala sem pressão.' : 'O sucesso aqui não é velocidade. É consistência.'}</p></div>
+                  </div>
                 </div>
-              </article>
-              <div className="mission-panel compact-panel home-seal-panel">
-                <div className="seal-pair" aria-hidden="true">
-                  <img src={visualAssets.sealD7} alt="" />
-                  <img src={visualAssets.cycle} alt="" />
-                </div>
-                <h3>Missões diárias</h3>
-                {missions.daily.map((mission) => (
-                  <MissionRow
-                    key={mission.id}
-                    mission={mission}
-                    done={missionStatus(state, mission)}
-                    onNavigate={() => navigate(missionNavigationTarget(mission))}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+              </section>
+            )}
 
         {activeView === 'planos' && (
           <D7Plans userId={currentUser.id} onPlanChanged={() => setSubscriptionRefresh((value) => value + 1)} />

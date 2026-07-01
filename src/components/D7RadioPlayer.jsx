@@ -126,7 +126,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
             <h2 id="d7-radio-title" className="d7-radio-title">{t('radio.title')}</h2>
             <p>{t('radio.subtitle')}</p>
           </div>
-          <div className="d7-radio-badges" aria-label="Status da Rádio D7">
+          <div className="d7-radio-badges" aria-label="Status da Rádio Maiindy">
             <span>{t('radio.localLive')}</span>
             <span>{t('radio.presenceMode')}</span>
             <span>MVP</span>
@@ -144,7 +144,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
           <small>{trackError ? t('radio.noMusic') : currentTrack.durationLabel}</small>
         </div>
 
-        <div className="d7-radio-playlist" aria-label="Músicas disponíveis na Rádio D7">
+        <div className="d7-radio-playlist" aria-label="Músicas disponíveis na Rádio Maiindy">
           {tracks.map((track, index) => (
             <button key={track.id} type="button" className={index === trackIndex ? 'mini-action active' : 'mini-action'} onClick={() => changeTrack(index, isPlaying)}>
               {track.title}
@@ -164,7 +164,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
           onError={handleAudioError}
         />
 
-        <div className="d7-radio-controls" aria-label="Controles da Rádio D7">
+        <div className="d7-radio-controls" aria-label="Controles da Rádio Maiindy">
           <button type="button" className="ghost-action" onClick={previousTrack} aria-label={t('radio.previous')}>‹</button>
           <button type="button" className="primary-action" onClick={togglePlay} aria-label={isPlaying ? t('radio.pause') : t('radio.play')}>
             {isPlaying ? t('radio.pause') : t('radio.play')}

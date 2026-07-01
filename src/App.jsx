@@ -625,6 +625,7 @@ function App() {
   const [panelMessage, setPanelMessage] = useState(null)
   const [activeView, setActiveView] = useState(() => (initialUser || initialRoute.adminLocal) ? initialRoute.view : DEFAULT_VIEW)
   const [directAdminAccess, setDirectAdminAccess] = useState(() => initialRoute.adminLocal)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [state, setState] = useState(() => initialState)
   const [practiceDurationMinutes, setPracticeDurationMinutes] = useState(() => initialPracticeMinutes)
   const [practiceDurationInput, setPracticeDurationInput] = useState(() => String(initialPracticeMinutes))
@@ -1041,6 +1042,7 @@ function App() {
   function navigate(view, options = {}) {
     if (!VALID_APP_VIEWS.has(view)) return
     const adminLocal = view === 'admin' && options.adminLocal === true
+    setMobileNavOpen(false)
     if (view === activeView && directAdminAccess === adminLocal) return
     writeHashRoute(view, { replace: options.replace === true, adminLocal })
     setDirectAdminAccess(adminLocal)
@@ -1203,7 +1205,20 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={mobileNavOpen ? 'app-shell mobile-nav-open' : 'app-shell'}>
+      <header className="mobile-app-bar">
+        <div className="brand-mark mobile-brand-mark">
+          <Sigil label="MG" />
+          <div>
+            <strong>Maiindy Game</strong>
+            <small>{currentUser.name}</small>
+          </div>
+        </div>
+        <button type="button" className="mobile-menu-toggle" onClick={() => setMobileNavOpen((open) => !open)} aria-expanded={mobileNavOpen} aria-controls="main-navigation">
+          Menu
+        </button>
+      </header>
+      <button type="button" className="mobile-nav-backdrop" aria-label="Fechar menu" onClick={() => setMobileNavOpen(false)} />
       <aside className="sidebar" aria-label="Navegação principal">
         <div className="brand-mark">
           <Sigil label="MG" />
@@ -1212,7 +1227,7 @@ function App() {
             <small>Códice Maiindy</small>
           </div>
         </div>
-        <nav className="nav-list nav-list--grouped">
+        <nav id="main-navigation" className="nav-list nav-list--grouped">
           {navGroups.map((group) => {
             const groupTitle = group.title[language] ?? group.title['pt-BR']
             return (

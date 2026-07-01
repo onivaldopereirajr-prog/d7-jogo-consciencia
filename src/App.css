@@ -8015,3 +8015,687 @@ button:not(:disabled):active {
     min-height: auto;
   }
 }
+
+/* Mobile-first responsive safety layer */
+.mobile-app-bar,
+.mobile-nav-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display: block;
+    min-width: 0;
+    overflow-x: clip;
+    padding-top: calc(70px + env(safe-area-inset-top));
+  }
+
+  .mobile-app-bar {
+    position: fixed;
+    z-index: 70;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: calc(64px + env(safe-area-inset-top));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
+    border-bottom: 1px solid rgba(32, 211, 238, 0.16);
+    background: rgba(5, 8, 15, 0.94);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.32);
+  }
+
+  .mobile-brand-mark {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .mobile-brand-mark .sigil-mark {
+    width: 42px;
+  }
+
+  .mobile-brand-mark strong,
+  .mobile-brand-mark small {
+    max-width: 46vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-menu-toggle {
+    min-width: 84px;
+    min-height: 46px;
+    border: 1px solid rgba(32, 211, 238, 0.28);
+    border-radius: 8px;
+    color: var(--text-strong);
+    background: linear-gradient(135deg, rgba(32, 211, 238, 0.14), rgba(212, 175, 55, 0.08));
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .mobile-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    width: 100%;
+    min-height: 100dvh;
+    background: rgba(0, 0, 0, 0.48);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .mobile-nav-open .mobile-nav-backdrop {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar {
+    position: fixed;
+    z-index: 65;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(86vw, 332px);
+    height: 100dvh;
+    max-width: none;
+    padding: calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+    border-right: 1px solid rgba(32, 211, 238, 0.18);
+    border-bottom: 0;
+    transform: translateX(-102%);
+    transition: transform 0.24s ease;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .mobile-nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar .brand-mark {
+    margin-bottom: 18px;
+  }
+
+  .nav-list,
+  .nav-list--grouped,
+  .nav-group {
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .nav-list--grouped {
+    gap: 16px;
+  }
+
+  .nav-group-title {
+    display: block;
+  }
+
+  .nav-list button,
+  .nav-list--grouped button {
+    min-height: 48px;
+    white-space: normal;
+    font-size: 0.98rem;
+  }
+
+  .main-panel {
+    width: 100%;
+    padding: 14px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .user-profile-bar {
+    margin-bottom: 12px;
+  }
+
+  .app-workspace,
+  .app-workspace--home {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .app-content {
+    order: 1;
+    width: 100%;
+  }
+
+  .app-radio-rail,
+  .app-radio-rail--floating,
+  .home-dashboard-rail {
+    order: 2;
+    position: static;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .home-side-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .home-progress-head,
+  .home-next-action--portal,
+  .d7-radio-head,
+  .week-head,
+  .track-progress p {
+    align-items: flex-start;
+  }
+
+  .topbar {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .topbar h1 {
+    font-size: clamp(1.55rem, 7vw, 2.15rem);
+  }
+
+  .status-pills {
+    justify-content: flex-start;
+  }
+
+  .status-pills span,
+  .resource-strip span {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .home-portal-panel {
+    min-height: auto;
+    padding: 22px;
+  }
+
+  .home-portal-panel::after {
+    width: 92vw;
+    right: -30vw;
+    opacity: 0.5;
+  }
+
+  .home-portal-panel .hero-sigils {
+    top: 18px;
+    right: 18px;
+    opacity: 0.38;
+  }
+
+  .home-portal-panel h2 {
+    max-width: 100%;
+    font-size: clamp(2.1rem, 12vw, 4rem);
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+
+  .home-portal-lead {
+    font-size: clamp(1.16rem, 5vw, 1.55rem) !important;
+  }
+
+  .home-portal-copy {
+    font-size: 1rem !important;
+    line-height: 1.55;
+  }
+
+  .home-portal-meta,
+  .hero-actions,
+  .home-portal-actions,
+  .playable-actions,
+  .report-actions,
+  .admin-actions-row,
+  .admin-management-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .home-portal-meta {
+    display: flex;
+  }
+
+  .primary-action,
+  .ghost-action,
+  .mini-action,
+  .danger-action,
+  .complete-action {
+    min-height: 46px;
+  }
+
+  .hero-actions > *,
+  .home-portal-actions > *,
+  .playable-actions > *,
+  .report-actions > *,
+  .admin-actions-row > *,
+  .admin-management-actions > * {
+    width: 100%;
+  }
+
+  .d7-radio-card,
+  .home-radio-mini .d7-radio-card,
+  .floating-radio-mini .d7-radio-card {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .home-radio-mini .d7-radio-head p,
+  .home-radio-mini .d7-radio-badges,
+  .home-radio-mini .d7-radio-wave,
+  .home-radio-mini .d7-radio-playlist,
+  .home-radio-mini .d7-radio-status,
+  .floating-radio-mini .d7-radio-head p,
+  .floating-radio-mini .d7-radio-badges,
+  .floating-radio-mini .d7-radio-wave,
+  .floating-radio-mini .d7-radio-playlist,
+  .floating-radio-mini .d7-radio-status {
+    display: none;
+  }
+
+  .d7-radio-controls,
+  .app-radio-rail .d7-radio-controls,
+  .floating-radio-mini .d7-radio-controls,
+  .home-radio-mini .d7-radio-controls {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .d7-radio-controls .mini-action:nth-of-type(4),
+  .d7-radio-controls .mini-action:nth-of-type(5),
+  .d7-radio-volume span,
+  .d7-radio-volume strong {
+    display: none;
+  }
+
+  .d7-radio-volume,
+  .app-radio-rail .d7-radio-volume,
+  .floating-radio-mini .d7-radio-volume {
+    display: block;
+  }
+
+  .d7-radio-volume input {
+    width: 100%;
+    min-height: 34px;
+  }
+
+  .journey-board,
+  .portal-grid,
+  .bridge-grid,
+  .symbol-grid,
+  .code-grid,
+  .circle-grid,
+  .profile-stats,
+  .featured-card-grid,
+  .seal-grid,
+  .map-card-grid,
+  .map-metrics-grid,
+  .admin-columns,
+  .room-grid,
+  .wheel-layout,
+  .admin-management-grid,
+  .local-user-grid,
+  .d7-plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-grid {
+    grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  }
+
+  .day-grid span {
+    min-height: 42px;
+    font-size: 0.86rem;
+  }
+
+  .content-section,
+  .profile-card,
+  .inventory-card,
+  .mission-panel,
+  .admin-shell,
+  .room-shell,
+  .wheel-shell {
+    padding: 16px;
+  }
+
+  .rank-row {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .rank-row p,
+  .rank-row > small {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .admin-head,
+  .admin-user-head,
+  .admin-management-card header,
+  .wheel-history article {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-metrics-grid,
+  .admin-metrics-grid.compact,
+  .owner-metrics-grid,
+  .access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-access-form,
+  .admin-inline-form,
+  .room-create-form {
+    max-width: none;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-access-form input,
+  .admin-inline-form input,
+  .admin-inline-form select,
+  .room-create-form input,
+  .room-chat textarea,
+  .playable-word-form input {
+    width: 100%;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .d7-entrance {
+    overflow: hidden;
+    padding: calc(76px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .d7-entrance-content {
+    width: min(100%, 390px);
+  }
+
+  .d7-entrance-content h1 {
+    max-width: 100%;
+    font-size: clamp(3rem, 14vw, 4.7rem);
+    line-height: 0.98;
+    overflow-wrap: normal;
+  }
+
+  .d7-entrance-subtitle {
+    font-size: clamp(1.2rem, 5vw, 1.55rem);
+  }
+
+  .d7-entrance-support {
+    max-width: 32ch;
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .d7-entrance-portal {
+    width: min(78vw, 310px);
+    opacity: 0.72;
+  }
+
+  .d7-entrance-particles {
+    opacity: 0.18;
+    background-size: 150px 150px, 210px 210px;
+    animation-duration: 70s;
+  }
+
+  .d7-entrance-orbits {
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .entrance-orbit--outer { --orbit-size: min(98vw, 430px); }
+  .entrance-orbit--middle { --orbit-size: min(78vw, 340px); }
+  .entrance-orbit--inner { --orbit-size: min(58vw, 260px); }
+
+  .d7-entrance-symbol {
+    width: 38px;
+    height: 38px;
+    font-size: 0.72rem;
+  }
+
+  .d7-entrance-symbol.symbol-m1 { top: 19%; left: 4%; }
+  .d7-entrance-symbol.symbol-in { top: 19%; right: 4%; }
+  .d7-entrance-symbol.symbol-mg { left: 50%; bottom: 6%; transform: translateX(-50%); }
+
+  .ember:nth-child(n+9) {
+    display: none;
+  }
+
+  .playable-shell {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .playable-header h2 {
+    font-size: clamp(1.35rem, 7vw, 1.8rem);
+  }
+
+  .playable-steps {
+    gap: 5px;
+  }
+
+  .playable-steps li span {
+    width: 28px;
+    height: 28px;
+  }
+
+  .day-panel-stage,
+  .level-stage,
+  .silence-stage,
+  .breath-stage,
+  .word-stage,
+  .card-stage {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .day-code-orb,
+  .level-ring,
+  .word-orb {
+    width: min(210px, 58vw);
+  }
+
+  .day-mission-grid,
+  .level-grid,
+  .breathing-technique-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .breathing-technique-card {
+    min-height: 72px;
+    padding: 12px 8px;
+  }
+
+  .breathing-technique-detail {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .breathing-technique-detail .mini-action {
+    width: 100%;
+  }
+
+  .practice-config-panel,
+  .playable-silence-frame,
+  .d7-pulse-timer {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .silence-audio-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .silence-audio-actions .mini-action {
+    width: 100%;
+  }
+
+  .breath-triangle {
+    width: min(82vw, 300px);
+  }
+
+  .breath-copy h3 {
+    font-size: clamp(2rem, 12vw, 3.25rem);
+  }
+
+  .word-stage {
+    align-content: start;
+  }
+
+  .playable-word-form {
+    justify-items: stretch;
+  }
+
+  .playable-word-form input {
+    min-height: 52px;
+    border-radius: 12px;
+    text-align: left;
+  }
+
+  .library-layout,
+  .library-card-grid,
+  .library-phases {
+    grid-template-columns: 1fr !important;
+  }
+
+  .codex-quick-nav {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .codex-quick-nav a,
+  .codex-quick-nav button {
+    flex: 1 1 150px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 520px) {
+  .main-panel {
+    padding: 10px;
+  }
+
+  .mobile-app-bar {
+    padding-inline: 10px;
+  }
+
+  .home-portal-panel,
+  .content-section,
+  .profile-card,
+  .inventory-card,
+  .mission-panel,
+  .week-card,
+  .portal-card,
+  .bridge-card,
+  .symbol-card,
+  .code-card,
+  .circle-card,
+  .admin-shell,
+  .room-shell,
+  .wheel-shell {
+    padding: 14px;
+  }
+
+  .home-portal-panel h2 {
+    font-size: clamp(1.95rem, 12vw, 3.15rem);
+  }
+
+  .home-progress-head,
+  .d7-radio-head,
+  .week-head,
+  .mission-row,
+  .track-progress p {
+    display: grid;
+  }
+
+  .score-dial {
+    width: 68px;
+  }
+
+  .mission-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .mission-action,
+  .mission-row small {
+    grid-column: 2;
+  }
+
+  .day-mission-grid,
+  .level-grid,
+  .admin-metrics-grid,
+  .admin-metrics-grid.compact,
+  .owner-metrics-grid,
+  .access-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .d7-radio-controls,
+  .app-radio-rail .d7-radio-controls,
+  .floating-radio-mini .d7-radio-controls,
+  .home-radio-mini .d7-radio-controls {
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+  }
+
+  .d7-radio-controls .ghost-action,
+  .d7-radio-controls .primary-action,
+  .d7-radio-controls .mini-action {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
+  .breathing-technique-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .d7-timer-ring {
+    width: min(82vw, 300px);
+  }
+
+  .d7-timer-number {
+    font-size: clamp(2.5rem, 15vw, 3.9rem);
+  }
+
+  .rank-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-row p,
+  .rank-row > small {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 390px) {
+  .mobile-brand-mark strong,
+  .mobile-brand-mark small {
+    max-width: 40vw;
+  }
+
+  .mobile-menu-toggle {
+    min-width: 76px;
+  }
+
+  .d7-entrance-content h1 {
+    font-size: clamp(2.75rem, 13vw, 3.45rem);
+  }
+
+  .d7-entrance-actions {
+    width: 100%;
+  }
+
+  .home-portal-meta span,
+  .status-pills span {
+    font-size: 0.8rem;
+  }
+}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  D7_LOCAL_STORAGE_KEYS,
   buildFullLocalBackup,
   changeLocalUserPlanFromAdmin,
   buildUserBackup,
@@ -55,6 +56,7 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
 
   const presenceByUser = useMemo(() => Object.fromEntries(presence.map((item) => [item.userId, item])), [presence])
   const planOptions = useMemo(() => listPlanDefinitions(), [])
+  const resetKeysPreview = useMemo(() => D7_LOCAL_STORAGE_KEYS.join(', '), [])
 
   function notify(result) {
     setMessage({ type: result.ok ? 'success' : 'error', text: result.message })
@@ -220,8 +222,9 @@ export default function AdminUserManagement({ summaries = [], presence = [], onC
           <button type="button" className="ghost-action" onClick={exportFullBackup}>Exportar backup JSON</button>
         </div>
         <div className="admin-inline-form danger-zone">
+          <p className="control-note">O reset exporta um backup sanitizado e remove somente as chaves locais conhecidas do D7/Maiindy neste navegador: {resetKeysPreview}. Não executa localStorage.clear().</p>
           <label>
-            Digite RESETAR D7 LOCAL para apagar os dados D7 deste navegador
+            Digite RESETAR D7 LOCAL para apagar os dados D7/Maiindy deste navegador
             <input type="text" value={resetConfirm} onChange={(event) => setResetConfirm(event.target.value)} />
           </label>
           <button type="button" className="danger-action" onClick={submitResetEnvironment}>Resetar D7 Local</button>

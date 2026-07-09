@@ -6,7 +6,7 @@ import { MANTRA_SETTINGS_KEY } from './mantraAudioService.js'
 import { PRESENCE_KEY, SESSION_ID_KEY } from './presenceService.js'
 import { PROGRESS_BY_USER_KEY } from './localProgress.js'
 import { RADIO_SETTINGS_KEY } from './radioService.js'
-import { PLAYER_ROOMS_KEY, ROOM_STATE_KEY, getRoomState, saveRoomState } from './roomLocal.js'
+import { PLAYER_ROOMS_KEY, ROOM_STATE_KEY, getPlayerRoomsState, getRoomState, savePlayerRoomsState, saveRoomState } from './roomLocal.js'
 import { SEAL_EVENTS_KEY } from './sealEngine.js'
 import { SESSION_KEY, USERS_KEY, getCurrentSession, getUsers, hashPassword, logout, saveUsers } from './localAuth.js'
 import { WELCOME_SPIN_KEY, WHEEL_EVENTS_KEY } from './wheelService.js'
@@ -18,6 +18,7 @@ import { PLAN_IDS, USER_PLANS_KEY, getLocalPlan, getPlanDefinition, setLocalPlan
 
 const MIN_PASSWORD_LENGTH = 6
 const ENTRANCE_KEY = 'd7_entrance_seen'
+const BREATHING_TECHNIQUE_KEY = 'maiindy_breathing_technique'
 const SENSITIVE_FIELD_TOKENS = ['password', 'pin', 'hash', 'salt', 'secret', 'recovery']
 
 export const D7_LOCAL_STORAGE_KEYS = [
@@ -51,6 +52,7 @@ export const D7_LOCAL_STORAGE_KEYS = [
   RADIO_SETTINGS_KEY,
   MANTRA_SETTINGS_KEY,
   ENTRANCE_KEY,
+  BREATHING_TECHNIQUE_KEY,
   STORAGE_KEY,
   LEGACY_KEY,
 ]
@@ -88,6 +90,21 @@ function getD7LocalStorageKeys() {
   return [...keys]
 }
 
+function readLocalStorageValueForBackup(key) {
+  if (typeof window === 'undefined' || !window.localStorage) return null
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (raw === null) return null
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return raw
+    }
+  } catch {
+    return null
+  }
+}
+
 export function sanitizeAdminData(value) {
   if (Array.isArray(value)) return value.map(sanitizeAdminData)
   if (!isPlainObject(value)) return value
@@ -120,6 +137,48 @@ function filterArrayStorage(key, predicate) {
   return items.length - next.length
 }
 
+function buildPlayerRoomsUserSlice(userId) {
+  const playerRoomsState = getPlayerRoomsState()
+  return {
+    ownedRooms: playerRoomsState.rooms
+      .filter((room) => room.ownerId === userId)
+      .map(sanitizeAdminData),
+    messages: playerRoomsState.rooms
+      .flatMap((room) => (room.messages ?? [])
+        .filter((message) => message.userId === userId)
+        .map((message) => sanitizeAdminData({
+          roomId: room.id,
+          roomName: room.name,
+          message,
+        }))),
+  }
+}
+
+function removeUserFromPlayerRooms(userId) {
+  const state = getPlayerRoomsState()
+  let removedOwnedRooms = 0
+  let removedMessages = 0
+  const nextRooms = state.rooms
+    .filter((room) => {
+      const keep = room.ownerId !== userId
+      if (!keep) removedOwnedRooms += 1
+      return keep
+    })
+    .map((room) => {
+      const messages = room.messages ?? []
+      const nextMessages = messages.filter((message) => message.userId !== userId)
+      removedMessages += messages.length - nextMessages.length
+      return { ...room, messages: nextMessages }
+    })
+  const activeRoomStillExists = nextRooms.some((room) => room.id === state.activeRoomId)
+  savePlayerRoomsState({
+    ...state,
+    activeRoomId: activeRoomStillExists ? state.activeRoomId : 'd7-main-room',
+    rooms: nextRooms,
+  })
+  return { removedOwnedRooms, removedMessages }
+}
+
 function makeBackupBase(type, extra = {}) {
   return {
     type,
@@ -132,7 +191,7 @@ function makeBackupBase(type, extra = {}) {
 export function buildFullLocalBackup(type = 'manual_admin_backup') {
   const storage = {}
   getD7LocalStorageKeys().forEach((key) => {
-    const value = safeGetStorage(key, null)
+    const value = readLocalStorageValueForBackup(key)
     if (value !== null) storage[key] = sanitizeAdminData(value)
   })
   return makeBackupBase(type, { storage })
@@ -149,10 +208,12 @@ export function buildUserBackup(userId, type = 'user_admin_backup') {
   const wheelEvents = getObjectByUserKey(WHEEL_EVENTS_KEY)[userId] ?? []
   const welcomeSpin = getObjectByUserKey(WELCOME_SPIN_KEY)[userId] ?? null
   const sealEvents = getObjectByUserKey(SEAL_EVENTS_KEY)[userId] ?? []
+  const screenTime = getObjectByUserKey(SCREEN_TIME_KEY)[userId] ?? null
   const roomState = getRoomState()
   const room = {
     messages: (roomState.messages ?? []).filter((message) => message.userId === userId).map(sanitizeAdminData),
     permission: roomState.permissions?.[userId] ? sanitizeAdminData(roomState.permissions[userId]) : null,
+    playerRooms: buildPlayerRoomsUserSlice(userId),
   }
   const alerts = safeGetStorage(SECURITY_ALERTS_KEY, []).filter((alert) => alert.userId === userId || alert.metadata?.userId === userId)
   const planId = getLocalPlan(userId)
@@ -171,6 +232,7 @@ export function buildUserBackup(userId, type = 'user_admin_backup') {
       seals: sanitizeAdminData(sealEvents),
     },
     welcomeSpin: sanitizeAdminData(welcomeSpin),
+    screenTime: sanitizeAdminData(screenTime),
     room,
     alerts: sanitizeAdminData(alerts),
   })
@@ -271,6 +333,7 @@ export function deleteLocalUserFromAdmin({ userId, confirmation }) {
     wheelEvents: setObjectWithoutUser(WHEEL_EVENTS_KEY, userId),
     welcomeSpin: setObjectWithoutUser(WELCOME_SPIN_KEY, userId),
     sealEvents: setObjectWithoutUser(SEAL_EVENTS_KEY, userId),
+    screenTime: setObjectWithoutUser(SCREEN_TIME_KEY, userId),
     plans: setObjectWithoutUser(USER_PLANS_KEY, userId),
     auditEvents: filterArrayStorage(ADMIN_AUDIT_KEY, (event) => event.userId !== userId && event.metadata?.targetUserId !== userId),
     alerts: filterArrayStorage(SECURITY_ALERTS_KEY, (alert) => alert.userId !== userId && alert.metadata?.userId !== userId && alert.metadata?.targetUserId !== userId),
@@ -287,6 +350,7 @@ export function deleteLocalUserFromAdmin({ userId, confirmation }) {
     permissions,
     messages: (roomState.messages ?? []).filter((message) => message.userId !== userId),
   })
+  removed.playerRooms = removeUserFromPlayerRooms(userId)
 
   createAuditEvent('user_deleted', {
     actorRole: 'owner-local-admin',

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_BREATHING_TECHNIQUE_ID, breathingTechniques, fallbackBreathingTechnique, getBreathingTechnique } from '../data/breathingTechniques.js'
 import D7MantraPlayer from './D7MantraPlayer.jsx'
 import D7PulseTimer from './D7PulseTimer.jsx'
+import { pointOnBreathTriangle } from '../utils/breathTriangle.js'
 
 const FLOW_STEPS = ['day-panel', 'breath', 'silence', 'word', 'card', 'level-up']
 const BREATHING_STORAGE_KEY = 'maiindy_breathing_technique'
@@ -65,27 +66,6 @@ function phaseAtTick(steps, tick) {
   return { phase: fallback, index: steps.length - 1, elapsed: 0, seconds: Math.max(1, Number(fallback.seconds ?? 1)) }
 }
 
-function pointOnTrianglePath(progress) {
-  const vertices = [{ x: 50, y: 6 }, { x: 94, y: 88 }, { x: 6, y: 88 }]
-  const segments = vertices.map((point, index) => {
-    const next = vertices[(index + 1) % vertices.length]
-    return { start: point, end: next, length: Math.hypot(next.x - point.x, next.y - point.y) }
-  })
-  const total = segments.reduce((sum, segment) => sum + segment.length, 0)
-  let distance = ((progress % 1) + 1) % 1 * total
-  for (const segment of segments) {
-    if (distance <= segment.length) {
-      const amount = segment.length ? distance / segment.length : 0
-      return {
-        x: segment.start.x + (segment.end.x - segment.start.x) * amount,
-        y: segment.start.y + (segment.end.y - segment.start.y) * amount,
-      }
-    }
-    distance -= segment.length
-  }
-  return vertices[0]
-}
-
 const BREATH_DOT_COLORS = [
   [153, 92, 255],
   [255, 226, 64],
@@ -112,14 +92,11 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   const totalTicks = BREATH_CYCLES * cycleSeconds
   const safeTick = Math.min(tick, totalTicks - 0.001)
   const cycle = Math.min(BREATH_CYCLES, Math.floor(safeTick / cycleSeconds) + 1)
-  const { phase, index: phaseIndex, elapsed: phaseElapsed, seconds: phaseSeconds } = phaseAtTick(steps, safeTick)
+  const { phase, elapsed: phaseElapsed, seconds: phaseSeconds } = phaseAtTick(steps, safeTick)
   const phaseRemaining = Math.max(1, Math.ceil(phaseSeconds - phaseElapsed))
-  const phaseProgress = phaseElapsed / phaseSeconds
-  const dotStart = pointOnTrianglePath(phaseIndex / steps.length)
-  const dotEnd = pointOnTrianglePath((phaseIndex + 1) / steps.length)
-  const dotX = dotStart.x + ((dotEnd.x - dotStart.x) * phaseProgress)
-  const dotY = dotStart.y + ((dotEnd.y - dotStart.y) * phaseProgress)
-  const dotColor = breathDotColor((phaseIndex + phaseProgress) / steps.length)
+  const cycleProgress = (safeTick % cycleSeconds) / cycleSeconds
+  const dotPosition = pointOnBreathTriangle(cycleProgress)
+  const dotColor = breathDotColor(cycleProgress)
 
   useEffect(() => {
     const startedAt = Date.now()
@@ -147,9 +124,6 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
         className={'breath-triangle phase-' + phase.id}
         aria-hidden="true"
         style={{
-          '--breath-dot-left': `calc(7% + ${dotX * 0.86}%)`,
-          '--breath-dot-top': `calc(7% + ${dotY * 0.86}%)`,
-          '--breath-dot-scale': phase.id?.startsWith('hold') ? 1.18 : 1,
           '--breath-dot-color': dotColor,
         }}
       >
@@ -157,8 +131,13 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
           <polygon className="breath-triangle-fill" points="50 6 94 88 6 88" />
           <polygon className="breath-triangle-core" points="50 29 72 76 28 76" />
           <polyline className="breath-triangle-line" points="50 6 94 88 6 88 50 6" />
+          <circle
+            className="breath-triangle-dot"
+            cx={dotPosition.x}
+            cy={dotPosition.y}
+            r={phase.id?.startsWith('hold') ? 3.2 : 2.8}
+          />
         </svg>
-        <span className="breath-triangle-dot" aria-hidden="true" />
       </div>
       <div className="breath-copy" aria-live="polite">
         <span className="overline">{technique.name}</span>

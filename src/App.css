@@ -6508,24 +6508,15 @@ button:not(:disabled):active {
   background: rgba(3, 5, 10, 0.9);
 }
 
-.breath-triangle .breath-triangle-dot {
-  position: absolute;
-  left: var(--breath-dot-left, 50%);
-  top: var(--breath-dot-top, 50%);
-  width: 16px;
-  height: 16px;
-  aspect-ratio: auto;
-  clip-path: none;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.82);
-  background: var(--breath-dot-color, #995cff);
-  box-shadow: 0 0 12px var(--breath-dot-color, #995cff), 0 0 28px var(--breath-dot-color, #995cff);
-  transform: translate(-50%, -50%) scale(var(--breath-dot-scale, 1));
-  transform-origin: center;
-  will-change: left, top, transform;
+.breath-triangle-visual .breath-triangle-dot {
+  fill: var(--breath-dot-color, #995cff);
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 0.9;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px var(--breath-dot-color, #995cff)) drop-shadow(0 0 5px var(--breath-dot-color, #995cff));
+  will-change: cx, cy, fill;
   pointer-events: none;
-  z-index: 2;
-  transition: left 820ms linear, top 820ms linear, transform 220ms ease, background-color 820ms linear, box-shadow 820ms linear;
+  transition: cx 280ms linear, cy 280ms linear, r 220ms ease, fill 280ms linear;
   animation: breath-dot-glow 1.2s ease-in-out infinite;
 }
 
@@ -6953,10 +6944,6 @@ button:not(:disabled):active {
   animation-name: playable-breath-exhale;
 }
 
-.breath-triangle-dot {
-  will-change: left, top, transform;
-}
-
 .breath-triangle::before {
   position: absolute;
   inset: 8%;
@@ -7253,10 +7240,6 @@ button:not(:disabled):active {
     width: min(320px, calc(100vw - 28px));
   }
 
-  .breath-triangle .breath-triangle-dot {
-    width: 18px;
-    height: 18px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

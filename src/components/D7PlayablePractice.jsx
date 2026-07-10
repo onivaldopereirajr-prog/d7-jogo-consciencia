@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_BREATHING_TECHNIQUE_ID, breathingTechniques, fallbackBreathingTechnique, getBreathingTechnique } from '../data/breathingTechniques.js'
 import D7MantraPlayer from './D7MantraPlayer.jsx'
 import D7PulseTimer from './D7PulseTimer.jsx'
-import { pointOnBreathTriangle } from '../utils/breathTriangle.js'
+import { getBreathingState, pointOnBreathTriangle } from '../utils/breathTriangle.js'
 
 const FLOW_STEPS = ['day-panel', 'breath', 'silence', 'word', 'card', 'level-up']
 const BREATHING_STORAGE_KEY = 'maiindy_breathing_technique'
@@ -48,74 +48,56 @@ function saveStoredBreathingTechniqueId(id) {
   }
 }
 
-function cycleDuration(steps) {
-  return steps.reduce((sum, step) => sum + Number(step.seconds ?? 0), 0)
-}
-
-function phaseAtTick(steps, tick) {
-  const total = cycleDuration(steps) || 1
-  const inCycle = tick % total
-  let cursor = 0
-  for (let index = 0; index < steps.length; index += 1) {
-    const step = steps[index]
-    const seconds = Math.max(1, Number(step.seconds ?? 1))
-    if (inCycle < cursor + seconds) return { phase: step, index, elapsed: inCycle - cursor, seconds }
-    cursor += seconds
-  }
-  const fallback = steps[steps.length - 1] ?? fallbackBreathingTechnique.steps[0]
-  return { phase: fallback, index: steps.length - 1, elapsed: 0, seconds: Math.max(1, Number(fallback.seconds ?? 1)) }
-}
-
-const BREATH_DOT_COLORS = [
-  [153, 92, 255],
-  [255, 226, 64],
-  [103, 255, 62],
-]
-
-function breathDotColor(progress) {
-  const normalized = ((progress % 1) + 1) % 1
-  const scaled = normalized * BREATH_DOT_COLORS.length
-  const index = Math.floor(scaled) % BREATH_DOT_COLORS.length
-  const nextIndex = (index + 1) % BREATH_DOT_COLORS.length
-  const amount = scaled - Math.floor(scaled)
-  const color = BREATH_DOT_COLORS[index].map((channel, channelIndex) => (
-    Math.round(channel + ((BREATH_DOT_COLORS[nextIndex][channelIndex] - channel) * amount))
-  ))
-  return `rgb(${color.join(' ')})`
+const BREATH_PHASE_COLORS = {
+  inhale: '#995cff',
+  hold: '#ffe240',
+  exhale: '#67ff3e',
+  'hold-empty': '#995cff',
 }
 
 function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
-  const [tick, setTick] = useState(0)
-  const [isFinished, setIsFinished] = useState(false)
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const finishedRef = useRef(false)
+  const onDoneRef = useRef(onDone)
   const steps = technique.steps?.length ? technique.steps : fallbackBreathingTechnique.steps
-  const cycleSeconds = cycleDuration(steps)
-  const totalTicks = BREATH_CYCLES * cycleSeconds
-  const safeTick = Math.min(tick, totalTicks - 0.001)
-  const cycle = Math.min(BREATH_CYCLES, Math.floor(safeTick / cycleSeconds) + 1)
-  const { phase, elapsed: phaseElapsed, seconds: phaseSeconds } = phaseAtTick(steps, safeTick)
-  const phaseRemaining = Math.max(1, Math.ceil(phaseSeconds - phaseElapsed))
-  const cycleProgress = (safeTick % cycleSeconds) / cycleSeconds
-  const dotPosition = pointOnBreathTriangle(cycleProgress)
-  const dotColor = breathDotColor(cycleProgress)
+  const breathingState = getBreathingState(elapsedMs, { ...technique, steps })
+  const totalDurationMs = BREATH_CYCLES * breathingState.cycleDurationMs
+  const phase = breathingState.phase ?? fallbackBreathingTechnique.steps[0]
+  const phaseRemaining = Math.max(1, Math.ceil(breathingState.phaseRemainingMs / 1000))
+  const cycle = Math.min(BREATH_CYCLES, Math.floor(elapsedMs / breathingState.cycleDurationMs) + 1)
+  // Fases controlam instrução e cor; a posição usa comprimento de arco uniforme (v = perímetro / duração do ciclo).
+  const dotPosition = pointOnBreathTriangle(breathingState.cycleProgress)
+  const dotColor = BREATH_PHASE_COLORS[breathingState.phaseType] ?? BREATH_PHASE_COLORS.inhale
 
   useEffect(() => {
-    const startedAt = Date.now()
-    const interval = window.setInterval(() => {
-      setTick(Math.min(totalTicks, (Date.now() - startedAt) / 1000))
-    }, 250)
-    return () => window.clearInterval(interval)
-  }, [totalTicks])
+    onDoneRef.current = onDone
+  }, [onDone])
 
   useEffect(() => {
-    if (tick < totalTicks || isFinished) return
-    setIsFinished(true)
-    onDone?.()
-  }, [isFinished, onDone, tick, totalTicks])
+    const startedAt = performance.now()
+    let animationFrameId = 0
+
+    function renderFrame(now) {
+      const nextElapsedMs = Math.min(totalDurationMs, now - startedAt)
+      setElapsedMs(nextElapsedMs)
+      if (nextElapsedMs >= totalDurationMs) {
+        if (!finishedRef.current) {
+          finishedRef.current = true
+          onDoneRef.current?.()
+        }
+        return
+      }
+      animationFrameId = window.requestAnimationFrame(renderFrame)
+    }
+
+    animationFrameId = window.requestAnimationFrame(renderFrame)
+    return () => window.cancelAnimationFrame(animationFrameId)
+  }, [totalDurationMs])
 
   function handleSkip() {
-    if (isFinished) return
-    setIsFinished(true)
-    onDone?.()
+    if (finishedRef.current) return
+    finishedRef.current = true
+    onDoneRef.current?.()
   }
 
   return (

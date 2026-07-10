@@ -6516,7 +6516,7 @@ button:not(:disabled):active {
   filter: drop-shadow(0 0 2px var(--breath-dot-color, #995cff)) drop-shadow(0 0 5px var(--breath-dot-color, #995cff));
   will-change: cx, cy, fill;
   pointer-events: none;
-  transition: cx 280ms linear, cy 280ms linear, r 220ms ease, fill 280ms linear;
+  transition: r 120ms linear, fill 240ms linear;
   animation: breath-dot-glow 1.2s ease-in-out infinite;
 }
 

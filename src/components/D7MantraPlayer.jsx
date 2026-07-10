@@ -2,7 +2,9 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { d7MantraTracks } from '../data/d7MantraTracks.js'
 import { getMantraSettings, getRecommendedMantraTrackId, saveMantraSettings } from '../services/mantraAudioService.js'
 
-const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, selectedDurationMinutes, isPracticeRunning, isPracticePaused, isPracticeCompleted, onPlaybackStateChange }, ref) {
+const SILENT_TRACK_ID = '__silent__'
+
+const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, selectedDurationMinutes, isPracticeRunning, isPracticePaused, isPracticeCompleted, onPlaybackStateChange, contextLabel = 'prática' }, ref) {
   const initialSettings = useMemo(() => getMantraSettings(), [])
   const [enabled, setEnabled] = useState(initialSettings.enabled)
   const [volume, setVolume] = useState(initialSettings.volume)
@@ -16,7 +18,7 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
   const fadeRef = useRef(null)
   const targetVolumeRef = useRef(volume)
   const onPlaybackStateChangeRef = useRef(onPlaybackStateChange)
-  const selectedTrack = d7MantraTracks.find((track) => track.id === selectedTrackId) ?? d7MantraTracks[0]
+  const selectedTrack = enabled ? (d7MantraTracks.find((track) => track.id === selectedTrackId) ?? d7MantraTracks[0]) : null
 
   function clearFade() {
     if (fadeRef.current) window.clearInterval(fadeRef.current)
@@ -52,6 +54,7 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
     const audio = audioRef.current
     if (!audio || !enabled || !selectedTrack) return { ok: false, reason: 'disabled' }
     try {
+      window.dispatchEvent(new CustomEvent('maiindy:practice-audio-start', { detail: { source: 'mantra', contextLabel, trackId: selectedTrack.id } }))
       clearFade()
       setAudioVolume(0)
       setAudioError(false)
@@ -137,11 +140,29 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
     saveMantraSettings({ enabled, volume, muted, loop, selectedTrackId })
   }, [enabled, loop, muted, selectedTrackId, volume])
 
-  useEffect(() => () => clearFade(), [])
+  useEffect(() => {
+    function handleRadioStart() {
+      stopAudio({ reset: false })
+    }
+    window.addEventListener('maiindy:radio-audio-start', handleRadioStart)
+    return () => {
+      window.removeEventListener('maiindy:radio-audio-start', handleRadioStart)
+      clearFade()
+    }
+  // The listener must be registered once to coordinate browser audio players by event.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleTrackChange(trackId) {
     const wasPlaying = isAudioPlaying
     stopAudio({ reset: true })
+    if (trackId === SILENT_TRACK_ID) {
+      setEnabled(false)
+      setAudioError(false)
+      setStatus('Sem mantra selecionado')
+      return
+    }
+    setEnabled(true)
     setSelectedTrackId(trackId)
     setAudioError(false)
     setStatus(wasPlaying ? t('mantra.touchToResume') : t('mantra.ready'))
@@ -176,9 +197,9 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
       <div className="mantra-track-card">
         <div className="mantra-wave" aria-hidden="true"><span /><span /><span /><span /></div>
         <div>
-          <span>{selectedTrack?.mood ?? 'D7'}</span>
-          <strong>{selectedTrack?.title ?? t('mantra.title')}</strong>
-          <p>{selectedTrack?.subtitle ?? t('mantra.fileMissing')}</p>
+          <span>{selectedTrack?.mood ?? 'silêncio'}</span>
+          <strong>{selectedTrack?.title ?? 'Sem mantra'}</strong>
+          <p>{selectedTrack?.subtitle ?? `Sessão de ${contextLabel} em silêncio.`}</p>
         </div>
       </div>
 
@@ -186,7 +207,8 @@ const D7MantraPlayer = forwardRef(function D7MantraPlayer({ t = (path) => path, 
 
       <div className="mantra-controls">
         <label htmlFor="mantra-track">{t('mantra.choose')}</label>
-        <select id="mantra-track" value={selectedTrackId ?? ''} onChange={(event) => handleTrackChange(event.target.value)} disabled={!enabled || isPracticeRunning}>
+        <select id="mantra-track" value={enabled ? (selectedTrackId ?? '') : SILENT_TRACK_ID} onChange={(event) => handleTrackChange(event.target.value)} disabled={isPracticeRunning}>
+          <option value={SILENT_TRACK_ID}>Sem mantra</option>
           {d7MantraTracks.map((track) => <option key={track.id} value={track.id}>{track.title}</option>)}
         </select>
         <button type="button" className="mini-action" onClick={isAudioPlaying ? pauseAudio : playFromUserGesture} disabled={!enabled} aria-label={isAudioPlaying ? t('mantra.pause') : t('mantra.play')}>

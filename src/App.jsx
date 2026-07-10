@@ -53,6 +53,7 @@ import { getWheelEvents, spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
 import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarService.js'
 import { recordScreenTimeTick, startScreenTimeSession } from './services/adminUserMonitoring.js'
+import { PLAYTEST_FOCUS_MODE, isPlaytestParticipantView } from './config/playtest.js'
 import './App.css'
 
 const visualAssets = {
@@ -78,18 +79,29 @@ const codexFeaturedCards = [
   { id: 'card-emet-dhyana', title: 'Emet Dhyana', image: '/images/d7/cartas/carta-emet-dhyana.svg' },
 ]
 
-const appNavItems = [...navItems, { id: 'planos', label: 'Planos', icon: '◈' }, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala Maiindy', icon: '◌' }, { id: 'roda', label: 'Roda Maiindy', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
-const navGroups = [
+const fullAppNavItems = [...navItems, { id: 'planos', label: 'Planos', icon: '◈' }, { id: 'biblioteca', label: 'Biblioteca', icon: '✦' }, { id: 'sala', label: 'Sala Maiindy', icon: '◌' }, { id: 'roda', label: 'Roda Maiindy', icon: '◍' }, { id: 'acompanhamento', label: 'Acompanhamento', icon: '▣' }, { id: 'admin', label: 'Painel Admin', icon: '▤' }]
+const playtestNavItems = [
+  { id: 'home', label: 'Playtest', icon: '◇' },
+  { id: 'respiracao', label: 'Respiração', icon: '△' },
+  { id: 'meditacao', label: 'Meditação', icon: '◉' },
+  { id: 'radio', label: 'Rádio Maiindy', icon: '◌' },
+  { id: 'perfil', label: 'Perfil', icon: '☉' },
+]
+const allRouteItems = [...fullAppNavItems, ...playtestNavItems]
+const navGroups = PLAYTEST_FOCUS_MODE ? [
+  { title: { 'pt-BR': 'Playtest', 'en-US': 'Playtest' }, items: ['home', 'respiracao', 'meditacao', 'radio'] },
+  { title: { 'pt-BR': 'Sessão', 'en-US': 'Session' }, items: ['perfil'] },
+] : [
   { title: { 'pt-BR': 'Principal', 'en-US': 'Main' }, items: ['home', 'jornada', 'pratica'] },
   { title: { 'pt-BR': 'Conhecimento', 'en-US': 'Knowledge' }, items: ['codice', 'biblioteca', 'sala'] },
   { title: { 'pt-BR': 'Comunidade', 'en-US': 'Community' }, items: ['ranking', 'circulos', 'roda', 'perfil'] },
   { title: { 'pt-BR': 'Sistema', 'en-US': 'System' }, items: ['planos', 'acompanhamento', 'admin'] },
 ]
-const navItemById = Object.fromEntries(appNavItems.map((item) => [item.id, item]))
+const navItemById = Object.fromEntries(allRouteItems.map((item) => [item.id, item]))
 const D7_ENTRANCE_SEEN_KEY = 'd7_entrance_seen'
 const ADMIN_LOCAL_HASH = 'admin-local'
 const DEFAULT_VIEW = 'home'
-const VALID_APP_VIEWS = new Set(appNavItems.map((item) => item.id))
+const ALL_APP_VIEWS = new Set(allRouteItems.map((item) => item.id))
 
 function readHashRoute() {
   if (typeof window === 'undefined') return { view: DEFAULT_VIEW, adminLocal: false }
@@ -97,13 +109,16 @@ function readHashRoute() {
   if (path.endsWith('/' + ADMIN_LOCAL_HASH)) return { view: 'admin', adminLocal: true }
   const raw = window.location.hash.replace(/^#\/?/, '').trim()
   if (raw === ADMIN_LOCAL_HASH) return { view: 'admin', adminLocal: true }
-  if (VALID_APP_VIEWS.has(raw)) return { view: raw, adminLocal: false }
+  if (ALL_APP_VIEWS.has(raw)) {
+    if (PLAYTEST_FOCUS_MODE && raw !== 'admin' && !isPlaytestParticipantView(raw)) return { view: DEFAULT_VIEW, adminLocal: false }
+    return { view: raw, adminLocal: false }
+  }
   return { view: DEFAULT_VIEW, adminLocal: false }
 }
 
 function writeHashRoute(view, { replace = false, adminLocal = false } = {}) {
   if (typeof window === 'undefined') return
-  const target = adminLocal ? ADMIN_LOCAL_HASH : VALID_APP_VIEWS.has(view) ? view : DEFAULT_VIEW
+  const target = adminLocal ? ADMIN_LOCAL_HASH : ALL_APP_VIEWS.has(view) ? view : DEFAULT_VIEW
   const nextHash = '#/' + target
   if (window.location.hash === nextHash) return
   const adminPath = '/' + ADMIN_LOCAL_HASH
@@ -112,6 +127,17 @@ function writeHashRoute(view, { replace = false, adminLocal = false } = {}) {
   const state = { d7View: adminLocal ? 'admin' : target, adminLocal }
   if (replace) window.history.replaceState(state, '', nextUrl)
   else window.history.pushState(state, '', nextUrl)
+}
+
+function viewTitle(view, t = (path) => path) {
+  const playtestTitles = {
+    home: 'Maiindy Playtest',
+    respiracao: 'Respiração',
+    meditacao: 'Meditação',
+    radio: 'Rádio Maiindy',
+  }
+  if (PLAYTEST_FOCUS_MODE && playtestTitles[view]) return playtestTitles[view]
+  return t(`views.${view}.title`)
 }
 
 
@@ -863,6 +889,52 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
   )
 }
 
+function PlaytestHome({ state, stage, journeyCode, officialJourney, timerStatus, t, onNavigate, onReplayEntrance }) {
+  return (
+    <section className="home-layout home-layout--playtest" aria-labelledby="playtest-home-title">
+      <div className="hero-panel home-portal-panel playtest-home-panel">
+        <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Maiindy Game" />
+        <div className="hero-sigils" aria-hidden="true">
+          <Sigil label="M" tone="gold" />
+          <Sigil label="△" tone="cyan" />
+        </div>
+        <span className="overline">Maiindy Game</span>
+        <h2 id="playtest-home-title">Escolha sua experiência</h2>
+        <p className="home-portal-lead">Respiração e meditação são o foco deste playtest. A Rádio Maiindy fica disponível como apoio sonoro complementar.</p>
+        <div className="playtest-choice-grid" aria-label="Experiências principais do playtest">
+          <button type="button" className="playtest-choice-card primary" onClick={() => onNavigate('respiracao')}>
+            <span>Principal</span>
+            <strong>Respiração</strong>
+            <small>Ritmo guiado, atenção e presença antes do silêncio.</small>
+          </button>
+          <button type="button" className="playtest-choice-card primary" onClick={() => onNavigate('meditacao')}>
+            <span>Principal</span>
+            <strong>Meditação</strong>
+            <small>Timer contemplativo com mantra opcional e finalização clara.</small>
+          </button>
+          <button type="button" className="playtest-choice-card secondary" onClick={() => onNavigate('radio')}>
+            <span>Complementar</span>
+            <strong>Rádio Maiindy</strong>
+            <small>Atmosfera sonora livre para acompanhar seu momento.</small>
+          </button>
+        </div>
+        <div className="home-portal-meta">
+          <span>{journeyCode} · {stage.name}</span>
+          <span>{t('core.dailyRitual.day').replace('{day}', officialJourney.dayNumber).replace('{total}', OFFICIAL_JOURNEY_DAYS)}</span>
+          <span>{state.daily.practice ? 'Prática registrada hoje' : 'Prática pronta'}</span>
+          <span>{timerStatus === 'running' ? 'Sessão em andamento' : 'Aguardando escolha'}</span>
+        </div>
+        <div className="hero-actions home-portal-actions">
+          <button type="button" className="primary-action home-primary-action" onClick={() => onNavigate('respiracao')}>Iniciar respiração</button>
+          <button type="button" className="primary-action home-primary-action" onClick={() => onNavigate('meditacao')}>Iniciar meditação</button>
+          <button type="button" className="ghost-action" onClick={() => onNavigate('radio')}>Abrir Rádio Maiindy</button>
+          <button type="button" className="ghost-action" onClick={onReplayEntrance}>Rever entrada</button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function App() {
   const initialUser = getCurrentUser()
   const initialRoute = readHashRoute()
@@ -1299,7 +1371,8 @@ function App() {
   }
 
   function navigate(view, options = {}) {
-    if (!VALID_APP_VIEWS.has(view)) return
+    if (!ALL_APP_VIEWS.has(view)) return
+    if (PLAYTEST_FOCUS_MODE && view !== 'admin' && !isPlaytestParticipantView(view)) view = DEFAULT_VIEW
     const adminLocal = view === 'admin' && options.adminLocal === true
     setMobileNavOpen(false)
     if (view === activeView && directAdminAccess === adminLocal) return
@@ -1516,7 +1589,7 @@ function App() {
         <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
         <div className={`app-workspace app-workspace--${activeView}`}>
           <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail app-radio-rail--floating'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
-            {activeView === 'home' && (
+            {activeView === 'home' && !PLAYTEST_FOCUS_MODE && (
               <div className="home-side-panel">
                 {returnRitual.active && <ReturnRitualCard ritual={returnRitual} t={t} onRetake={() => navigate('pratica')} />}
                 <section className="home-side-card home-progress-card" aria-labelledby="home-progress-title">
@@ -1574,16 +1647,18 @@ function App() {
                 </section>
               </div>
             )}
-            <div className={activeView === 'home' ? 'home-radio-mini' : 'floating-radio-mini'}>
-              <D7RadioPlayer t={t} compact />
-            </div>
+            {activeView !== 'radio' && (
+              <div className={activeView === 'home' ? 'home-radio-mini' : 'floating-radio-mini'}>
+                <D7RadioPlayer t={t} compact />
+              </div>
+            )}
           </aside>
 
           <section className="app-content" aria-label="Conteúdo principal do jogo">
             <header className={activeView === 'home' ? 'topbar topbar--home' : 'topbar'}>
               <div>
                 <span className="eyebrow">{t('topbar.eyebrow')}</span>
-                <h1>{t(`views.${activeView}.title`)}</h1>
+                <h1>{viewTitle(activeView, t)}</h1>
               </div>
               <div className="status-pills">
                 <span>{t('topbar.level')} {playerLevel(state.xp)}</span>
@@ -1593,6 +1668,9 @@ function App() {
             </header>
 
             {activeView === 'home' && (
+              PLAYTEST_FOCUS_MODE ? (
+                <PlaytestHome state={state} stage={stage} journeyCode={journeyCode} officialJourney={officialJourney} timerStatus={timerStatus} t={t} onNavigate={navigate} onReplayEntrance={replayEntrance} />
+              ) : (
               <section className="home-layout home-layout--portal">
                 <div className="hero-panel home-portal-panel">
                   <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Maiindy Game" />
@@ -1633,13 +1711,21 @@ function App() {
                   </div>
                 </div>
               </section>
+              )
             )}
 
-        {activeView === 'planos' && (
+        {activeView === 'radio' && (
+          <section className="content-section playtest-radio-section">
+            <SectionTitle eyebrow="Recurso complementar" title="Rádio Maiindy">Uma atmosfera sonora livre para acompanhar o momento. Ao iniciar um mantra de prática, a rádio pausa para evitar sobreposição.</SectionTitle>
+            <D7RadioPlayer t={t} />
+          </section>
+        )}
+
+        {activeView === 'planos' && !PLAYTEST_FOCUS_MODE && (
           <D7Plans userId={currentUser.id} onPlanChanged={() => setSubscriptionRefresh((value) => value + 1)} />
         )}
 
-        {activeView === 'jornada' && (
+        {activeView === 'jornada' && !PLAYTEST_FOCUS_MODE && (
           <section className="content-section">
             <SectionTitle eyebrow="Mapa A1-E7" title="Primeira Fase Maiindy">35 dias, 5 categorias e tempo fixo por categoria. O sucesso aqui não é medido por velocidade, mas por consistência.</SectionTitle>
             <div className="official-progress-band">
@@ -1691,7 +1777,7 @@ function App() {
           </section>
         )}
 
-        {activeView === 'pratica' && (
+        {activeView === 'pratica' && !PLAYTEST_FOCUS_MODE && (
           <D7PlayablePractice
             journeyCode={journeyCode}
             nextJourneyCode={nextJourneyCode}
@@ -1731,7 +1817,93 @@ function App() {
           />
         )}
 
-        {activeView === 'codice' && (
+        {activeView === 'respiracao' && (
+          <D7PlayablePractice
+            focusMode
+            focusVariant="breath"
+            initialStep="day-panel"
+            journeyCode={journeyCode}
+            nextJourneyCode={nextJourneyCode}
+            stage={stage}
+            phrase={phrase}
+            state={state}
+            practiceCelebration={practiceCelebration}
+            officialJourney={officialJourney}
+            onRestartOfficialJourney={handleRestartOfficialJourney}
+            practiceDurationMinutes={practiceDurationMinutes}
+            practiceDurationInput={practiceDurationInput}
+            practiceDurationError={practiceDurationError}
+            practicePreview={practicePreview}
+            practiceTotalSeconds={practiceTotalSeconds}
+            remaining={remaining}
+            timerStatus={timerStatus}
+            timerProgress={timerProgress}
+            mantraAudioRef={mantraAudioRef}
+            t={t}
+            recommendedLibraryCard={recommendedLibraryCard}
+            fallbackCard={cardById(state.unlockedCards[state.unlockedCards.length - 1])}
+            nextUnlock={nextUnlockInfo}
+            retentionPromise={tomorrowPromise}
+            presenceFlame={presenceFlame}
+            livingPortal={livingPortal}
+            returnRitual={returnRitual}
+            currentLevel={playerLevel(state.xp)}
+            onDurationChange={handlePracticeDurationChange}
+            onCustomDurationChange={handlePracticeCustomInput}
+            onStartPractice={handleStartPractice}
+            onPausePractice={handlePausePractice}
+            onCancelPractice={handleCancelPractice}
+            onResetPractice={handleResetPractice}
+            onCompletePractice={finishPractice}
+            onRecordWord={submitPracticeWord}
+            onNavigate={navigate}
+          />
+        )}
+
+        {activeView === 'meditacao' && (
+          <D7PlayablePractice
+            focusMode
+            focusVariant="meditation"
+            initialStep="silence"
+            journeyCode={journeyCode}
+            nextJourneyCode={nextJourneyCode}
+            stage={stage}
+            phrase={phrase}
+            state={state}
+            practiceCelebration={practiceCelebration}
+            officialJourney={officialJourney}
+            onRestartOfficialJourney={handleRestartOfficialJourney}
+            practiceDurationMinutes={practiceDurationMinutes}
+            practiceDurationInput={practiceDurationInput}
+            practiceDurationError={practiceDurationError}
+            practicePreview={practicePreview}
+            practiceTotalSeconds={practiceTotalSeconds}
+            remaining={remaining}
+            timerStatus={timerStatus}
+            timerProgress={timerProgress}
+            mantraAudioRef={mantraAudioRef}
+            t={t}
+            recommendedLibraryCard={recommendedLibraryCard}
+            fallbackCard={cardById(state.unlockedCards[state.unlockedCards.length - 1])}
+            nextUnlock={nextUnlockInfo}
+            retentionPromise={tomorrowPromise}
+            presenceFlame={presenceFlame}
+            livingPortal={livingPortal}
+            returnRitual={returnRitual}
+            currentLevel={playerLevel(state.xp)}
+            onDurationChange={handlePracticeDurationChange}
+            onCustomDurationChange={handlePracticeCustomInput}
+            onStartPractice={handleStartPractice}
+            onPausePractice={handlePausePractice}
+            onCancelPractice={handleCancelPractice}
+            onResetPractice={handleResetPractice}
+            onCompletePractice={finishPractice}
+            onRecordWord={submitPracticeWord}
+            onNavigate={navigate}
+          />
+        )}
+
+        {activeView === 'codice' && !PLAYTEST_FOCUS_MODE && (
           <section className="content-section">
             <SectionTitle eyebrow="Biblioteca simbólica" title="Códice Maiindy">Hebraico e sânscrito aparecem como trilhas simbólicas distintas dentro do jogo, unidas por pontes lúdicas de presença.</SectionTitle>
             <nav className="codex-quick-nav" aria-label="Navegação interna do Códice">
@@ -1777,15 +1949,15 @@ function App() {
           </section>
         )}
 
-        {activeView === 'biblioteca' && (
+        {activeView === 'biblioteca' && !PLAYTEST_FOCUS_MODE && (
           <InitiationLibrary progress={state} onStudyCard={study} onNavigate={navigate} />
         )}
 
-        {activeView === 'sala' && (
+        {activeView === 'sala' && !PLAYTEST_FOCUS_MODE && (
           <D7Room user={currentUser} progress={state} t={t} onEvent={(eventType, metadata = {}) => { recordLocalEvent(currentUser.id, eventType, metadata); trackAdminEvent(currentUser, eventType, metadata, 'sala'); updatePresence(currentUser, state, 'sala', eventType) }} />
         )}
 
-        {activeView === 'roda' && (
+        {activeView === 'roda' && !PLAYTEST_FOCUS_MODE && (
           <D7Wheel state={state} userId={currentUser.id} result={wheelResult} t={t} onSpin={handleWheelSpin} onNavigate={navigate} />
         )}
 
@@ -1793,7 +1965,7 @@ function App() {
           <AdminPanel summaries={localSummaries} analytics={analyticsSummary} t={t} onRefresh={() => setAdminRefresh((value) => value + 1)} onAdminOpened={() => { recordLocalEvent(currentUser.id, 'admin_opened', { refresh: adminRefresh }); trackAdminEvent(currentUser, 'admin_opened', { refresh: adminRefresh }, 'admin') }} />
         )}
 
-        {activeView === 'ranking' && (
+        {activeView === 'ranking' && !PLAYTEST_FOCUS_MODE && (
           <section className="content-section">
             <SectionTitle eyebrow="Ranking local" title="Ordem de presença">Score = XP + sequência + cartas + portais + códigos + D7T + minutos rituais + marcos 21/108.</SectionTitle>
             <img className="ranking-seal-art" src={visualAssets.ranking} alt="Selo visual do ranking Maiindy" />
@@ -1868,11 +2040,11 @@ function App() {
           </section>
         )}
 
-        {activeView === 'acompanhamento' && (
+        {activeView === 'acompanhamento' && !PLAYTEST_FOCUS_MODE && (
           <LocalProgressPanel currentUserId={currentUser.id} message={panelMessage} onCopyReport={handleCopyReport} onDownloadReport={handleDownloadReport} />
         )}
 
-        {activeView === 'circulos' && (
+        {activeView === 'circulos' && !PLAYTEST_FOCUS_MODE && (
           <section className="content-section">
             <SectionTitle eyebrow="Círculos" title="Salas rituais locais">Protótipo visual sem backend para grupos, biblioteca simbólica e preparação de portais sociais futuros.</SectionTitle>
             <PremiumGate key={subscriptionRefresh} userId={currentUser.id} featureKey="salas_tematicas">

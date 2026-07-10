@@ -35,6 +35,7 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
     try {
       setIsLoading(true)
       setTrackError(false)
+      window.dispatchEvent(new CustomEvent('maiindy:radio-audio-start', { detail: { source: 'radio', trackId: currentTrack.id } }))
       await audio.play()
       setIsPlaying(true)
       setStatus(t('radio.nowPlaying'))
@@ -108,6 +109,16 @@ export default function D7RadioPlayer({ t = (path) => path, compact = false }) {
     setVolume(Math.min(1, Math.max(0, next)))
     if (next > 0 && muted) setMuted(false)
   }
+
+  useEffect(() => {
+    function handlePracticeAudioStart() {
+      pauseRadio()
+    }
+    window.addEventListener('maiindy:practice-audio-start', handlePracticeAudioStart)
+    return () => window.removeEventListener('maiindy:practice-audio-start', handlePracticeAudioStart)
+  // The listener must be registered once to coordinate browser audio players by event.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!tracks.length || !currentTrack) {
     return (

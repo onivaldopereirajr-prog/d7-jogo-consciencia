@@ -65,6 +65,27 @@ function phaseAtTick(steps, tick) {
   return { phase: fallback, index: steps.length - 1, elapsed: 0, seconds: Math.max(1, Number(fallback.seconds ?? 1)) }
 }
 
+function pointOnTrianglePath(progress) {
+  const vertices = [{ x: 50, y: 6 }, { x: 94, y: 88 }, { x: 6, y: 88 }]
+  const segments = vertices.map((point, index) => {
+    const next = vertices[(index + 1) % vertices.length]
+    return { start: point, end: next, length: Math.hypot(next.x - point.x, next.y - point.y) }
+  })
+  const total = segments.reduce((sum, segment) => sum + segment.length, 0)
+  let distance = ((progress % 1) + 1) % 1 * total
+  for (const segment of segments) {
+    if (distance <= segment.length) {
+      const amount = segment.length ? distance / segment.length : 0
+      return {
+        x: segment.start.x + (segment.end.x - segment.start.x) * amount,
+        y: segment.start.y + (segment.end.y - segment.start.y) * amount,
+      }
+    }
+    distance -= segment.length
+  }
+  return vertices[0]
+}
+
 function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   const [tick, setTick] = useState(0)
   const [isFinished, setIsFinished] = useState(false)
@@ -76,13 +97,8 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   const { phase, index: phaseIndex, elapsed: phaseElapsed, seconds: phaseSeconds } = phaseAtTick(steps, safeTick)
   const phaseRemaining = Math.max(1, Math.ceil(phaseSeconds - phaseElapsed))
   const phaseProgress = phaseElapsed / phaseSeconds
-  const dotPoints = steps.length === 2
-    ? [{ x: 22, y: 78 }, { x: 78, y: 22 }]
-    : steps.length === 4
-      ? [{ x: 50, y: 8 }, { x: 90, y: 50 }, { x: 50, y: 92 }, { x: 10, y: 50 }]
-      : [{ x: 50, y: 9 }, { x: 90, y: 86 }, { x: 10, y: 86 }]
-  const dotStart = dotPoints[phaseIndex % dotPoints.length]
-  const dotEnd = dotPoints[(phaseIndex + 1) % dotPoints.length]
+  const dotStart = pointOnTrianglePath(phaseIndex / steps.length)
+  const dotEnd = pointOnTrianglePath((phaseIndex + 1) / steps.length)
   const dotX = dotStart.x + ((dotEnd.x - dotStart.x) * phaseProgress)
   const dotY = dotStart.y + ((dotEnd.y - dotStart.y) * phaseProgress)
 
@@ -112,8 +128,8 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
         className={'breath-triangle phase-' + phase.id}
         aria-hidden="true"
         style={{
-          '--breath-dot-x': `${dotX}%`,
-          '--breath-dot-y': `${dotY}%`,
+          '--breath-dot-left': `calc(7% + ${dotX * 0.86}%)`,
+          '--breath-dot-top': `calc(7% + ${dotY * 0.86}%)`,
           '--breath-dot-scale': phase.id?.startsWith('hold') ? 1.18 : 1,
         }}
       >
@@ -169,6 +185,9 @@ function resolveCard(summary, recommendedLibraryCard, fallbackCard) {
 }
 
 export default function D7PlayablePractice({
+  focusMode = false,
+  focusVariant = 'full',
+  initialStep = 'day-panel',
   journeyCode,
   nextJourneyCode,
   stage,
@@ -205,7 +224,7 @@ export default function D7PlayablePractice({
   onRecordWord,
   onNavigate,
 }) {
-  const [step, setStep] = useState('day-panel')
+  const [step, setStep] = useState(initialStep)
   const [word, setWord] = useState('')
   const [wordAttempted, setWordAttempted] = useState(false)
   const [summary, setSummary] = useState(null)
@@ -251,6 +270,21 @@ export default function D7PlayablePractice({
   async function handleStartSilence() {
     const result = await onStartPractice?.()
     updateAudioNotice(result)
+  }
+
+  async function handleStartBreath() {
+    const result = await mantraAudioRef.current?.start?.()
+    updateAudioNotice(result)
+    setStep('breath')
+  }
+
+  function handleBreathComplete() {
+    if (focusMode && focusVariant === 'breath') {
+      mantraAudioRef.current?.pause?.()
+      setStep('breath-complete')
+      return
+    }
+    setStep('silence')
   }
 
   async function handlePlayMantra() {
@@ -316,8 +350,8 @@ export default function D7PlayablePractice({
       <div className={'playable-shell playable-shell--' + step}>
         <header className="playable-header">
           <div>
-            <span className="overline">Sessão oficial</span>
-            <h2>{journeyCode} · {stage.name}</h2>
+            <span className="overline">{focusMode ? 'Maiindy Playtest' : 'Sessão oficial'}</span>
+            <h2>{focusMode ? (focusVariant === 'breath' ? 'Respiração guiada' : 'Meditação guiada') : `${journeyCode} · ${stage.name}`}</h2>
           </div>
           <PracticeSteps current={step} />
         </header>
@@ -326,10 +360,10 @@ export default function D7PlayablePractice({
           <section key="day-panel" className="day-panel-stage playable-stage" aria-labelledby="day-panel-title">
             <div className="day-code-orb" aria-hidden="true"><span>{journeyCode}</span></div>
             <div className="day-panel-copy">
-              <span className="overline">Painel do Dia</span>
-              <h3 id="day-panel-title">Categoria {officialJourney?.categoryId ?? stage.id}: {stage.name}</h3>
-              <p className="day-panel-lead">O sucesso aqui não é medido por velocidade, mas por consistência.</p>
-              <p>{stage.intent}</p>
+              <span className="overline">{focusMode ? 'Respiração' : 'Painel do Dia'}</span>
+              <h3 id="day-panel-title">{focusMode ? 'Preparar respiração' : `Categoria ${officialJourney?.categoryId ?? stage.id}: ${stage.name}`}</h3>
+              <p className="day-panel-lead">{focusMode ? 'Escolha a técnica e a atmosfera sonora antes de começar.' : 'O sucesso aqui não é medido por velocidade, mas por consistência.'}</p>
+              <p>{focusMode ? 'A prática de respiração é uma preparação guiada para ritmo, atenção e presença.' : stage.intent}</p>
               <small className="day-panel-mantra">O verdadeiro desafio não é o ato em si, mas mantê-lo.</small>
               <div className="day-mission-grid">
                 <article><span>Nível atual</span><strong>{journeyCode}</strong></article>
@@ -376,6 +410,21 @@ export default function D7PlayablePractice({
                 <p className="breathing-library-note">As técnicas de respiração são apoio. A prática oficial continua sendo cumprir o tempo do nível atual com os olhos fechados.</p>
               </section>
 
+              {focusMode && focusVariant === 'breath' && (
+                <section className="practice-config-panel practice-config-panel--breath-audio" aria-label="Áudio da respiração">
+                  <D7MantraPlayer
+                    ref={mantraAudioRef}
+                    t={t}
+                    selectedDurationMinutes={practiceDurationMinutes}
+                    isPracticeRunning={step === 'breath'}
+                    isPracticePaused={false}
+                    isPracticeCompleted={step === 'breath-complete'}
+                    onPlaybackStateChange={handlePlaybackStateChange}
+                    contextLabel="respiração"
+                  />
+                </section>
+              )}
+
               <div className={['practice-banner', isPracticeDone ? 'complete' : 'idle', practiceCelebration ? 'practice-celebration' : ''].filter(Boolean).join(' ')} role="status">
                 <strong>{state.progress?.restartRequired ? 'Reinício necessário' : isPracticeDone ? 'Sessão oficial de hoje concluída' : 'Sessão oficial pronta'}</strong>
                 <span>{state.progress?.restartRequired ? 'Você perdeu um dia. O jogo recomeça em A1. Isso não é punição; é compromisso renovado.' : isPracticeDone ? 'O ciclo de hoje já avançou. Você pode praticar livremente sem duplicar progresso oficial.' : 'Feche os olhos. Permaneça até o timer terminar.'}</span>
@@ -384,15 +433,15 @@ export default function D7PlayablePractice({
                 {state.progress?.restartRequired ? (
                   <button type="button" className="primary-action" onClick={onRestartOfficialJourney}>Recomeçar em A1</button>
                 ) : (
-                  <button type="button" className="primary-action" onClick={() => setStep('breath')}>Começar sessão oficial</button>
+                  <button type="button" className="primary-action" onClick={focusMode && focusVariant === 'breath' ? handleStartBreath : () => setStep('breath')}>{focusMode && focusVariant === 'breath' ? 'Iniciar respiração' : 'Começar sessão oficial'}</button>
                 )}
-                {!state.progress?.restartRequired && <button type="button" className="ghost-action" onClick={() => setStep('silence')}>Ir direto ao silêncio</button>}
+                {!state.progress?.restartRequired && !(focusMode && focusVariant === 'breath') && <button type="button" className="ghost-action" onClick={() => setStep('silence')}>Ir direto ao silêncio</button>}
               </div>
             </div>
           </section>
         )}
 
-        {step === 'breath' && <BreathStage technique={selectedBreathingTechnique} onDone={() => setStep('silence')} />}
+        {step === 'breath' && <BreathStage technique={selectedBreathingTechnique} onDone={handleBreathComplete} />}
 
         {step === 'silence' && (
           <section key="silence" className="silence-stage playable-stage" aria-labelledby="silence-stage-title">
@@ -411,6 +460,7 @@ export default function D7PlayablePractice({
                 isPracticePaused={timerStatus === 'paused'}
                 isPracticeCompleted={timerStatus === 'complete'}
                 onPlaybackStateChange={handlePlaybackStateChange}
+                contextLabel={focusMode && focusVariant === 'meditation' ? 'meditação' : 'prática'}
               />
             </div>
             <div className={['playable-silence-frame', timerStatus === 'running' ? 'is-running' : '', timerStatus === 'complete' ? 'is-complete' : ''].filter(Boolean).join(' ')}>
@@ -455,6 +505,21 @@ export default function D7PlayablePractice({
                 </div>
               </D7PulseTimer>
             </div>
+          </section>
+        )}
+
+        {step === 'breath-complete' && (
+          <section key="breath-complete" className="card-stage playable-stage" aria-labelledby="breath-complete-title">
+            <article className="revealed-card">
+              <span className="overline">Respiração concluída</span>
+              <div className="revealed-card__glyph" aria-hidden="true">△</div>
+              <h3 id="breath-complete-title">Ritmo registrado</h3>
+              <p>A sessão de respiração terminou. Volte para escolher outra experiência ou siga para a meditação.</p>
+              <div className="playable-actions">
+                <button type="button" className="primary-action" onClick={() => onNavigate?.('meditacao')}>Seguir para meditação</button>
+                <button type="button" className="ghost-action" onClick={() => onNavigate?.('home')}>Voltar à Home</button>
+              </div>
+            </article>
           </section>
         )}
 

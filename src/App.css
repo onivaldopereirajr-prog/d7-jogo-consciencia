@@ -4133,6 +4133,111 @@ button:not(:disabled):active {
 
 
 /* Rádio Maiindy */
+.home-layout--playtest {
+  display: grid;
+  min-height: min(720px, calc(100dvh - 150px));
+}
+
+.playtest-home-panel {
+  min-height: min(680px, calc(100dvh - 150px));
+}
+
+.playtest-home-panel h2 {
+  max-width: 780px;
+}
+
+.playtest-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: clamp(18px, 3vw, 28px);
+  width: min(860px, 100%);
+}
+
+.playtest-choice-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  min-height: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: clamp(16px, 2.4vw, 22px);
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.05);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.playtest-choice-card:hover,
+.playtest-choice-card:focus-visible {
+  transform: translateY(-2px);
+  outline: none;
+  border-color: rgba(242, 206, 114, 0.42);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.playtest-choice-card span {
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.playtest-choice-card strong {
+  font-size: clamp(1.55rem, 3.3vw, 2.5rem);
+  line-height: 1;
+}
+
+.playtest-choice-card small {
+  max-width: 34ch;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.playtest-choice-card.primary {
+  border-color: rgba(32, 211, 238, 0.24);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(32, 211, 238, 0.16), transparent 42%),
+    rgba(255, 255, 255, 0.06);
+}
+
+.playtest-choice-card.secondary {
+  grid-column: 1 / -1;
+  min-height: 118px;
+  border-color: rgba(212, 175, 55, 0.2);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(212, 175, 55, 0.12), transparent 36%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.playtest-radio-section {
+  display: grid;
+  gap: 18px;
+}
+
+.practice-config-panel--breath-audio {
+  width: min(720px, 100%);
+}
+
+@media (max-width: 760px) {
+  .playtest-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .playtest-choice-card,
+  .playtest-choice-card.secondary {
+    grid-column: auto;
+    min-height: 132px;
+  }
+
+  .playtest-home-panel {
+    min-height: auto;
+  }
+}
+
 .d7-radio {
   width: min(100%, 1240px);
   margin: 0 auto;
@@ -6405,8 +6510,8 @@ button:not(:disabled):active {
 
 .breath-triangle-dot {
   position: absolute;
-  left: var(--breath-dot-x, 50%);
-  top: var(--breath-dot-y, 50%);
+  left: var(--breath-dot-left, 50%);
+  top: var(--breath-dot-top, 50%);
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -6864,11 +6969,12 @@ button:not(:disabled):active {
 }
 
 .breath-triangle-visual {
-  position: relative;
+  position: absolute;
+  inset: 7%;
   z-index: 1;
   display: block;
-  width: 86%;
-  height: 86%;
+  width: auto;
+  height: auto;
   overflow: visible;
   touch-action: manipulation;
 }

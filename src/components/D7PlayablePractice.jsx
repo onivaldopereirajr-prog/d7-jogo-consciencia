@@ -3,6 +3,7 @@ import { DEFAULT_BREATHING_TECHNIQUE_ID, breathingTechniques, fallbackBreathingT
 import D7MantraPlayer from './D7MantraPlayer.jsx'
 import D7PulseTimer from './D7PulseTimer.jsx'
 import { getBreathingState, pointOnBreathTriangle } from '../utils/breathTriangle.js'
+import { createContemplativeSessionId } from '../services/contemplativeSessions.js'
 
 const FLOW_STEPS = ['day-panel', 'breath', 'silence', 'word', 'card', 'level-up']
 const BREATHING_STORAGE_KEY = 'maiindy_breathing_technique'
@@ -55,10 +56,11 @@ const BREATH_PHASE_COLORS = {
   'hold-empty': '#995cff',
 }
 
-function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
+function BreathStage({ technique = fallbackBreathingTechnique, onDone, onCycleComplete, onCancel, cycleLabel, cancelLabel }) {
   const [elapsedMs, setElapsedMs] = useState(0)
   const finishedRef = useRef(false)
   const onDoneRef = useRef(onDone)
+  const reportedCyclesRef = useRef(0)
   const steps = technique.steps?.length ? technique.steps : fallbackBreathingTechnique.steps
   const breathingState = getBreathingState(elapsedMs, { ...technique, steps })
   const totalDurationMs = BREATH_CYCLES * breathingState.cycleDurationMs
@@ -72,6 +74,14 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   useEffect(() => {
     onDoneRef.current = onDone
   }, [onDone])
+
+  useEffect(() => {
+    const completed = Math.min(BREATH_CYCLES, Math.floor(elapsedMs / breathingState.cycleDurationMs))
+    while (reportedCyclesRef.current < completed) {
+      reportedCyclesRef.current += 1
+      onCycleComplete?.(reportedCyclesRef.current)
+    }
+  }, [breathingState.cycleDurationMs, elapsedMs, onCycleComplete])
 
   useEffect(() => {
     const startedAt = performance.now()
@@ -97,7 +107,8 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   function handleSkip() {
     if (finishedRef.current) return
     finishedRef.current = true
-    onDoneRef.current?.()
+    if (onCancel) onCancel()
+    else onDoneRef.current?.()
   }
 
   return (
@@ -126,8 +137,9 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
         <h3 id="breath-stage-title">{phase.label}</h3>
         <p>{phase.detail ?? technique.use}</p>
         <small>Ciclo {cycle}/{BREATH_CYCLES} · {phase.seconds}s · faltam {phaseRemaining}s</small>
+        <div className="contemplative-cycle-halo" style={{ '--cycle-progress': cycle }}><span>{cycleLabel?.replace('{cycle}', cycle) ?? `Ciclo ${cycle} de 3`}</span></div>
       </div>
-      <button type="button" className="ghost-action" onClick={handleSkip}>Pular respiração</button>
+      <button type="button" className="ghost-action" onClick={handleSkip}>{onCancel ? cancelLabel : 'Pular respiração'}</button>
     </section>
   )
 }
@@ -204,8 +216,10 @@ export default function D7PlayablePractice({
   onCompletePractice,
   onRecordWord,
   onNavigate,
+  onContemplativeEvent,
+  onPostPracticeFeedback,
 }) {
-  const [step, setStep] = useState(initialStep)
+  const [step, setStep] = useState(focusMode ? 'intention' : initialStep)
   const [word, setWord] = useState('')
   const [wordAttempted, setWordAttempted] = useState(false)
   const [summary, setSummary] = useState(null)
@@ -214,6 +228,12 @@ export default function D7PlayablePractice({
   const [selectedBreathingId, setSelectedBreathingId] = useState(readStoredBreathingTechniqueId)
   const [previewBreathingId, setPreviewBreathingId] = useState(() => selectedBreathingId === DEFAULT_BREATHING_TECHNIQUE_ID ? breathingTechniques[0]?.id ?? DEFAULT_BREATHING_TECHNIQUE_ID : selectedBreathingId)
   const completionSubmittedRef = useRef(false)
+  const [sessionId, setSessionId] = useState(createContemplativeSessionId)
+  const [intention, setIntention] = useState('')
+  const [audioMode, setAudioMode] = useState('silence')
+  const [cyclesCompleted, setCyclesCompleted] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const startedAtRef = useRef(null)
   const isPracticeDone = Boolean(state.daily?.practice)
   const selectedBreathingTechnique = useMemo(() => getBreathingTechnique(selectedBreathingId), [selectedBreathingId])
   const previewBreathingTechnique = useMemo(() => getBreathingTechnique(previewBreathingId), [previewBreathingId])
@@ -236,8 +256,13 @@ export default function D7PlayablePractice({
 
   useEffect(() => {
     if (timerStatus !== 'complete' || step !== 'silence') return
-    setStep('word')
-  }, [step, timerStatus])
+    if (!focusMode) { setStep('word'); return }
+    if (completionSubmittedRef.current) return
+    completionSubmittedRef.current = true
+    const result = onCompletePractice?.({ sessionId, practiceType: 'meditation', intention, audioMode, duration: practiceTotalSeconds, cyclesCompleted: 0, startedAt: startedAtRef.current })
+    if (result?.summary) setSummary(result.summary)
+    setStep('level-up')
+  }, [audioMode, focusMode, intention, onCompletePractice, practiceTotalSeconds, sessionId, step, timerStatus])
 
   function updateAudioNotice(result) {
     if (!result) return
@@ -249,12 +274,15 @@ export default function D7PlayablePractice({
   }
 
   async function handleStartSilence() {
-    const result = await onStartPractice?.()
+    startedAtRef.current ??= new Date().toISOString()
+    const result = await onStartPractice?.({ sessionId, practiceType: 'meditation', intention, audioMode, duration: practiceTotalSeconds })
     updateAudioNotice(result)
   }
 
   async function handleStartBreath() {
-    const result = await mantraAudioRef.current?.start?.()
+    startedAtRef.current = new Date().toISOString()
+    onContemplativeEvent?.('breathing_started', { sessionId, practiceType: 'breathing', techniqueId: selectedBreathingTechnique.id, intention, audioMode, duration: selectedBreathingTechnique.steps.reduce((sum, item) => sum + item.seconds, 0) * BREATH_CYCLES, cyclesCompleted: 0 })
+    const result = audioMode === 'mantra' ? await mantraAudioRef.current?.start?.() : null
     updateAudioNotice(result)
     setStep('breath')
   }
@@ -262,6 +290,14 @@ export default function D7PlayablePractice({
   function handleBreathComplete() {
     if (focusMode && focusVariant === 'breath') {
       mantraAudioRef.current?.pause?.()
+      reportCycle(BREATH_CYCLES)
+      if (!completionSubmittedRef.current) {
+        completionSubmittedRef.current = true
+        const duration = selectedBreathingTechnique.steps.reduce((sum, item) => sum + item.seconds, 0) * BREATH_CYCLES
+        const result = onCompletePractice?.({ sessionId, practiceType: 'breathing', techniqueId: selectedBreathingTechnique.id, intention, audioMode, duration, cyclesCompleted: BREATH_CYCLES, startedAt: startedAtRef.current })
+        if (result?.summary) setSummary(result.summary)
+        setCyclesCompleted(BREATH_CYCLES)
+      }
       setStep('breath-complete')
       return
     }
@@ -323,6 +359,52 @@ export default function D7PlayablePractice({
     setSummary(null)
     setWord('')
     setWordAttempted(false)
+    const nextSessionId = createContemplativeSessionId()
+    setSessionId(nextSessionId)
+    setIntention('')
+    setCyclesCompleted(0)
+    setFeedback('')
+    startedAtRef.current = null
+    onContemplativeEvent?.('practice_repeated', { sessionId, nextSessionId, practiceType: focusVariant === 'breath' ? 'breathing' : 'meditation' })
+    setStep(focusMode ? 'intention' : 'day-panel')
+  }
+
+  function chooseIntention(value) {
+    setIntention(value)
+    onContemplativeEvent?.('intention_selected', { sessionId, practiceType: focusVariant === 'breath' ? 'breathing' : 'meditation', intention: value })
+  }
+
+  function chooseAudio(value) {
+    setAudioMode(value)
+    onContemplativeEvent?.(value === 'mantra' ? 'audio_selected' : 'silence_selected', { sessionId, practiceType: focusVariant === 'breath' ? 'breathing' : 'meditation', intention })
+  }
+
+  function reportCycle(cycleNumber) {
+    setCyclesCompleted(cycleNumber)
+    onContemplativeEvent?.('breathing_cycle_completed', { sessionId, practiceType: 'breathing', techniqueId: selectedBreathingTechnique.id, intention, duration: selectedBreathingTechnique.steps.reduce((sum, item) => sum + item.seconds, 0) * BREATH_CYCLES, cyclesCompleted: cycleNumber }, `${sessionId}:${cycleNumber}`)
+  }
+
+  function submitFeedback(value) {
+    setFeedback(value)
+    onPostPracticeFeedback?.(sessionId, value)
+  }
+
+  function pauseMeditation() {
+    onPausePractice?.()
+    onContemplativeEvent?.('meditation_paused', { sessionId, practiceType: 'meditation', intention, audioMode, duration: practiceTotalSeconds })
+  }
+
+  function cancelContemplativePractice() {
+    onCancelPractice?.()
+    onContemplativeEvent?.('practice_cancelled', { sessionId, practiceType: focusVariant === 'breath' ? 'breathing' : 'meditation', techniqueId: focusVariant === 'breath' ? selectedBreathingTechnique.id : null, intention, audioMode, duration: focusVariant === 'breath' ? selectedBreathingTechnique.steps.reduce((sum, item) => sum + item.seconds, 0) * BREATH_CYCLES : practiceTotalSeconds, cyclesCompleted })
+    setSessionId(createContemplativeSessionId())
+    startedAtRef.current = null
+    completionSubmittedRef.current = false
+  }
+
+  function cancelBreathing() {
+    cancelContemplativePractice()
+    setCyclesCompleted(0)
     setStep('day-panel')
   }
 
@@ -336,6 +418,19 @@ export default function D7PlayablePractice({
           </div>
           <PracticeSteps current={step} />
         </header>
+
+        {step === 'intention' && (
+          <section className="playable-stage intention-stage" aria-labelledby="intention-title">
+            <span className="overline">{t('contemplative.intention.eyebrow')}</span>
+            <h3 id="intention-title">{t('contemplative.intention.title')}</h3>
+            <div className="intention-grid" role="group" aria-label={t('contemplative.intention.title')}>
+              {['calm', 'focus', 'energy', 'rest', 'presence'].map((item) => <button key={item} type="button" className={intention === item ? 'intention-chip active' : 'intention-chip'} onClick={() => chooseIntention(item)} aria-pressed={intention === item}>{t(`contemplative.intention.${item}`)}</button>)}
+            </div>
+            <div className="atmosphere-choice" role="group" aria-label={t('contemplative.audio.title')}><strong>{t('contemplative.audio.title')}</strong><button type="button" className={audioMode === 'mantra' ? 'active' : ''} onClick={() => chooseAudio('mantra')} aria-pressed={audioMode === 'mantra'}>{t('contemplative.audio.mantra')}</button><button type="button" className={audioMode === 'silence' ? 'active' : ''} onClick={() => chooseAudio('silence')} aria-pressed={audioMode === 'silence'}>{t('contemplative.audio.silence')}</button></div>
+            {focusVariant === 'meditation' && <div className="duration-choice" role="group" aria-label={t('contemplative.completion.duration')}>{[1, 3, 5].map((minutes) => <button key={minutes} type="button" className={practiceDurationMinutes === minutes ? 'active' : ''} onClick={() => onDurationChange?.(minutes)} aria-pressed={practiceDurationMinutes === minutes}>{minutes} {t('contemplative.completion.minuteShort')}</button>)}</div>}
+            <button type="button" className="primary-action" disabled={!intention} onClick={() => setStep(focusVariant === 'breath' ? 'day-panel' : 'silence')}>{t('contemplative.intention.continue')}</button>
+          </section>
+        )}
 
         {step === 'day-panel' && (
           <section key="day-panel" className="day-panel-stage playable-stage" aria-labelledby="day-panel-title">
@@ -422,7 +517,7 @@ export default function D7PlayablePractice({
           </section>
         )}
 
-        {step === 'breath' && <BreathStage technique={selectedBreathingTechnique} onDone={handleBreathComplete} />}
+        {step === 'breath' && <BreathStage technique={selectedBreathingTechnique} onDone={handleBreathComplete} onCycleComplete={reportCycle} onCancel={focusMode && focusVariant === 'breath' ? cancelBreathing : null} cycleLabel={t('contemplative.progress.breathing')} cancelLabel={t('contemplative.progress.cancelBreathing')} />}
 
         {step === 'silence' && (
           <section key="silence" className="silence-stage playable-stage" aria-labelledby="silence-stage-title">
@@ -445,6 +540,7 @@ export default function D7PlayablePractice({
               />
             </div>
             <div className={['playable-silence-frame', timerStatus === 'running' ? 'is-running' : '', timerStatus === 'complete' ? 'is-complete' : ''].filter(Boolean).join(' ')}>
+              <div className="meditation-presence-visual" style={{ '--presence-glow': `${12 + timerProgress * 0.35}px`, '--presence-opacity': 0.45 + timerProgress / 200 }} aria-label={t('contemplative.progress.staying')}><i /><span>{t('contemplative.progress.staying')}</span></div>
               <span className="playable-silence-orbit" aria-hidden="true" />
               <span className="playable-silence-particles" aria-hidden="true" />
               <D7PulseTimer
@@ -462,8 +558,8 @@ export default function D7PlayablePractice({
                 currentCount={state.presenceCounter108 ?? 0}
                 countTarget={108}
                 onStart={handleStartSilence}
-                onPause={timerStatus === 'running' ? onPausePractice : null}
-                onCancel={timerStatus === 'running' || timerStatus === 'paused' ? onCancelPractice : null}
+                onPause={timerStatus === 'running' ? pauseMeditation : null}
+                onCancel={timerStatus === 'running' || timerStatus === 'paused' ? cancelContemplativePractice : null}
                 onReset={timerStatus === 'idle' ? onResetPractice : null}
                 onComplete={timerStatus === 'complete' ? handleSilenceComplete : null}
                 completeDisabled={timerStatus !== 'complete'}
@@ -492,13 +588,14 @@ export default function D7PlayablePractice({
         {step === 'breath-complete' && (
           <section key="breath-complete" className="card-stage playable-stage" aria-labelledby="breath-complete-title">
             <article className="revealed-card">
-              <span className="overline">Respiração concluída</span>
+              <span className="overline">{t('contemplative.completion.breathingEyebrow')}</span>
               <div className="revealed-card__glyph" aria-hidden="true">△</div>
-              <h3 id="breath-complete-title">Ritmo registrado</h3>
-              <p>A sessão de respiração terminou. Volte para escolher outra experiência ou siga para a meditação.</p>
+              <h3 id="breath-complete-title">{t('contemplative.completion.ritual')}</h3>
+              <div className="contemplative-summary"><span>{t('contemplative.completion.technique')}<strong>{selectedBreathingTechnique.name}</strong></span><span>{t('contemplative.completion.cycles')}<strong>{cyclesCompleted}/3</strong></span><span>{t('contemplative.completion.duration')}<strong>{formatTime(summary?.duration ?? 0)}</strong></span><span>{t('contemplative.completion.intention')}<strong>{t(`contemplative.intention.${intention}`)}</strong></span><span>{t('contemplative.completion.atmosphere')}<strong>{t(`contemplative.audio.${audioMode}`)}</strong></span><span>{t('contemplative.completion.spark')}<strong>+{summary?.sparksGained ?? 0}</strong></span></div>
+              <div className="feedback-choice" role="group" aria-label={t('contemplative.completion.feedback')}>{['tenser', 'same', 'calmer'].map((item) => <button key={item} type="button" className={feedback === item ? 'active' : ''} onClick={() => submitFeedback(item)} aria-pressed={feedback === item}>{t(`contemplative.completion.${item}`)}</button>)}</div>
               <div className="playable-actions">
-                <button type="button" className="primary-action" onClick={() => onNavigate?.('meditacao')}>Seguir para meditação</button>
-                <button type="button" className="ghost-action" onClick={() => onNavigate?.('home')}>Voltar à Home</button>
+                <button type="button" className="primary-action" onClick={() => onNavigate?.('home')}>{t('contemplative.completion.home')}</button>
+                <button type="button" className="ghost-action" onClick={handlePracticeAgain}>{t('contemplative.completion.repeat')}</button>
               </div>
             </article>
           </section>
@@ -545,7 +642,9 @@ export default function D7PlayablePractice({
             <div className="level-ring" aria-hidden="true"><span>{t('practice.level')} {currentLevel}</span></div>
             <div className="level-copy">
               <span className="overline">{t('practice.completedEyebrow')}</span>
-              <h3 id="level-stage-title">{summary?.firstPhaseCompleted ? t('practice.firstPhaseComplete') : t('practice.ritualComplete')}</h3>
+              <h3 id="level-stage-title">{focusMode ? t('contemplative.completion.meditation') : summary?.firstPhaseCompleted ? t('practice.firstPhaseComplete') : t('practice.ritualComplete')}</h3>
+              {focusMode && <div className="contemplative-summary"><span>{t('contemplative.completion.duration')}<strong>{formatTime(summary?.duration ?? practiceTotalSeconds)}</strong></span><span>{t('contemplative.completion.intention')}<strong>{t(`contemplative.intention.${intention}`)}</strong></span><span>{t('contemplative.completion.atmosphere')}<strong>{t(`contemplative.audio.${audioMode}`)}</strong></span><span>{t('contemplative.completion.journey')}<strong>✓</strong></span></div>}
+              {focusMode && <div className="feedback-choice" role="group" aria-label={t('contemplative.completion.feedback')}>{['tenser', 'same', 'calmer'].map((item) => <button key={item} type="button" className={feedback === item ? 'active' : ''} onClick={() => submitFeedback(item)} aria-pressed={feedback === item}>{t(`contemplative.completion.${item}`)}</button>)}</div>}
               {summary?.firstPhaseCompleted && <p className="medal-copy">{t('practice.honorMedalCopy')}</p>}
               <div className="practice-completion-banner">
                 <div>
@@ -675,9 +774,11 @@ export default function D7PlayablePractice({
               </article>
               {completionUnlocks.length > 0 && <div className="unlock-feed" aria-live="polite">{completionUnlocks.map((item) => <span key={item}>{item}</span>)}</div>}
               <div className="playable-actions">
+                {focusMode ? <><button type="button" className="primary-action" onClick={() => onNavigate?.('home')}>{t('contemplative.completion.home')}</button><button type="button" className="ghost-action" onClick={handlePracticeAgain}>{t('contemplative.completion.repeat')}</button></> : <>
                 <button type="button" className="primary-action" onClick={() => onNavigate?.('jornada')}>{t('practice.goJourney')}</button>
                 <button type="button" className="ghost-action" onClick={() => onNavigate?.('home')}>{t('practice.backHome')}</button>
                 <button type="button" className="ghost-action" onClick={handlePracticeAgain}>{t('practice.practiceAgain')}</button>
+                </>}
               </div>
             </div>
           </section>

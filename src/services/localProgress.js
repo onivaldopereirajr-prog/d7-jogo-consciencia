@@ -68,6 +68,13 @@ export function clearLegacyAnonymousProgress() {
 
 export function userProgressSummary(user, state) {
   const current = ensureToday(state)
+  const contemplativeSessions = (current.contemplativeSessions ?? []).filter((session) => session.status === 'completed')
+  const contemplative = {
+    total: contemplativeSessions.length,
+    breathing: contemplativeSessions.filter((session) => session.practiceType === 'breathing').length,
+    meditation: contemplativeSessions.filter((session) => session.practiceType === 'meditation').length,
+    minutes: Math.round(contemplativeSessions.reduce((sum, session) => sum + (Number(session.duration) || 0), 0) / 60),
+  }
   const stage = getStage(current.progress)
   const library = getLibraryStudyStats(current)
   return {
@@ -109,6 +116,10 @@ export function userProgressSummary(user, state) {
     lastPresenceTickAt: current.lastPresenceTickAt ?? null,
     streak: current.progress.streak,
     completedPractices: current.sessions.length,
+    contemplativeSessions: contemplative.total,
+    contemplativeBreathing: contemplative.breathing,
+    contemplativeMeditation: contemplative.meditation,
+    contemplativeMinutes: contemplative.minutes,
     lastPracticeDate: current.progress.lastPracticeDate,
     cards: current.unlockedCards,
     medals: current.unlockedCodes,

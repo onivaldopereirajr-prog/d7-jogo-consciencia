@@ -214,6 +214,7 @@ export function makeInitialState(profile = {}) {
       { id: 'origem-dual', title: 'Códice Dual D7', text: 'Uma criação simbólica do jogo: hebraico como trilha de letras, números e códigos; sânscrito como trilha de sons, mantras e estados.', date: 'Registro inicial' },
     ],
     sessions: [],
+    contemplativeSessions: [],
     ritualMinutesTotal: 0,
     honorMedals: [],
     ritualMilestonesUnlocked: [],
@@ -295,6 +296,13 @@ export function normalizeState(raw) {
     wordLog: arrayOr(raw.wordLog, base.wordLog).slice(0, 12),
     codex: arrayOr(raw.codex).length ? raw.codex : base.codex,
     sessions: arrayOr(raw.sessions, base.sessions),
+    contemplativeSessions: arrayOr(raw.contemplativeSessions, base.contemplativeSessions).filter((item) => item && typeof item === 'object' && typeof item.sessionId === 'string').map((item) => ({
+      ...item,
+      status: ['created', 'active', 'paused', 'completed', 'cancelled'].includes(item.status) ? item.status : 'created',
+      practiceType: item.practiceType === 'breathing' ? 'breathing' : 'meditation',
+      duration: Math.max(0, Number(item.duration) || 0),
+      cyclesCompleted: Math.max(0, Math.min(3, Number(item.cyclesCompleted) || 0)),
+    })).slice(0, 240),
     ritualMinutesTotal,
     honorMedals: unique(arrayOr(raw.honorMedals, base.honorMedals)),
     ritualMilestonesUnlocked: unique([

@@ -55,6 +55,8 @@ import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarServic
 import { recordScreenTimeTick, startScreenTimeSession } from './services/adminUserMonitoring.js'
 import { hasAdminSession } from './services/adminLocal.js'
 import { PLAYTEST_FOCUS_MODE, isPlaytestParticipantView } from './config/playtest.js'
+import { completeContemplativeSession, getContemplativeStats, persistContemplativeSessionStatus, updateContemplativeFeedback } from './services/contemplativeSessions.js'
+import PresenceConstellation from './components/PresenceConstellation.jsx'
 import './App.css'
 
 const visualAssets = {
@@ -931,6 +933,7 @@ function PlaytestHome({ state, stage, journeyCode, officialJourney, timerStatus,
           <button type="button" className="ghost-action" onClick={() => onNavigate('radio')}>Abrir Rádio Maiindy</button>
           <button type="button" className="ghost-action" onClick={onReplayEntrance}>Rever entrada</button>
         </div>
+        <PresenceConstellation state={state} t={t} compact />
       </div>
     </section>
   )
@@ -1007,6 +1010,7 @@ function App() {
   const adminSessionActive = hasAdminSession()
   const localSummaries = adminSessionActive ? getAllLocalSummaries() : []
   const analyticsSummary = adminSessionActive ? summarizeLocalEvents(localSummaries) : null
+  const contemplativeStats = getContemplativeStats(state)
 
 
   useEffect(() => {
@@ -1036,19 +1040,24 @@ function App() {
     if (currentUser) saveUserProgress(currentUser.id, state)
   }, [currentUser, state])
   useEffect(() => {
+    if (!currentUser?.id || activeView !== 'home' || contemplativeStats.total === 0) return
+    recordLocalEvent(currentUser.id, 'constellation_viewed', { totalSessions: contemplativeStats.total }, { dedupeKey: `constellation_viewed:${contemplativeStats.total}` })
+  }, [activeView, contemplativeStats.total, currentUser?.id])
+  useEffect(() => {
     presenceStateRef.current = state
     presenceViewRef.current = activeView
   }, [activeView, state])
 
   useEffect(() => {
     if (timerStatus !== 'idle') return
+    if (PLAYTEST_FOCUS_MODE && activeView === 'meditacao') return
     const officialMinutes = stage.minutes
     if (practiceDurationMinutes === officialMinutes && timer.remaining === officialMinutes * 60 && timer.journeyCode === journeyCode) return
     setPracticeDurationMinutes(officialMinutes)
     setPracticeDurationInput(String(officialMinutes))
     setPracticeDurationError('')
     setTimer((current) => ({ ...current, journeyCode, remaining: officialMinutes * 60, status: 'idle', startedAt: null, expectedEndAt: null }))
-  }, [journeyCode, practiceDurationMinutes, stage.minutes, timer.journeyCode, timer.remaining, timerStatus])
+  }, [activeView, journeyCode, practiceDurationMinutes, stage.minutes, timer.journeyCode, timer.remaining, timerStatus])
 
   useEffect(() => {
     if (!currentUser) return undefined
@@ -1272,7 +1281,15 @@ function App() {
     return normalizedMinutes
   }
 
-  function handlePracticeDurationChange() {
+  function handlePracticeDurationChange(requestedMinutes) {
+    if (PLAYTEST_FOCUS_MODE && activeView === 'meditacao' && [1, 3, 5].includes(Number(requestedMinutes))) {
+      const minutes = Number(requestedMinutes)
+      setPracticeDurationMinutes(minutes)
+      setPracticeDurationInput(String(minutes))
+      setPracticeDurationError('')
+      syncPracticeTimer(minutes)
+      return
+    }
     setPracticeDurationMinutes(stage.minutes)
     setPracticeDurationInput(String(stage.minutes))
     setPracticeDurationError('O modo oficial usa o tempo fixo da categoria atual.')
@@ -1283,22 +1300,28 @@ function App() {
     handlePracticeDurationChange()
   }
 
-  async function handleStartPractice() {
-    if (currentUser?.id) {
-      recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' })
-      trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' }, activeView)
-      updatePresence(currentUser, state, activeView, 'practice_started')
-    }
+  async function handleStartPractice(session = {}) {
     if (state.progress.restartRequired) {
       setPracticeDurationError('Recomece em A1 antes de iniciar uma nova sessão oficial.')
       return undefined
     }
-    const normalizedMinutes = stage.minutes
+    if (currentUser?.id) {
+      recordLocalEvent(currentUser.id, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' })
+      trackAdminEvent(currentUser, 'practice_started', { minutes: practiceDurationMinutes, resumed: timerStatus === 'paused' }, activeView)
+      updatePresence(currentUser, state, activeView, 'practice_started')
+      if (activeView === 'meditacao' && session.sessionId) {
+        const eventType = timerStatus === 'paused' ? 'meditation_resumed' : 'meditation_started'
+        recordLocalEvent(currentUser.id, eventType, session, { dedupeKey: `${eventType}:${session.sessionId}` })
+        const next = persistContemplativeSessionStatus(currentUser, session, 'active')
+        if (next) setState(next)
+      }
+    }
+    const normalizedMinutes = PLAYTEST_FOCUS_MODE && activeView === 'meditacao' ? practiceDurationMinutes : stage.minutes
     const total = timerStatus === 'paused' ? Math.max(1, timer.remaining) : normalizedMinutes * 60
     const startedAt = Date.now()
     mantraCompletionFadeRef.current = false
     setPracticeDurationError('')
-    const audioAttempt = mantraAudioRef.current?.start?.()
+    const audioAttempt = session.audioMode === 'silence' ? null : mantraAudioRef.current?.start?.()
     setTimer({
       journeyCode,
       startedAt,
@@ -1401,6 +1424,11 @@ function App() {
   }
 
   function finishPractice(options = {}) {
+    if (options.sessionId && options.practiceType) {
+      const result = completeContemplativeSession(currentUser, options)
+      if (result.ok) setState(result.progress)
+      return result
+    }
     if (timerStatus !== 'complete') return null
     mantraAudioRef.current?.fadeOutAndStop()
     const finalWord = typeof options.finalWord === 'string' ? options.finalWord.trim() : ''
@@ -1441,6 +1469,22 @@ function App() {
       firstPhaseCompleted: Boolean(nextProgress.progress.firstPhaseCompleted),
       honorMedalUnlocked: Boolean(nextProgress.honorMedals?.includes(HONOR_MEDAL_ID)),
     }
+  }
+
+  function handleContemplativeEvent(eventType, metadata, dedupeSuffix = '') {
+    if (!currentUser?.id) return
+    const statusByEvent = { intention_selected: 'created', breathing_started: 'active', meditation_started: 'active', meditation_resumed: 'active', meditation_paused: 'paused', practice_cancelled: 'cancelled' }
+    if (statusByEvent[eventType]) {
+      const next = persistContemplativeSessionStatus(currentUser, metadata, statusByEvent[eventType])
+      if (next) setState(next)
+    }
+    const dedupeKey = dedupeSuffix ? `${eventType}:${dedupeSuffix}` : metadata?.sessionId ? `${eventType}:${metadata.sessionId}` : undefined
+    recordLocalEvent(currentUser.id, eventType, metadata, dedupeKey ? { dedupeKey } : {})
+  }
+
+  function handlePostPracticeFeedback(sessionId, feedback) {
+    const next = updateContemplativeFeedback(currentUser, sessionId, feedback)
+    if (next) setState(next)
   }
 
   function handleRestartOfficialJourney() {
@@ -1816,6 +1860,8 @@ function App() {
             onCompletePractice={finishPractice}
             onRecordWord={submitPracticeWord}
             onNavigate={navigate}
+            onContemplativeEvent={handleContemplativeEvent}
+            onPostPracticeFeedback={handlePostPracticeFeedback}
           />
         )}
 
@@ -1859,6 +1905,8 @@ function App() {
             onCompletePractice={finishPractice}
             onRecordWord={submitPracticeWord}
             onNavigate={navigate}
+            onContemplativeEvent={handleContemplativeEvent}
+            onPostPracticeFeedback={handlePostPracticeFeedback}
           />
         )}
 
@@ -1902,6 +1950,8 @@ function App() {
             onCompletePractice={finishPractice}
             onRecordWord={submitPracticeWord}
             onNavigate={navigate}
+            onContemplativeEvent={handleContemplativeEvent}
+            onPostPracticeFeedback={handlePostPracticeFeedback}
           />
         )}
 
@@ -2015,6 +2065,10 @@ function App() {
             <div className="inventory-card">
               <SectionTitle eyebrow="Perfil do jogador" title="Progressão e Selos" />
               <div className="profile-stats">
+                <StatCard label={t('contemplative.profile.sessions')} value={contemplativeStats.total} detail={t('contemplative.profile.completed')} />
+                <StatCard label={t('contemplative.profile.breathing')} value={contemplativeStats.breathing} detail={t('contemplative.profile.completedPlural')} />
+                <StatCard label={t('contemplative.profile.meditations')} value={contemplativeStats.meditation} detail={t('contemplative.profile.completedPlural')} />
+                <StatCard label={t('contemplative.profile.minutes')} value={contemplativeStats.minutes} detail={t('contemplative.profile.presence')} />
                 <StatCard label="Ciclo" value={journeyCode} detail={`Semana ${officialJourney.weekNumber}/5 · Dia ${officialJourney.dayNumber}/35`} />
                 <StatCard label="Sequência" value={state.progress.streak} detail="dias ativos" />
                 <StatCard label="Cartas" value={state.unlockedCards.length} detail={`${codexCards.length} totais`} />

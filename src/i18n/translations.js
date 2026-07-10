@@ -47,6 +47,14 @@ export const translations = {
       save: 'Salvar',
       logout: 'Sair',
     },
+    contemplative: {
+      intention: { eyebrow: 'Antes da prática', title: 'Como você deseja estar depois desta prática?', calm: 'Calma', focus: 'Foco', energy: 'Energia', rest: 'Descanso', presence: 'Presença', continue: 'Continuar' },
+      audio: { title: 'Escolha a atmosfera', mantra: 'Mantra', silence: 'Silêncio' },
+      progress: { breathing: 'Ciclo {cycle} de 3', staying: 'Você está permanecendo.', cancelBreathing: 'Cancelar respiração' },
+      completion: { breathingEyebrow: 'Respiração concluída', ritual: 'Ritual concluído', meditation: 'Meditação concluída', technique: 'Técnica', cycles: 'Ciclos completos', duration: 'Duração real', minuteShort: 'min', intention: 'Intenção', atmosphere: 'Atmosfera', spark: 'Centelha registrada', journey: 'Registro confirmado na Jornada', feedback: 'Como você está agora?', tenser: 'Mais tenso', same: 'Igual', calmer: 'Mais tranquilo', home: 'Voltar à Home', repeat: 'Praticar novamente' },
+      constellation: { eyebrow: 'Sua jornada', title: 'Sua Jornada de Presença', breathing: 'respirações', meditation: 'meditações', minutes: 'minutos', empty: 'Sua primeira prática concluída acenderá um ponto de luz.', description: '{total} práticas concluídas: {breathing} respirações, {meditation} meditações e {minutes} minutos de presença.' },
+      profile: { sessions: 'Sessões contemplativas', completed: 'práticas concluídas', breathing: 'Respirações', meditations: 'Meditações', completedPlural: 'concluídas', minutes: 'Minutos contemplativos', presence: 'presença registrada' },
+    },
     footer: {
       copy: '© 2026 KATHBOT. Todos os direitos reservados.',
       tagline: 'Maiindy Game: foco, presença e símbolos vivos.',
@@ -361,6 +369,14 @@ export const translations = {
       close: 'Close',
       save: 'Save',
       logout: 'Logout',
+    },
+    contemplative: {
+      intention: { eyebrow: 'Before practice', title: 'How would you like to feel after this practice?', calm: 'Calm', focus: 'Focus', energy: 'Energy', rest: 'Rest', presence: 'Presence', continue: 'Continue' },
+      audio: { title: 'Choose the atmosphere', mantra: 'Mantra', silence: 'Silence' },
+      progress: { breathing: 'Cycle {cycle} of 3', staying: 'You are staying present.', cancelBreathing: 'Cancel breathing' },
+      completion: { breathingEyebrow: 'Breathing complete', ritual: 'Ritual complete', meditation: 'Meditation complete', technique: 'Technique', cycles: 'Cycles completed', duration: 'Actual duration', minuteShort: 'min', intention: 'Intention', atmosphere: 'Atmosphere', spark: 'Spark recorded', journey: 'Journey record confirmed', feedback: 'How are you now?', tenser: 'More tense', same: 'The same', calmer: 'More peaceful', home: 'Back to Home', repeat: 'Practice again' },
+      constellation: { eyebrow: 'Your journey', title: 'Your Presence Journey', breathing: 'breathing sessions', meditation: 'meditations', minutes: 'minutes', empty: 'Your first completed practice will light a point.', description: '{total} completed practices: {breathing} breathing sessions, {meditation} meditations and {minutes} presence minutes.' },
+      profile: { sessions: 'Contemplative sessions', completed: 'completed practices', breathing: 'Breathing sessions', meditations: 'Meditations', completedPlural: 'completed', minutes: 'Contemplative minutes', presence: 'presence recorded' },
     },
     footer: {
       copy: '© 2026 KATHBOT. All rights reserved.',

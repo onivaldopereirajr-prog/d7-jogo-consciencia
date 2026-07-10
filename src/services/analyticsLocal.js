@@ -18,17 +18,22 @@ export function getUserEvents(userId) {
   return Array.isArray(events) ? events : []
 }
 
-export function recordLocalEvent(userId, eventType, metadata = {}) {
+export function recordLocalEvent(userId, eventType, metadata = {}, options = {}) {
   if (!userId || !eventType) return null
+  const all = getEventsByUser()
+  const userEvents = Array.isArray(all[userId]) ? all[userId] : []
+  if (options.dedupeKey) {
+    const existing = userEvents.find((item) => item.dedupeKey === options.dedupeKey)
+    if (existing) return existing
+  }
   const event = {
     id: makeId('evt'),
     userId,
     eventType,
     createdAt: new Date().toISOString(),
     metadata: metadata && typeof metadata === 'object' ? metadata : {},
+    dedupeKey: typeof options.dedupeKey === 'string' ? options.dedupeKey : null,
   }
-  const all = getEventsByUser()
-  const userEvents = Array.isArray(all[userId]) ? all[userId] : []
   safeSetStorage(LOCAL_EVENTS_KEY, { ...all, [userId]: [event, ...userEvents].slice(0, MAX_EVENTS_PER_USER) })
   return event
 }

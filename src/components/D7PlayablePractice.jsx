@@ -86,6 +86,24 @@ function pointOnTrianglePath(progress) {
   return vertices[0]
 }
 
+const BREATH_DOT_COLORS = [
+  [153, 92, 255],
+  [255, 226, 64],
+  [103, 255, 62],
+]
+
+function breathDotColor(progress) {
+  const normalized = ((progress % 1) + 1) % 1
+  const scaled = normalized * BREATH_DOT_COLORS.length
+  const index = Math.floor(scaled) % BREATH_DOT_COLORS.length
+  const nextIndex = (index + 1) % BREATH_DOT_COLORS.length
+  const amount = scaled - Math.floor(scaled)
+  const color = BREATH_DOT_COLORS[index].map((channel, channelIndex) => (
+    Math.round(channel + ((BREATH_DOT_COLORS[nextIndex][channelIndex] - channel) * amount))
+  ))
+  return `rgb(${color.join(' ')})`
+}
+
 function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   const [tick, setTick] = useState(0)
   const [isFinished, setIsFinished] = useState(false)
@@ -101,6 +119,7 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
   const dotEnd = pointOnTrianglePath((phaseIndex + 1) / steps.length)
   const dotX = dotStart.x + ((dotEnd.x - dotStart.x) * phaseProgress)
   const dotY = dotStart.y + ((dotEnd.y - dotStart.y) * phaseProgress)
+  const dotColor = breathDotColor((phaseIndex + phaseProgress) / steps.length)
 
   useEffect(() => {
     const startedAt = Date.now()
@@ -131,6 +150,7 @@ function BreathStage({ technique = fallbackBreathingTechnique, onDone }) {
           '--breath-dot-left': `calc(7% + ${dotX * 0.86}%)`,
           '--breath-dot-top': `calc(7% + ${dotY * 0.86}%)`,
           '--breath-dot-scale': phase.id?.startsWith('hold') ? 1.18 : 1,
+          '--breath-dot-color': dotColor,
         }}
       >
         <svg className="breath-triangle-visual" viewBox="0 0 100 100" focusable="false" aria-hidden="true">

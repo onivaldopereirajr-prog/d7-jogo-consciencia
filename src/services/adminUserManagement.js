@@ -1,6 +1,6 @@
 import { ADMIN_AUDIT_KEY, PAGE_VIEWS_KEY, SECURITY_ALERTS_KEY, SESSION_EVENTS_KEY, trackAdminEvent } from './adminAnalyticsService.js'
 import { LOCAL_EVENTS_KEY } from './analyticsLocal.js'
-import { ADMIN_KEY, ADMIN_LOGIN_ATTEMPTS_KEY, ADMIN_LOCK_UNTIL_KEY, ADMIN_RATE_LIMIT_KEY, ADMIN_SESSION_KEY, LEGACY_ADMIN_KEY, LEGACY_ADMIN_SESSION_KEY, OBSERVER_KEY, getAdminLocal } from './adminLocal.js'
+import { ADMIN_KEY, ADMIN_LOGIN_ATTEMPTS_KEY, ADMIN_LOCK_UNTIL_KEY, ADMIN_RATE_LIMIT_KEY, ADMIN_SESSION_KEY, LEGACY_ADMIN_KEY, LEGACY_ADMIN_SESSION_KEY, OBSERVER_KEY, getAdminLocal, hasAdminSession } from './adminLocal.js'
 import { LANGUAGE_KEY } from './languageService.js'
 import { MANTRA_SETTINGS_KEY } from './mantraAudioService.js'
 import { PRESENCE_KEY, SESSION_ID_KEY } from './presenceService.js'
@@ -20,6 +20,7 @@ const MIN_PASSWORD_LENGTH = 6
 const ENTRANCE_KEY = 'd7_entrance_seen'
 const BREATHING_TECHNIQUE_KEY = 'maiindy_breathing_technique'
 const SENSITIVE_FIELD_TOKENS = ['password', 'pin', 'hash', 'salt', 'secret', 'recovery']
+const ADMIN_SESSION_REQUIRED_MESSAGE = 'Sessão administrativa inválida ou expirada. Autentique-se novamente.'
 
 export const D7_LOCAL_STORAGE_KEYS = [
   USERS_KEY,
@@ -68,6 +69,12 @@ function randomToken() {
 
 function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function requireAdminSession() {
+  return hasAdminSession()
+    ? null
+    : { ok: false, message: ADMIN_SESSION_REQUIRED_MESSAGE }
 }
 
 function isSensitiveField(key) {
@@ -189,6 +196,7 @@ function makeBackupBase(type, extra = {}) {
 }
 
 export function buildFullLocalBackup(type = 'manual_admin_backup') {
+  if (!hasAdminSession()) return null
   const storage = {}
   getD7LocalStorageKeys().forEach((key) => {
     const value = readLocalStorageValueForBackup(key)
@@ -198,6 +206,7 @@ export function buildFullLocalBackup(type = 'manual_admin_backup') {
 }
 
 export function buildUserBackup(userId, type = 'user_admin_backup') {
+  if (!hasAdminSession()) return null
   const users = getUsers()
   const user = users.find((item) => item.id === userId)
   const progress = getObjectByUserKey(PROGRESS_BY_USER_KEY)[userId] ?? null
@@ -255,6 +264,8 @@ export function downloadJsonBackup(backup, filenamePrefix = 'd7-backup-local') {
 }
 
 export function changeLocalUserPlanFromAdmin({ userId, planId }) {
+  const denied = requireAdminSession()
+  if (denied) return denied
   const users = getUsers()
   const user = users.find((item) => item.id === userId)
   if (!user) return { ok: false, message: 'Usuário local não encontrado.' }
@@ -289,6 +300,8 @@ export function isProtectedLocalUser(user) {
 }
 
 export async function resetUserPasswordFromAdmin({ userId, password, confirmPassword }) {
+  const denied = requireAdminSession()
+  if (denied) return denied
   const users = getUsers()
   const user = users.find((item) => item.id === userId)
   if (!user) return { ok: false, message: 'Usuário local não encontrado.' }
@@ -310,6 +323,8 @@ export async function resetUserPasswordFromAdmin({ userId, password, confirmPass
 }
 
 export function deleteLocalUserFromAdmin({ userId, confirmation }) {
+  const denied = requireAdminSession()
+  if (denied) return denied
   const users = getUsers()
   const user = users.find((item) => item.id === userId)
   if (!user) return { ok: false, message: 'Usuário local não encontrado.' }
@@ -364,6 +379,8 @@ export function deleteLocalUserFromAdmin({ userId, confirmation }) {
 }
 
 export function clearStalePresence(minutes = 10) {
+  const denied = requireAdminSession()
+  if (denied) return denied
   const all = getObjectByUserKey(PRESENCE_KEY)
   const cutoff = Date.now() - Math.max(1, Number(minutes) || 10) * 60 * 1000
   const entries = Object.entries(all)
@@ -382,6 +399,8 @@ export function clearStalePresence(minutes = 10) {
 }
 
 export function resetLocalD7Environment() {
+  const denied = requireAdminSession()
+  if (denied) return denied
   const keys = getD7LocalStorageKeys()
   createAuditEvent('local_environment_reset', {
     actorRole: 'owner-local-admin',

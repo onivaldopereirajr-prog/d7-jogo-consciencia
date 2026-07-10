@@ -12,8 +12,14 @@ function makeId(prefix) {
 }
 
 function cleanMetadata(metadata = {}) {
-  const blocked = new Set(['password', 'confirmPassword', 'passwordHash', 'salt', 'hash'])
-  return Object.fromEntries(Object.entries(metadata || {}).filter(([key]) => !blocked.has(key)))
+  const sensitiveTokens = ['password', 'pin', 'hash', 'salt', 'secret', 'recovery', 'credential', 'authorization']
+  if (Array.isArray(metadata)) return metadata.map(cleanMetadata)
+  if (!metadata || typeof metadata !== 'object') return metadata
+  return Object.fromEntries(
+    Object.entries(metadata)
+      .filter(([key]) => !sensitiveTokens.some((token) => key.toLowerCase().includes(token)))
+      .map(([key, value]) => [key, cleanMetadata(value)]),
+  )
 }
 
 function categoryOf(eventType = '') {

@@ -53,6 +53,7 @@ import { getWheelEvents, spinD7Wheel } from './services/wheelService.js'
 import { avatarSymbols, avatarThemes } from './data/avatarSymbols.js'
 import { applyAvatarChoice, getUserAvatarProfile } from './services/avatarService.js'
 import { recordScreenTimeTick, startScreenTimeSession } from './services/adminUserMonitoring.js'
+import { hasAdminSession } from './services/adminLocal.js'
 import { PLAYTEST_FOCUS_MODE, isPlaytestParticipantView } from './config/playtest.js'
 import './App.css'
 
@@ -1003,8 +1004,9 @@ function App() {
   const livingPortal = getLivingPortalStatus(state)
   const returnRitual = getReturnRitualStatus(state)
   const nextUnlockInfo = getNextUnlockInfo(state, t)
-  const localSummaries = getAllLocalSummaries()
-  const analyticsSummary = summarizeLocalEvents(localSummaries)
+  const adminSessionActive = hasAdminSession()
+  const localSummaries = adminSessionActive ? getAllLocalSummaries() : []
+  const analyticsSummary = adminSessionActive ? summarizeLocalEvents(localSummaries) : null
 
 
   useEffect(() => {

@@ -90,7 +90,7 @@ export default function AdminPanel({ summaries, t = (path) => path, onRefresh, o
           <h2 id="admin-title">Administrador Maiindy</h2>
           <p>Esta versão usa dados locais do navegador. Recursos reais de administração e sala ao vivo exigirão backend e consentimento dos usuários.</p>
         </div>
-        <button type="button" className="ghost-action" onClick={() => { trackAdminEvent('local-admin', 'admin_logout', { admin: true }); endAdminSession(); setSession(false) }}>Sair do admin Maiindy</button>
+        <button type="button" className="ghost-action" onClick={() => { trackAdminEvent('local-admin', 'admin_logout', { admin: true }); endAdminSession(); setSession(false); onRefresh?.() }}>Sair do admin Maiindy</button>
       </div>
 
       <div className="admin-toggle-row">

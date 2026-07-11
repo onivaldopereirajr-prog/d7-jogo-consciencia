@@ -409,7 +409,7 @@ export default function D7PlayablePractice({
   }
 
   return (
-    <section className="playable-practice" aria-label="Sessão oficial Maiindy Game">
+    <section className={`playable-practice${focusMode ? ` is-focus-mode is-${focusVariant}` : ''}`} aria-label="Sessão oficial Maiindy Game">
       <div className={'playable-shell playable-shell--' + step}>
         <header className="playable-header">
           <div>
@@ -591,6 +591,7 @@ export default function D7PlayablePractice({
               <span className="overline">{t('contemplative.completion.breathingEyebrow')}</span>
               <div className="revealed-card__glyph" aria-hidden="true">△</div>
               <h3 id="breath-complete-title">{t('contemplative.completion.ritual')}</h3>
+              <p className="contemplative-completion-message">{t('contemplative.completion.breathingMessage')}</p>
               <div className="contemplative-summary"><span>{t('contemplative.completion.technique')}<strong>{selectedBreathingTechnique.name}</strong></span><span>{t('contemplative.completion.cycles')}<strong>{cyclesCompleted}/3</strong></span><span>{t('contemplative.completion.duration')}<strong>{formatTime(summary?.duration ?? 0)}</strong></span><span>{t('contemplative.completion.intention')}<strong>{t(`contemplative.intention.${intention}`)}</strong></span><span>{t('contemplative.completion.atmosphere')}<strong>{t(`contemplative.audio.${audioMode}`)}</strong></span><span>{t('contemplative.completion.spark')}<strong>+{summary?.sparksGained ?? 0}</strong></span></div>
               <div className="feedback-choice" role="group" aria-label={t('contemplative.completion.feedback')}>{['tenser', 'same', 'calmer'].map((item) => <button key={item} type="button" className={feedback === item ? 'active' : ''} onClick={() => submitFeedback(item)} aria-pressed={feedback === item}>{t(`contemplative.completion.${item}`)}</button>)}</div>
               <div className="playable-actions">
@@ -639,11 +640,12 @@ export default function D7PlayablePractice({
 
         {step === 'level-up' && (
           <section key="level-up" className="level-stage playable-stage" aria-labelledby="level-stage-title">
-            <div className="level-ring" aria-hidden="true"><span>{t('practice.level')} {currentLevel}</span></div>
+            <div className="level-ring" aria-hidden="true"><span>{focusMode ? '✦' : `${t('practice.level')} ${currentLevel}`}</span></div>
             <div className="level-copy">
               <span className="overline">{t('practice.completedEyebrow')}</span>
               <h3 id="level-stage-title">{focusMode ? t('contemplative.completion.meditation') : summary?.firstPhaseCompleted ? t('practice.firstPhaseComplete') : t('practice.ritualComplete')}</h3>
-              {focusMode && <div className="contemplative-summary"><span>{t('contemplative.completion.duration')}<strong>{formatTime(summary?.duration ?? practiceTotalSeconds)}</strong></span><span>{t('contemplative.completion.intention')}<strong>{t(`contemplative.intention.${intention}`)}</strong></span><span>{t('contemplative.completion.atmosphere')}<strong>{t(`contemplative.audio.${audioMode}`)}</strong></span><span>{t('contemplative.completion.journey')}<strong>✓</strong></span></div>}
+              {focusMode && <p className="contemplative-completion-message">{t('contemplative.completion.meditationMessage')}</p>}
+              {focusMode && <div className="contemplative-summary"><span>{t('contemplative.completion.duration')}<strong>{formatTime(summary?.duration ?? practiceTotalSeconds)}</strong></span><span>{t('contemplative.completion.intention')}<strong>{t(`contemplative.intention.${intention}`)}</strong></span><span>{t('contemplative.completion.atmosphere')}<strong>{t(`contemplative.audio.${audioMode}`)}</strong></span><span>{t('contemplative.completion.spark')}<strong>+{summary?.sparksGained ?? 0}</strong></span><span>{t('contemplative.completion.journey')}<strong>✓</strong></span></div>}
               {focusMode && <div className="feedback-choice" role="group" aria-label={t('contemplative.completion.feedback')}>{['tenser', 'same', 'calmer'].map((item) => <button key={item} type="button" className={feedback === item ? 'active' : ''} onClick={() => submitFeedback(item)} aria-pressed={feedback === item}>{t(`contemplative.completion.${item}`)}</button>)}</div>}
               {summary?.firstPhaseCompleted && <p className="medal-copy">{t('practice.honorMedalCopy')}</p>}
               <div className="practice-completion-banner">

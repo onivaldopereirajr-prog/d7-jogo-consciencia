@@ -892,7 +892,7 @@ function LocalProgressPanel({ currentUserId, message, onCopyReport, onDownloadRe
   )
 }
 
-function PlaytestHome({ state, stage, journeyCode, officialJourney, timerStatus, t, onNavigate, onReplayEntrance }) {
+function PlaytestHome({ state, user, stage, journeyCode, officialJourney, timerStatus, contemplativeStats, t, onNavigate, onReplayEntrance }) {
   return (
     <section className="home-layout home-layout--playtest" aria-labelledby="playtest-home-title">
       <div className="hero-panel home-portal-panel playtest-home-panel">
@@ -901,39 +901,71 @@ function PlaytestHome({ state, stage, journeyCode, officialJourney, timerStatus,
           <Sigil label="M" tone="gold" />
           <Sigil label="△" tone="cyan" />
         </div>
-        <span className="overline">Maiindy Game</span>
-        <h2 id="playtest-home-title">Escolha sua experiência</h2>
-        <p className="home-portal-lead">Respiração e meditação são o foco deste playtest. A Rádio Maiindy fica disponível como apoio sonoro complementar.</p>
-        <div className="playtest-choice-grid" aria-label="Experiências principais do playtest">
+        <span className="overline">{t('contemplative.home.eyebrow')}</span>
+        <h2 id="playtest-home-title">{t('contemplative.home.title')}</h2>
+        <p className="home-portal-lead">{t('contemplative.home.lead')}</p>
+        <div className="playtest-choice-grid" aria-label={t('contemplative.home.title')}>
           <button type="button" className="playtest-choice-card primary" onClick={() => onNavigate('respiracao')}>
-            <span>Principal</span>
-            <strong>Respiração</strong>
-            <small>Ritmo guiado, atenção e presença antes do silêncio.</small>
+            <span>{t('contemplative.home.primary')}</span>
+            <strong>{t('contemplative.home.breathing')}</strong>
+            <small>{t('contemplative.home.breathingDescription')}</small>
           </button>
           <button type="button" className="playtest-choice-card primary" onClick={() => onNavigate('meditacao')}>
-            <span>Principal</span>
-            <strong>Meditação</strong>
-            <small>Timer contemplativo com mantra opcional e finalização clara.</small>
+            <span>{t('contemplative.home.primary')}</span>
+            <strong>{t('contemplative.home.meditation')}</strong>
+            <small>{t('contemplative.home.meditationDescription')}</small>
           </button>
           <button type="button" className="playtest-choice-card secondary" onClick={() => onNavigate('radio')}>
-            <span>Complementar</span>
-            <strong>Rádio Maiindy</strong>
-            <small>Atmosfera sonora livre para acompanhar seu momento.</small>
+            <span>{t('contemplative.home.complementary')}</span>
+            <strong>{t('contemplative.home.radio')}</strong>
+            <small>{t('contemplative.home.radioDescription')}</small>
           </button>
         </div>
         <div className="home-portal-meta">
           <span>{journeyCode} · {stage.name}</span>
           <span>{t('core.dailyRitual.day').replace('{day}', officialJourney.dayNumber).replace('{total}', OFFICIAL_JOURNEY_DAYS)}</span>
-          <span>{state.daily.practice ? 'Prática registrada hoje' : 'Prática pronta'}</span>
-          <span>{timerStatus === 'running' ? 'Sessão em andamento' : 'Aguardando escolha'}</span>
+          <span>{state.daily.practice ? t('contemplative.home.registered') : t('contemplative.home.ready')}</span>
+          <span>{timerStatus === 'running' ? t('contemplative.home.running') : t('contemplative.home.waiting')}</span>
         </div>
         <div className="hero-actions home-portal-actions">
-          <button type="button" className="primary-action home-primary-action" onClick={() => onNavigate('respiracao')}>Iniciar respiração</button>
-          <button type="button" className="primary-action home-primary-action" onClick={() => onNavigate('meditacao')}>Iniciar meditação</button>
-          <button type="button" className="ghost-action" onClick={() => onNavigate('radio')}>Abrir Rádio Maiindy</button>
-          <button type="button" className="ghost-action" onClick={onReplayEntrance}>Rever entrada</button>
+          <button type="button" className="ghost-action" onClick={onReplayEntrance}>{t('contemplative.home.replay')}</button>
         </div>
-        <PresenceConstellation state={state} t={t} compact />
+        <div className="home-next-action home-next-action--portal">
+          <UserAvatar user={user} progress={state} />
+          <div>
+            <span className="overline">{t('contemplative.home.ready')}</span>
+            <strong>{state.progress.restartRequired ? t('core.dailyRitual.returnState') : state.daily.practice ? t('core.dailyRitual.doneState') : t('core.dailyRitual.readyState')}</strong>
+            <p>{state.progress.restartRequired ? t('core.dailyRitual.returnCopy') : state.daily.practice ? t('core.dailyRitual.afterCopy') : t('core.dailyRitual.readyCopy')}</p>
+          </div>
+        </div>
+      </div>
+
+      <aside className="home-presence-rail" aria-label={t('contemplative.constellation.title')}>
+        <div className="home-side-card home-presence-card">
+          <PresenceConstellation state={state} t={t} compact />
+          <div className="home-presence-metrics" aria-label={t('contemplative.constellation.title')}>
+            <article>
+              <span>{t('contemplative.constellation.breathing')}</span>
+              <strong>{contemplativeStats.breathing}</strong>
+            </article>
+            <article>
+              <span>{t('contemplative.constellation.meditation')}</span>
+              <strong>{contemplativeStats.meditation}</strong>
+            </article>
+            <article>
+              <span>{t('contemplative.constellation.minutes')}</span>
+              <strong>{contemplativeStats.minutes}</strong>
+            </article>
+            <article>
+              <span>{t('topbar.sparks')}</span>
+              <strong>{state.sparks}</strong>
+            </article>
+          </div>
+        </div>
+      </aside>
+
+      <div className="home-radio-band">
+        <D7RadioPlayer t={t} compact />
       </div>
     </section>
   )
@@ -1633,73 +1665,78 @@ function App() {
 
       <main className="main-panel">
         <UserProfileBar user={currentUser} progress={state} t={t} language={language} onLanguageChange={handleLanguageChange} onLogout={handleLogout} />
-        <div className={`app-workspace app-workspace--${activeView}`}>
-          <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail app-radio-rail--floating'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
-            {activeView === 'home' && !PLAYTEST_FOCUS_MODE && (
-              <div className="home-side-panel">
-                {returnRitual.active && <ReturnRitualCard ritual={returnRitual} t={t} onRetake={() => navigate('pratica')} />}
-                <section className="home-side-card home-progress-card" aria-labelledby="home-progress-title">
-                  <span className="overline">Progresso Maiindy</span>
-                  <div className="home-progress-head">
-                    <div>
-                      <h3 id="home-progress-title">{journeyCode}</h3>
-                      <p>Dia {officialJourney.dayNumber}/35 · Semana {officialJourney.weekNumber}/5</p>
+        <div className={`app-workspace app-workspace--${activeView}${activeView === 'home' && PLAYTEST_FOCUS_MODE ? ' app-workspace--home-focus' : ''}`}>
+          {!(activeView === 'home' && PLAYTEST_FOCUS_MODE) && (
+            <aside className={activeView === 'home' ? 'app-radio-rail home-dashboard-rail' : 'app-radio-rail app-radio-rail--floating'} aria-label={activeView === 'home' ? 'Painel de apoio Maiindy' : 'Player de apoio Maiindy'}>
+              {activeView === 'home' && (
+                <div className="home-side-panel">
+                  {returnRitual.active && <ReturnRitualCard ritual={returnRitual} t={t} onRetake={() => navigate('pratica')} />}
+                  <section className="home-side-card home-progress-card" aria-labelledby="home-progress-title">
+                    <span className="overline">Progresso Maiindy</span>
+                    <div className="home-progress-head">
+                      <div>
+                        <h3 id="home-progress-title">{journeyCode}</h3>
+                        <p>Dia {officialJourney.dayNumber}/35 · Semana {officialJourney.weekNumber}/5</p>
+                      </div>
+                      <div className="score-dial" style={{ '--score': scoreDial }} aria-label={`Score ${currentScore}`}>
+                        <strong>{currentScore}</strong>
+                        <span>score</span>
+                      </div>
                     </div>
-                    <div className="score-dial" style={{ '--score': scoreDial }} aria-label={`Score ${currentScore}`}>
-                      <strong>{currentScore}</strong>
-                      <span>score</span>
+                    <div className="side-progress-row"><span>XP</span><strong>{levelProgress}/250</strong></div>
+                    <ProgressLine value={levelProgress} max={250} label="XP para próximo nível" />
+                    <div className="spark-orbs" aria-label={`${state.sparks} centelhas`}>
+                      {Array.from({ length: 6 }, (_, index) => <span key={index} className={index < Math.min(6, state.sparks ?? 0) ? 'active' : ''} />)}
                     </div>
-                  </div>
-                  <div className="side-progress-row"><span>XP</span><strong>{levelProgress}/250</strong></div>
-                  <ProgressLine value={levelProgress} max={250} label="XP para próximo nível" />
-                  <div className="spark-orbs" aria-label={`${state.sparks} centelhas`}>
-                    {Array.from({ length: 6 }, (_, index) => <span key={index} className={index < Math.min(6, state.sparks ?? 0) ? 'active' : ''} />)}
-                  </div>
-                </section>
+                  </section>
 
-                <section className="home-side-card home-streak-card">
-                  <span className="overline">Streak</span>
-                  <div className="streak-compact"><strong>{state.progress.streak ?? 0}</strong><span>dias</span></div>
-                  <div className="week-dots" aria-label="Pontos de sequência semanal">
-                    {Array.from({ length: 7 }, (_, index) => <span key={index} className={index < Math.min(7, state.progress.streak ?? 0) ? 'active' : ''} />)}
-                  </div>
-                </section>
+                  <section className="home-side-card home-streak-card">
+                    <span className="overline">Streak</span>
+                    <div className="streak-compact"><strong>{state.progress.streak ?? 0}</strong><span>dias</span></div>
+                    <div className="week-dots" aria-label="Pontos de sequência semanal">
+                      {Array.from({ length: 7 }, (_, index) => <span key={index} className={index < Math.min(7, state.progress.streak ?? 0) ? 'active' : ''} />)}
+                    </div>
+                  </section>
 
-                <section className="home-side-card home-journey-card">
-                  <span className="overline">Jornada oficial</span>
-                  <div className="journey-mini-grid">
-                    <article><span>Categoria</span><strong>{stage.id}</strong><small>{stage.name}</small></article>
-                    <article><span>Tempo</span><strong>{stage.minutes} min</strong><small>oficial</small></article>
-                    <article><span>Melhor</span><strong>{state.progress.bestCode ?? journeyCode}</strong><small>nível</small></article>
-                    <article><span>Reinícios</span><strong>{state.progress.resets ?? 0}</strong><small>histórico</small></article>
-                  </div>
-                  <ProgressLine value={officialJourney.dayNumber} max={OFFICIAL_JOURNEY_DAYS} label="Dia da Primeira Fase" />
-                  <p className="medal-state">Medalha de Honra: <strong>{state.honorMedals?.includes(HONOR_MEDAL_ID) ? 'desbloqueada' : 'pendente'}</strong></p>
-                </section>
+                  <section className="home-side-card home-journey-card">
+                    <span className="overline">Jornada oficial</span>
+                    <div className="journey-mini-grid">
+                      <article><span>Categoria</span><strong>{stage.id}</strong><small>{stage.name}</small></article>
+                      <article><span>Tempo</span><strong>{stage.minutes} min</strong><small>oficial</small></article>
+                      <article><span>Melhor</span><strong>{state.progress.bestCode ?? journeyCode}</strong><small>nível</small></article>
+                      <article><span>Reinícios</span><strong>{state.progress.resets ?? 0}</strong><small>histórico</small></article>
+                    </div>
+                    <ProgressLine value={officialJourney.dayNumber} max={OFFICIAL_JOURNEY_DAYS} label="Dia da Primeira Fase" />
+                    <p className="medal-state">Medalha de Honra: <strong>{state.honorMedals?.includes(HONOR_MEDAL_ID) ? 'desbloqueada' : 'pendente'}</strong></p>
+                  </section>
 
-                <section className="home-side-card home-tracks-card">
-                  <span className="overline">Trilhas</span>
-                  <div className="track-mini-row"><span>Hebraica</span><strong>{hebrewUnlocked}</strong></div>
-                  <ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Trilha Hebraica" />
-                  <div className="track-mini-row"><span>Sânscrita</span><strong>{sanskritUnlocked}</strong></div>
-                  <ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Trilha Sânscrita" />
-                </section>
+                  <section className="home-side-card home-tracks-card">
+                    <span className="overline">Trilhas</span>
+                    <div className="track-mini-row"><span>Hebraica</span><strong>{hebrewUnlocked}</strong></div>
+                    <ProgressLine value={hebrewUnlocked} max={hebrewLetters.length + hebrewWords.length} label="Trilha Hebraica" />
+                    <div className="track-mini-row"><span>Sânscrita</span><strong>{sanskritUnlocked}</strong></div>
+                    <ProgressLine value={sanskritUnlocked} max={sanskritItems.length} label="Trilha Sânscrita" />
+                  </section>
 
-                <section className="home-side-card home-missions-card">
-                  <span className="overline">Missões hoje</span>
-                  {missions.daily.slice(0, 4).map((mission) => (
-                    <MissionRow key={mission.id} mission={mission} done={missionStatus(state, mission)} onNavigate={() => navigate(missionNavigationTarget(mission))} />
-                  ))}
-                </section>
-              </div>
-            )}
-            {activeView !== 'radio' && (
-              <div className={activeView === 'home' ? 'home-radio-mini' : 'floating-radio-mini'}>
-                <D7RadioPlayer t={t} compact />
-              </div>
-            )}
-          </aside>
+                  <section className="home-side-card home-missions-card">
+                    <span className="overline">Missões hoje</span>
+                    {missions.daily.slice(0, 4).map((mission) => (
+                      <MissionRow key={mission.id} mission={mission} done={missionStatus(state, mission)} onNavigate={() => navigate(missionNavigationTarget(mission))} />
+                    ))}
+                  </section>
+                </div>
+              )}
+              {!PLAYTEST_FOCUS_MODE && activeView !== 'radio' && (
+                <div className={activeView === 'home' ? 'home-radio-mini' : 'floating-radio-mini'}>
+                  <D7RadioPlayer t={t} compact />
+                </div>
+              )}
+            </aside>
+          )}
 
+          {activeView === 'home' && PLAYTEST_FOCUS_MODE ? (
+                <PlaytestHome state={state} user={currentUser} stage={stage} journeyCode={journeyCode} officialJourney={officialJourney} timerStatus={timerStatus} contemplativeStats={contemplativeStats} t={t} onNavigate={navigate} onReplayEntrance={replayEntrance} />
+          ) : (
           <section className="app-content" aria-label="Conteúdo principal do jogo">
             <header className={activeView === 'home' ? 'topbar topbar--home' : 'topbar'}>
               <div>
@@ -1713,10 +1750,7 @@ function App() {
               </div>
             </header>
 
-            {activeView === 'home' && (
-              PLAYTEST_FOCUS_MODE ? (
-                <PlaytestHome state={state} stage={stage} journeyCode={journeyCode} officialJourney={officialJourney} timerStatus={timerStatus} t={t} onNavigate={navigate} onReplayEntrance={replayEntrance} />
-              ) : (
+            {activeView === 'home' && !PLAYTEST_FOCUS_MODE && (
               <section className="home-layout home-layout--portal">
                 <div className="hero-panel home-portal-panel">
                   <img className="hero-art" src={visualAssets.hero} alt="Portal visual do Maiindy Game" />
@@ -1751,15 +1785,13 @@ function App() {
                     <LivingPortalCard portal={livingPortal} t={t} compact />
                     <WordJournal words={state.wordLog} compact t={t} />
                   </div>
-                  <div className="home-next-action home-next-action--portal">
-                    <UserAvatar user={currentUser} progress={state} />
-                    <div><span className="overline">{t('core.dailyRitual.now')}</span><strong>{state.progress.restartRequired ? t('core.dailyRitual.returnState') : state.daily.practice ? t('core.dailyRitual.doneState') : t('core.dailyRitual.readyState')}</strong><p>{state.progress.restartRequired ? t('core.dailyRitual.returnCopy') : state.daily.practice ? t('core.dailyRitual.afterCopy') : t('core.dailyRitual.readyCopy')}</p></div>
-                  </div>
+                <div className="home-next-action home-next-action--portal">
+                  <UserAvatar user={currentUser} progress={state} />
+                  <div><span className="overline">{t('core.dailyRitual.now')}</span><strong>{state.progress.restartRequired ? t('core.dailyRitual.returnState') : state.daily.practice ? t('core.dailyRitual.doneState') : t('core.dailyRitual.readyState')}</strong><p>{state.progress.restartRequired ? t('core.dailyRitual.returnCopy') : state.daily.practice ? t('core.dailyRitual.afterCopy') : t('core.dailyRitual.readyCopy')}</p></div>
                 </div>
+              </div>
               </section>
-              )
             )}
-
         {activeView === 'radio' && (
           <section className="content-section playtest-radio-section">
             <SectionTitle eyebrow="Recurso complementar" title="Rádio Maiindy">Uma atmosfera sonora livre para acompanhar o momento. Ao iniciar um mantra de prática, a rádio pausa para evitar sobreposição.</SectionTitle>
@@ -2127,6 +2159,8 @@ function App() {
         )}
 
           </section>
+          )}
+
         </div>
 
         <D7Footer copy={t('footer.copy')} tagline={t('footer.tagline')} />
